@@ -5,7 +5,7 @@ from django.contrib.admin.templatetags.admin_list import result_headers
 from django.contrib.admin.templatetags.admin_list import result_hidden_fields
 from django.contrib.admin.templatetags.admin_list import results
 
-from ..engine import get_msgs
+from ..messages import get_msgs
 
 register = Library()
 
