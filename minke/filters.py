@@ -47,7 +47,6 @@ class StatusFilter(admin.SimpleListFilter):
                 values = set(self.values()) - set([status])
             else:
                 values = set(self.values()) | set([status])
-                print values, selected, status
             if values:
                 new_param = {self.parameter_name: ','.join(values)}
             else:
