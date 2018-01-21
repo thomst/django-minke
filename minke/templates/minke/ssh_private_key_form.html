@@ -1,0 +1,20 @@
+{% extends "admin/base_site.html" %}
+
+{% block content %}
+    <form action="" method="post">
+
+        {% csrf_token %}
+        <input type="hidden" name="action" value="{{ action }}">
+
+        <div>
+            {{ form.pass_phrase }}
+            <input type="submit" class="default" style="float: none" value="Submit">
+            {{ form.pass_phrase.errors }}
+        </div>
+
+        {% for object in objects %}
+            <input type="hidden" name="_selected_action" value="{{ object.pk }}">
+        {% endfor %}
+
+    </form>
+{% endblock %}
