@@ -107,12 +107,12 @@ class Action(object):
         # TODO: better to drop model-related or object-related messages?
         clear_msgs(modeladmin, request)
 
-        host_strings = list()
-        player_pool = dict()
+        session_pool = dict()
         hosts = self.get_hosts(queryset)
 
         for host in hosts:
             players = self.get_players(host, queryset)
+
 
             # skip invalid hosts (disabled or locked)
             invalid_host_msg = None
@@ -130,16 +130,16 @@ class Action(object):
                 for player in players:
                     store_msgs(request, player, invalid_host_msg, 'error')
             else:
-                player_pool[host] = players
-                host_strings.append(host.host_string)
+                sessions = [self.session_cls(host, p, request) for p in players]
+                session_pool[host.address] = sessions
 
         # here we stop if no valid host is left...
-        if not host_strings: return
+        if not session_pool: return
 
         try:
             env.key = privkey
-            processor = Processor(self.session_cls, player_pool)
-            result = execute(processor.run, hosts=host_strings)
+            processor = Processor(self.session_cls, session_pool)
+            result = execute(processor.run, hosts=session_pool.keys())
         except Exception as e:
             # FIXME: This is debugging-stuff and should go into the log.
             # (Just leave a little msg to the user...)
@@ -147,24 +147,25 @@ class Action(object):
             modeladmin.message_user(request, mark_safe(msg), 'ERROR')
         else:
             sessions = list()
-            for host_string, host_sessions in result.items():
+            for host_sessions in result.values():
 
-                # If something unexpected hinders the fabric-task to return its
-                # session-object, we've got to deal with it here...
-                if host_sessions and type(host_sessions) == list \
-                    and isinstance(host_sessions[0], Session):
-                    sessions += host_sessions
-                else:
-                    # FIXME: This is debugging-stuff and should go into the log.
-                    # (Just leave a little msg to the user...)
+                # If something unexpected hinders the processor to return the
+                # session-objects, we've got to deal with it here...
+                try:
+                    assert isinstance(host_sessions[0], Session)
+                except (AssertionError, TypeError, IndexError):
+                    # TODO: This should not happen. But we might put some
+                    # debugging-stuff here using logging-mechanisms
                     pass
+                else:
+                    sessions += host_sessions
 
             for s in sessions:
                 # call the sessions rework-method...
                 # passing the request allows adding messages
-                s.rework(request, *s.rework_args)
+                s.rework(request)
 
-                # collect session-status and messages
+                # store session-status and messages
                 store_msgs(request, s.player, s.msgs, s.status)
 
         finally:
@@ -172,10 +173,8 @@ class Action(object):
             disconnect_all()
 
             # release the lock
-            for host in player_pool.keys():
-                host.locked = False
-                host.save()
-
+            for address in session_pool.keys():
+                Host.objects.filter(address=address).update(locked=False)
 
 
 class Processor(object):
@@ -191,21 +190,13 @@ class Processor(object):
 
     Also we take care of exceptions within session-calls.
     """
-    def __init__(self, session_cls, player_pool):
+    def __init__(self, session_cls, session_pool):
         self.session_cls = session_cls
-        self.player_pool = player_pool
-
-    def get_players(self, host_string):
-        for host, players in self.player_pool.items():
-            if host.host_string == host_string:
-                return host, players
+        self.session_pool = session_pool
 
     def run(self):
-        sessions = list()
-        host, players = self.get_players(env.host_string)
-        for player in players:
-            session = self.session_cls(host, player)
-            sessions.append(session)
+        sessions = self.session_pool[env.host_string]
+        for session in sessions:
 
             try:
                 session.process()
@@ -232,12 +223,10 @@ class Processor(object):
 
 
 class Session(object):
-    """
-    This is a base-class for all your sessions.
-    Within a session's process-method the real work will be done.
-    """
+    """This is the base-class for all your sessions."""
+
     short_description = None
-    """Session.short_description will be the action's short_description"""
+    """Used as action's short_description."""
 
     @classmethod
     def as_action(cls):
@@ -248,11 +237,10 @@ class Session(object):
             action.short_description = cls.__name__
         return action
 
-    def __init__(self, host, player):
+    def __init__(self, host, player, request):
         self.host = host
         self.player = player
         self.msgs = list()
-        self.rework_args = list()
         self.status = None
 
     def fcmd(self, cmd):
@@ -292,13 +280,19 @@ class Session(object):
             setattr(self.player, field, None)
 
     def process(self):
-        "Real work is done here..."
+        """Real work is done here...
+
+        This is the part of a session which is executed within fabric's
+        multiprocessing-szenario. It's the right place for all
+        fabric-operations. But keep it clean of all database-related stuff.
+        Database-connections are multiplied with spawend processes and are not
+        reliable anymore. Database-stuff should be done within __init__ or rework.
+        """
         raise NotImplementedError('Got to define your own run-method for a session!')
 
-    def rework(self, request, *args):
-        """This method is called after fabric's work is done.
-        Actions that are not thread-safe should be done here.
-        """
+    def rework(self, request):
+        """This method is called after fabric's work is done."""
+
         # TODO: define a pre_save to check if changes has been done
         self.player.entries_updated = datetime.datetime.now()
         self.player.save()
