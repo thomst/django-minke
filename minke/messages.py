@@ -2,6 +2,9 @@
 import sys
 import traceback
 
+from django.contrib import admin
+from django.db import models
+
 
 # message-helper
 def store_msgs(request, obj, msgs=None, status=None):
@@ -20,7 +23,6 @@ def store_msgs(request, obj, msgs=None, status=None):
         request.session['minke'][model][id]['msgs'] += msgs
     if status:
         request.session['minke'][model][id]['status'] = status
-    # FIXME: call this any time a message is not smart
     request.session.modified = True
 
 def get_msgs(request, obj):
@@ -33,15 +35,30 @@ def get_msgs(request, obj):
     return msgs
 
 # this one works as an admin-action
-def clear_msgs(modeladmin, request, queryset=None):
-    model = modeladmin.model.__name__
-    if queryset == None:
-        try: del request.session['minke'][model]
-        except KeyError: pass
-    else:
-        for obj in queryset.all():
+def clear_msgs(model, request, objects=None):
+    # get model as string
+    if isinstance(model, admin.ModelAdmin):
+        model = model.model.__name__
+    elif isinstance(model, models.Model):
+        model = model.__class__.__name__
+    elif issubclass(model, models.Model):
+        model = model.__name__
+
+    if objects:
+        # get objects as iterable
+        try: iter(objects)
+        except TypeError: objects = [objects]
+
+        # delete object-specific messages
+        for obj in objects:
+            print obj
             try: del request.session['minke'][model][str(obj.id)]
             except KeyError: pass
+    else:
+        # delete model-specific messages
+        try: del request.session['minke'][model]
+        except KeyError: pass
+
     request.session.modified = True
 clear_msgs.short_description = 'clear minke-messages'
 
