@@ -34,7 +34,9 @@ class DisabledHost(Exception):
     pass
 
 
-# general fabric-configuration
+# These configs may be essential for minke to work with fabric
+# in multiprocessing manner. Be carefully overwriting them!
+env.abort_exception = Abortion
 env.combine_stderr = False
 env.parallel = True
 env.linewise = True
@@ -42,9 +44,18 @@ env.warn_only = True
 env.always_use_pty = False
 env.skip_bad_hosts = False
 env.abort_on_prompts = True
-env.pool_size = settings.MINKE['pool_size']
-env.abort_exception = Abortion
+env.pool_size = 24
 
+# TODO: bugreport - seems that fabric misses to set the default.
+# We get a AttributeError, if we do net set env.key explicitly.
+env.key = None
+
+# load minke-settings for fabric
+for key, value in settings.FABRIC.items():
+    if hasattr(env, key):
+        setattr(env, key, value)
+
+# disable all fabric-output
 output.status = False
 output.warnings = False
 output.running = False
@@ -64,30 +75,39 @@ class Action(object):
 
     def __call__(self, modeladmin, request, queryset):
 
-        privkey = None
-        if 'pass_phrase' in request.POST:
-            form = SSHKeyPassPhrase(request.POST)
-        else:
-            form = SSHKeyPassPhrase()
+        # Be sure that the config is sufficient to give fabric
+        # a chance for key-authentications.
 
-        # Decrypt the ssh-key if we have a valid form...
-        if form.is_valid():
-            try:
-                privkey = paramiko.RSAKey.from_private_key_file(
-                    settings.SSH['priv_key'],
-                    password=form.cleaned_data['pass_phrase'])
-            except paramiko.SSHException as e:
-                modeladmin.message_user(request, e, 'ERROR')
+        # do we get keys via an agent?
+        agent_works = False
+        if not env.no_agent:
+            from paramiko.agent import Agent
+            agent = Agent()
+            agent_works = agent.get_keys()
 
-        # Either process the Action or render the pass-phrase-form
-        if privkey:
-            self.process(modeladmin, request, queryset, privkey)
-        else:
-            return render(request, 'config/ssh_private_key_form.html',
-                {'title': u'Pass the pass-phrase to encrypt the ssh-key.',
-                'action': self.__name__,
-                'objects': queryset,
-                'form': form})
+        # do we have any option to get a key at all?
+        if not agent_works and not env.key and not env.key_filename:
+            #TODO: error-msg and redirect
+            return
+
+        # no agent-keys or env.key?
+        # we will probably need a passphrase...
+        elif not agent_works and not env.key:
+            if request.POST.has_key('pass_phrase'):
+                form = SSHKeyPassPhrase(request.POST)
+            else:
+                form = SSHKeyPassPhrase()
+            if form.is_valid():
+                env.password = request.POST.get('pass_phrase', None)
+            else:
+                return render(request, 'minke/ssh_private_key_form.html',
+                    {'title': u'Pass the pass-phrase to encrypt the ssh-key.',
+                    'action': self.__name__,
+                    'objects': queryset,
+                    'form': form})
+
+        # hopefully we are prepared...
+        self.process(modeladmin, request, queryset)
 
     def get_hosts(self, queryset):
         if queryset.model == Host:
@@ -102,7 +122,7 @@ class Action(object):
         else:
             return list(queryset.filter(host=host))
 
-    def process(self, modeladmin, request, queryset, privkey):
+    def process(self, modeladmin, request, queryset):
         # clear already stored messages for these objects
         # TODO: better to drop model-related or object-related messages?
         clear_msgs(modeladmin, request)
@@ -137,7 +157,6 @@ class Action(object):
         if not session_pool: return
 
         try:
-            env.key = privkey
             processor = Processor(self.session_cls, session_pool)
             result = execute(processor.run, hosts=session_pool.keys())
         except Exception as e:
