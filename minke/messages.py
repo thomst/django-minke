@@ -51,7 +51,6 @@ def clear_msgs(model, request, objects=None):
 
         # delete object-specific messages
         for obj in objects:
-            print obj
             try: del request.session['minke'][model][str(obj.id)]
             except KeyError: pass
     else:
@@ -60,7 +59,7 @@ def clear_msgs(model, request, objects=None):
         except KeyError: pass
 
     request.session.modified = True
-clear_msgs.short_description = 'clear minke-messages'
+clear_msgs.short_description = 'Clear minke-messages'
 
 
 # Messages

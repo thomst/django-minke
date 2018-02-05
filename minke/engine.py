@@ -15,6 +15,7 @@ from fabric.state import output
 from django.shortcuts import render
 from django.conf import settings
 from django.utils.html import mark_safe
+from django.core.exceptions import FieldDoesNotExist
 
 from .forms import SSHKeyPassPhrase
 from .models import Host
@@ -23,46 +24,25 @@ from .messages import clear_msgs
 from .messages import PreMessage
 from .messages import ExecutionMessage
 from .messages import ExceptionMessage
+from .exceptions import Abortion
+from .exceptions import DisabledHost
 
 
-# Exceptions
-class Abortion(Exception):
-    pass
+registry = list()
+def register(session_cls):
+    if not issubclass(session_cls, Session):
+        raise ValueError('Registered class must subclass Session.')
 
+    if not session_cls.models:
+        raise ValueError('At least one model must be specified for a session.')
 
-class DisabledHost(Exception):
-    pass
+    for model in session_cls.models:
+        try:
+            assert model == Host or model._meta.get_field('host').rel.to == Host
+        except (AssertionError, FieldDoesNotExist):
+            raise ValueError('Model must have a host-relation.')
 
-
-# These configs may be essential for minke to work with fabric
-# in multiprocessing manner. Be carefully overwriting them!
-env.abort_exception = Abortion
-env.combine_stderr = False
-env.parallel = True
-env.linewise = True
-env.warn_only = True
-env.always_use_pty = False
-env.skip_bad_hosts = False
-env.abort_on_prompts = True
-env.pool_size = 24
-
-# TODO: bugreport - seems that fabric misses to set the default.
-# We get a AttributeError, if we do net set env.key explicitly.
-env.key = None
-
-# load minke-settings for fabric
-for key, value in settings.FABRIC.items():
-    if hasattr(env, key):
-        setattr(env, key, value)
-
-# disable all fabric-output
-output.status = False
-output.warnings = False
-output.running = False
-output.stdout = False
-output.stderr = False
-output.user = False
-output.aborts = False
+    registry.append(session_cls)
 
 
 class Action(object):
@@ -71,7 +51,8 @@ class Action(object):
     """
     def __init__(self, session_cls):
         self.session_cls = session_cls
-        self.__name__ = self.session_cls.__name__
+        self.__name__ = session_cls.__name__
+        self.short_description = session_cls.short_description or self.__name__
 
     def __call__(self, modeladmin, request, queryset):
 
@@ -247,14 +228,8 @@ class Session(object):
     short_description = None
     """Used as action's short_description."""
 
-    @classmethod
-    def as_action(cls):
-        action = Action(cls)
-        if cls.short_description:
-            action.short_description = cls.short_description
-        else:
-            action.short_description = cls.__name__
-        return action
+    models = list()
+    """A list of models a session will be used with as admin-action."""
 
     def __init__(self, host, player, request):
         self.host = host
