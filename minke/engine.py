@@ -121,7 +121,7 @@ class Action(object):
     def process(self, modeladmin, request, queryset):
         # clear already stored messages for these objects
         # TODO: better to drop model-related or object-related messages?
-        clear_msgs(modeladmin, request)
+        clear_msgs(request, modeladmin.model)
 
         session_pool = dict()
         hosts = self.get_hosts(queryset)

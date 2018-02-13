@@ -6,7 +6,7 @@ from django.contrib import admin
 
 from engine import registry
 from engine import Action
-from messages import clear_msgs
+from actions import clear_messages
 
 
 class MinkeAdmin(admin.ModelAdmin):
@@ -19,7 +19,7 @@ class MinkeAdmin(admin.ModelAdmin):
         if minke_actions:
             try: assert request.session['minke'][self.model.__name__]
             except (AssertionError, KeyError): pass
-            else: minke_actions.append(clear_msgs)
+            else: minke_actions.append(clear_messages)
 
         for action in minke_actions:
             actions[action.__name__] = (

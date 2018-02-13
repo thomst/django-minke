@@ -10,19 +10,22 @@ from django.db import models
 def store_msgs(request, obj, msgs=None, status=None):
     model = obj.__class__.__name__
     id = str(obj.id)
-    if msgs and not type(msgs) == list: msgs = [msgs]
-    if not request.session.has_key('minke'):
-        request.session['minke'] = dict()
-    if not request.session['minke'].has_key(model):
-        request.session['minke'][model] = dict()
-    if not request.session['minke'][model].has_key(id):
-        request.session['minke'][model][id] = dict()
-    if not request.session['minke'][model][id].has_key('msgs'):
-        request.session['minke'][model][id]['msgs'] = list()
+    if msgs and not type(msgs) == list:
+        msgs = [msgs]
+
+    data = request.session.get('minke', dict())
+    if not data.has_key(model):
+        data[model] = dict()
+    if not data[model].has_key(id):
+        data[model][id] = dict()
+
+    if not data[model][id].has_key('msgs'):
+        data[model][id]['msgs'] = list()
     if msgs:
-        request.session['minke'][model][id]['msgs'] += msgs
+        data[model][id]['msgs'] += msgs
     if status:
-        request.session['minke'][model][id]['status'] = status
+        data[model][id]['status'] = status
+    request.session['minke'] = data
     request.session.modified = True
 
 def get_msgs(request, obj):
@@ -34,15 +37,8 @@ def get_msgs(request, obj):
         except KeyError: return None
     return msgs
 
-# this one works as an admin-action
-def clear_msgs(model, request, objects=None):
-    # get model as string
-    if isinstance(model, admin.ModelAdmin):
-        model = model.model.__name__
-    elif isinstance(model, models.Model):
-        model = model.__class__.__name__
-    elif issubclass(model, models.Model):
-        model = model.__name__
+def clear_msgs(request, model, objects=None):
+    model = model.__name__
 
     if objects:
         # get objects as iterable
@@ -59,7 +55,6 @@ def clear_msgs(model, request, objects=None):
         except KeyError: pass
 
     request.session.modified = True
-clear_msgs.short_description = 'Clear minke-messages'
 
 
 # Messages
