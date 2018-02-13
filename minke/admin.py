@@ -5,7 +5,7 @@ from django.core.urlresolvers import reverse
 from django.contrib import admin
 
 from engine import registry
-from engine import Action
+from actions import Action
 from actions import clear_messages
 
 

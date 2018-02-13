@@ -1,23 +1,15 @@
 # -*- coding: utf-8 -*-
 
-import datetime
 import re
-import sys
-import time
-import paramiko
+import datetime
 import traceback
 
-from fabric.api import run, env, execute
-from fabric.exceptions import *
-from fabric.network import disconnect_all
-from fabric.state import output
-
-from django.shortcuts import render
-from django.conf import settings
 from django.utils.html import mark_safe
 from django.core.exceptions import FieldDoesNotExist
 
-from .forms import SSHKeyPassPhrase
+from fabric.api import run, env, execute
+from fabric.network import disconnect_all
+
 from .models import Host
 from .messages import store_msgs
 from .messages import clear_msgs
@@ -25,14 +17,13 @@ from .messages import PreMessage
 from .messages import ExecutionMessage
 from .messages import ExceptionMessage
 from .exceptions import Abortion
-from .exceptions import DisabledHost
+from .exceptions import NetworkError
+from .exceptions import CommandTimeout
 
 
 registry = list()
 def register(session_cls, models=list(), short_description=None):
-    """Register sessions.
-
-    Registered sessions will be automatically added as admin-actions by
+    """Registered sessions will be automatically added as admin-actions by
     MinkeAdmin. Therefore at least one model must be specified for a session,
     either listed in session's model-attribute or passed to the register-method.
     """
@@ -60,150 +51,108 @@ def register(session_cls, models=list(), short_description=None):
     registry.append(session_cls)
 
 
-class Action(object):
+def get_hosts(queryset):
+    if queryset.model == Host:
+        return queryset
+    else:
+        host_ids = [o.host_id for o in queryset.all()]
+        return Host.objects.filter(id__in=host_ids)
+
+def get_players(host, queryset):
+    if queryset.model == Host:
+        return [host]
+    else:
+        return list(queryset.filter(host=host))
+
+def process(request, session_cls, queryset, modeladmin):
+    """This method is called by actions.Action. It initiate and wrappes all work
+    done by fabric using fabric's execute-function.
     """
-    Pass an instance of this class to the actions-list of a modeladmin.
-    """
-    def __init__(self, session_cls):
-        self.session_cls = session_cls
-        self.__name__ = session_cls.__name__
-        self.short_description = session_cls.short_description or self.__name__
 
-    def __call__(self, modeladmin, request, queryset):
+    # clear already stored messages for these objects
+    clear_msgs(request, modeladmin.model)
 
-        # Be sure that the config is sufficient to give fabric
-        # a chance for key-authentications.
+    session_pool = dict()
+    hosts = get_hosts(queryset)
 
-        # do we get keys via an agent?
-        agent_works = False
-        if not env.no_agent:
-            from paramiko.agent import Agent
-            agent = Agent()
-            agent_works = agent.get_keys()
+    for host in hosts:
+        players = get_players(host, queryset)
 
-        # do we have any option to get a key at all?
-        if not agent_works and not env.key and not env.key_filename:
-            #TODO: error-msg and redirect
-            return
 
-        # no agent-keys or env.key?
-        # we will probably need a passphrase...
-        elif not agent_works and not env.key:
-            if request.POST.has_key('pass_phrase'):
-                form = SSHKeyPassPhrase(request.POST)
-            else:
-                form = SSHKeyPassPhrase()
-            if form.is_valid():
-                env.password = request.POST.get('pass_phrase', None)
-            else:
-                return render(request, 'minke/ssh_private_key_form.html',
-                    {'title': u'Pass the pass-phrase to encrypt the ssh-key.',
-                    'action': self.__name__,
-                    'objects': queryset,
-                    'form': form})
+        # skip invalid hosts (disabled or locked)
+        invalid_host_msg = None
+        if host.disabled:
+            invalid_host_msg = dict(level='error', text='Host were disabled!')
 
-        # hopefully we are prepared...
-        self.process(modeladmin, request, queryset)
+        # Never let a host be involved in two simultaneous sessions...
+        # As the update action returns the rows that haven been updated
+        # it will be 0 for already locked host.
+        # This is the most atomic way to lock a host.
+        elif not hosts.filter(id=host.id, locked=False).update(locked=True):
+            invalid_host_msg = dict(level='error', text='Host were locked!')
 
-    def get_hosts(self, queryset):
-        if queryset.model == Host:
-            return queryset
+        if invalid_host_msg:
+            for player in players:
+                store_msgs(request, player, invalid_host_msg, 'error')
         else:
-            host_ids = [o.host_id for o in queryset.all()]
-            return Host.objects.filter(id__in=host_ids)
+            sessions = [session_cls(host, p, request) for p in players]
+            session_pool[host.address] = sessions
 
-    def get_players(self, host, queryset):
-        if queryset.model == Host:
-            return [host]
-        else:
-            return list(queryset.filter(host=host))
+    # here we stop if no valid host is left...
+    if not session_pool: return
 
-    def process(self, modeladmin, request, queryset):
-        # clear already stored messages for these objects
-        # TODO: better to drop model-related or object-related messages?
-        clear_msgs(request, modeladmin.model)
+    try:
+        processor = SessionTask(session_cls, session_pool)
+        result = execute(processor.run, hosts=session_pool.keys())
+    except Exception as e:
+        # FIXME: This is debugging-stuff and should go into the log.
+        # (Just leave a little msg to the user...)
+        msg = '<pre>{}</pre>'.format(traceback.format_exc())
+        modeladmin.message_user(request, mark_safe(msg), 'ERROR')
+    else:
+        sessions = list()
+        for host_sessions in result.values():
 
-        session_pool = dict()
-        hosts = self.get_hosts(queryset)
-
-        for host in hosts:
-            players = self.get_players(host, queryset)
-
-
-            # skip invalid hosts (disabled or locked)
-            invalid_host_msg = None
-            if host.disabled:
-                invalid_host_msg = dict(level='error', text='Host were disabled!')
-
-            # Never let a host be involved in two simultaneous sessions...
-            # As the update action returns the rows that haven been updated
-            # it will be 0 for already locked host.
-            # This is the most atomic way to lock a host.
-            elif not hosts.filter(id=host.id, locked=False).update(locked=True):
-                invalid_host_msg = dict(level='error', text='Host were locked!')
-
-            if invalid_host_msg:
-                for player in players:
-                    store_msgs(request, player, invalid_host_msg, 'error')
+            # If something unexpected hinders the processor to return the
+            # session-objects, we've got to deal with it here...
+            try:
+                assert isinstance(host_sessions[0], Session)
+            except (AssertionError, TypeError, IndexError):
+                # TODO: This should not happen. But we might put some
+                # debugging-stuff here using logging-mechanisms
+                pass
             else:
-                sessions = [self.session_cls(host, p, request) for p in players]
-                session_pool[host.address] = sessions
+                sessions += host_sessions
 
-        # here we stop if no valid host is left...
-        if not session_pool: return
+        for s in sessions:
+            # call the sessions rework-method...
+            # passing the request allows adding messages
+            s.rework(request)
 
-        try:
-            processor = Processor(self.session_cls, session_pool)
-            result = execute(processor.run, hosts=session_pool.keys())
-        except Exception as e:
-            # FIXME: This is debugging-stuff and should go into the log.
-            # (Just leave a little msg to the user...)
-            msg = '<pre>{}</pre>'.format(traceback.format_exc())
-            modeladmin.message_user(request, mark_safe(msg), 'ERROR')
-        else:
-            sessions = list()
-            for host_sessions in result.values():
+            # store session-status and messages
+            store_msgs(request, s.player, s.msgs, s.status)
 
-                # If something unexpected hinders the processor to return the
-                # session-objects, we've got to deal with it here...
-                try:
-                    assert isinstance(host_sessions[0], Session)
-                except (AssertionError, TypeError, IndexError):
-                    # TODO: This should not happen. But we might put some
-                    # debugging-stuff here using logging-mechanisms
-                    pass
-                else:
-                    sessions += host_sessions
+    finally:
+        # disconnect fabrics ssh-connections
+        disconnect_all()
 
-            for s in sessions:
-                # call the sessions rework-method...
-                # passing the request allows adding messages
-                s.rework(request)
-
-                # store session-status and messages
-                store_msgs(request, s.player, s.msgs, s.status)
-
-        finally:
-            # disconnect fabrics ssh-connections
-            disconnect_all()
-
-            # release the lock
-            for address in session_pool.keys():
-                Host.objects.filter(address=address).update(locked=False)
+        # release the lock
+        for address in session_pool.keys():
+            Host.objects.filter(address=address).update(locked=False)
 
 
-class Processor(object):
+class SessionTask(object):
     """
     Basically a wrapper-class for Session used with fabric's execute-function.
 
-    The processor's run-method is passed to the fabric's execute-function.
+    The SessionTask's run-method is passed to fabric's execute-function.
     At this point a host-based and parallized multiprocessing will take place
     and orchestrated by fabric.
 
     This class allows us to serialize sessions that run with distinct objects
     associated with the same host in a parallized multiprocessing-context.
 
-    Also we take care of exceptions within session-calls.
+    Also we take care of exceptions that might be thrown within session.process.
     """
     def __init__(self, session_cls, session_pool):
         self.session_cls = session_cls
