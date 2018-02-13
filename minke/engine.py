@@ -22,7 +22,7 @@ from .exceptions import CommandTimeout
 
 
 registry = list()
-def register(session_cls, models=list(), short_description=None):
+def register(session_cls, models=None, short_description=None):
     """Registered sessions will be automatically added as admin-actions by
     MinkeAdmin. Therefore at least one model must be specified for a session,
     either listed in session's model-attribute or passed to the register-method.
@@ -118,19 +118,19 @@ def process(request, session_cls, queryset, modeladmin):
             try:
                 assert isinstance(host_sessions[0], Session)
             except (AssertionError, TypeError, IndexError):
-                # TODO: This should not happen. But we might put some
+                # FIXME: This should not happen. But we might put some
                 # debugging-stuff here using logging-mechanisms
                 pass
             else:
                 sessions += host_sessions
 
-        for s in sessions:
-            # call the sessions rework-method...
-            # passing the request allows adding messages
-            s.rework(request)
+        for session in sessions:
+            # Use rework for final db-actions.
+            # To be able to add messsages we pass request.
+            session.rework(request)
 
             # store session-status and messages
-            store_msgs(request, s.player, s.msgs, s.status)
+            store_msgs(request, session.player, session.msgs, session.status)
 
     finally:
         # disconnect fabrics ssh-connections
@@ -164,19 +164,19 @@ class SessionTask(object):
 
             try:
                 session.process()
-            except Abortion as e:
+            except Abortion:
                 session.status = 'error'
                 session.msgs.append(vars(ExceptionMessage()))
-            except NetworkError as e:
+            except NetworkError:
                 session.status = 'error'
                 session.msgs.append(vars(ExceptionMessage()))
-            except CommandTimeout as e:
+            except CommandTimeout:
                 session.status = 'error'
                 session.msgs.append(vars(ExceptionMessage()))
 
             # FIXME: This is debugging-stuff and should go into the log.
             # (Just leave a little msg to the user...)
-            except Exception as e:
+            except Exception:
                 session.status = 'error'
                 session.msgs.append(vars(ExceptionMessage(print_tb=True)))
 
@@ -223,8 +223,9 @@ class Session(object):
             self.msgs.append(vars(PreMessage('info', result.stdout)))
 
     def update_field(self, field, cmd, regex='(.*)'):
-        # this raises an Exception if field is not an attribute of players
-        getattr(self.player, field)
+
+        try: getattr(self.player, field)
+        except AttributeError as e: raise e
 
         result = run(cmd)
         if self.validate(result, regex):
