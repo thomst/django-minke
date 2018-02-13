@@ -29,7 +29,21 @@ from .exceptions import DisabledHost
 
 
 registry = list()
-def register(session_cls):
+def register(session_cls, models=list(), short_description=None):
+    """Register sessions.
+
+    Registered sessions will be automatically added as admin-actions by
+    MinkeAdmin. Therefore at least one model must be specified for a session,
+    either listed in session's model-attribute or passed to the register-method.
+    """
+
+    if models:
+        if not type(models) == list: models = [models]
+        session_cls.models = models
+
+    if short_description:
+        session_cls.short_description = short_description
+
     if not issubclass(session_cls, Session):
         raise ValueError('Registered class must subclass Session.')
 
@@ -40,7 +54,8 @@ def register(session_cls):
         try:
             assert model == Host or model._meta.get_field('host').rel.to == Host
         except (AssertionError, FieldDoesNotExist):
-            raise ValueError('Model must have a host-relation.')
+            raise ValueError('Sessions could only be used with Host '
+                             'or a model with a relation to Host.')
 
     registry.append(session_cls)
 
