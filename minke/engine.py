@@ -78,17 +78,13 @@ def process(request, session_cls, queryset, modeladmin):
     for host in hosts:
         players = get_players(host, queryset)
 
-
         # skip invalid hosts (disabled or locked)
         invalid_host_msg = None
         if host.disabled:
             invalid_host_msg = dict(level='error', text='Host were disabled!')
 
         # Never let a host be involved in two simultaneous sessions...
-        # As the update action returns the rows that haven been updated
-        # it will be 0 for already locked host.
-        # This is the most atomic way to lock a host.
-        elif not hosts.filter(id=host.id, locked=False).update(locked=True):
+        elif not Host.objects.get_lock(id=host.id):
             invalid_host_msg = dict(level='error', text='Host were locked!')
 
         if invalid_host_msg:
@@ -96,7 +92,7 @@ def process(request, session_cls, queryset, modeladmin):
                 store_msgs(request, player, invalid_host_msg, 'error')
         else:
             sessions = [session_cls(host, p, request) for p in players]
-            session_pool[host.address] = sessions
+            session_pool[host.hoststring] = sessions
 
     # here we stop if no valid host is left...
     if not session_pool: return
@@ -104,7 +100,7 @@ def process(request, session_cls, queryset, modeladmin):
     try:
         processor = SessionTask(session_cls, session_pool)
         result = execute(processor.run, hosts=session_pool.keys())
-    except Exception as e:
+    except Exception:
         # FIXME: This is debugging-stuff and should go into the log.
         # (Just leave a little msg to the user...)
         msg = '<pre>{}</pre>'.format(traceback.format_exc())
@@ -120,7 +116,8 @@ def process(request, session_cls, queryset, modeladmin):
             except (AssertionError, TypeError, IndexError):
                 # FIXME: This should not happen. But we might put some
                 # debugging-stuff here using logging-mechanisms
-                pass
+                msg = '<pre>{}</pre>'.format(traceback.format_exc())
+                modeladmin.message_user(request, mark_safe(msg), 'ERROR')
             else:
                 sessions += host_sessions
 
@@ -137,8 +134,8 @@ def process(request, session_cls, queryset, modeladmin):
         disconnect_all()
 
         # release the lock
-        for address in session_pool.keys():
-            Host.objects.filter(address=address).update(locked=False)
+        for hoststring in session_pool.keys():
+            Host.objects.release_lock(hoststring=hoststring)
 
 
 class SessionTask(object):
