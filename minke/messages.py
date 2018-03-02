@@ -6,71 +6,87 @@ from django.contrib import admin
 from django.db import models
 
 
-# message-helper
-def store_msgs(request, obj, msgs=None, status=None):
-    model = obj.__class__.__name__
-    id = str(obj.id)
-    if msgs and not type(msgs) == list:
-        msgs = [msgs]
+class Messenger(object):
 
-    data = request.session.get('minke', dict())
-    if not data.has_key(model):
-        data[model] = dict()
-    if not data[model].has_key(id):
-        data[model][id] = dict()
+    def __init__(self, request):
+        self.data = request.session.get('minke', dict())
+        self.request = request
 
-    if not data[model][id].has_key('msgs'):
-        data[model][id]['msgs'] = list()
-    if msgs:
-        data[model][id]['msgs'] += msgs
-    if status:
-        data[model][id]['status'] = status
-    request.session['minke'] = data
-    request.session.modified = True
+    def save(self):
+        self.request.session['minke'] = self.data
+        self.request.session.modified = True
 
-def get_msgs(request, obj):
-    model = obj.__class__.__name__
-    id = str(obj.id)
-    msgs = request.session
-    for key in ['minke', model, id]:
-        try: msgs = msgs[key]
-        except KeyError: return None
-    return msgs
+    def store(self, obj, news=None, status=None):
+        model = obj.__class__.__name__
+        id = str(obj.id)
 
-def clear_msgs(request, model, objects=None):
-    model = model.__name__
+        if not self.data.has_key(model):
+            self.data[model] = dict()
+        if not self.data[model].has_key(id):
+            self.data[model][id] = dict()
 
-    if objects:
-        # get objects as iterable
-        try: iter(objects)
-        except TypeError: objects = [objects]
+        if news:
+            # We need a dictonary for json-serializing.
+            news = [vars(n) for n in news or list()]
+            self.data[model][id]['news'] = news
+        if status:
+            self.data[model][id]['status'] = status
 
-        # delete object-specific messages
-        for obj in objects:
-            try: del request.session['minke'][model][str(obj.id)]
+        self.save()
+
+    def remove(self, model=None, objects=None):
+        if model:
+            model = model.__name__
+            try: del self.data[model]
             except KeyError: pass
-    else:
-        # delete model-specific messages
-        try: del request.session['minke'][model]
-        except KeyError: pass
+        elif objects:
+            model = objects[0]._meta.model.__name__
+            for obj in objects:
+                id = str(obj.id)
+                try: del self.data[model][id]
+                except KeyError: pass
 
-    request.session.modified = True
+        self.save()
+
+    def get(self, model=None, object=None):
+        if object:
+            model = object.__class__.__name__
+            id = str(object.id)
+            try: return self.data[model][id]
+            except KeyError: return None
+        elif model:
+            model = model.__name__
+            try: return self.data[model]
+            except KeyError: return None
 
 
-# Messages
 class Message(object):
-    def __init__(self, text, level='info'):
-        self.level = level
+
+    INFO = 'info'
+    WARNING = 'warning'
+    ERROR = 'error'
+
+    def __init__(self, text, level='INFO'):
         self.text = text
+        self.set_level(level)
+
+    def set_level(self, level):
+        try: level = getattr(self, level)
+        except AttributeError: pass
+
+        if level in (self.INFO, self.WARNING, self.ERROR):
+            self.level = level
+        else:
+            raise ValueError('Invalid message-level: {}'.format(level))
 
 
-class PreMessage(object):
+class PreMessage(Message):
     def __init__(self, text, level='info'):
-        self.level = level
+        self.set_level(level)
         self.text = '<pre>{}</pre>'.format(text)
 
 
-class ExecutionMessage(object):
+class ExecutionMessage(Message):
     TEMPLATE = """
         <table>
             <tr><td><code>[{rtn}]</code></td><td><code>{cmd}</code></td></tr>
@@ -80,7 +96,7 @@ class ExecutionMessage(object):
         """
 
     def __init__(self, result, level='error'):
-        self.level = level
+        self.set_level(level)
         msg = self.TEMPLATE.format(
             cmd=result.command,
             rtn=result.return_code,
@@ -89,11 +105,11 @@ class ExecutionMessage(object):
         self.text = msg
 
 
-class ExceptionMessage(object):
+class ExceptionMessage(Message):
     TEMPLATE = "<table><tr><td>{}</td><td><pre>{}</pre></td></tr></table>"
 
     def __init__(self, level='error', print_tb=False):
-        self.level = level
+        self.set_level(level)
         if print_tb:
             msg = traceback.format_exc()
             self.text = "<pre>{}</pre>".format(msg)

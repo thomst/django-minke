@@ -10,12 +10,12 @@ from django.core.exceptions import FieldDoesNotExist
 from fabric.api import run, env, execute
 from fabric.network import disconnect_all
 
-from .models import Host
-from .messages import store_msgs
-from .messages import clear_msgs
+from .messages import Messenger
+from .messages import Message
 from .messages import PreMessage
 from .messages import ExecutionMessage
 from .messages import ExceptionMessage
+from .models import Host
 from .exceptions import Abortion
 from .exceptions import NetworkError
 from .exceptions import CommandTimeout
@@ -69,8 +69,9 @@ def process(request, session_cls, queryset, modeladmin):
     done by fabric using fabric's execute-function.
     """
 
-    # clear already stored messages for these objects
-    clear_msgs(request, modeladmin.model)
+    # clear already stored messages for this model
+    messenger = Messenger(request)
+    messenger.remove(modeladmin.model)
 
     session_pool = dict()
     hosts = get_hosts(queryset)
@@ -79,19 +80,19 @@ def process(request, session_cls, queryset, modeladmin):
         players = get_players(host, queryset)
 
         # skip invalid hosts (disabled or locked)
-        invalid_host_msg = None
+        invalid = None
         if host.disabled:
-            invalid_host_msg = dict(level='error', text='Host were disabled!')
+            invalid = Message(level='ERROR', text='Host were disabled!')
 
         # Never let a host be involved in two simultaneous sessions...
         elif not Host.objects.get_lock(id=host.id):
-            invalid_host_msg = dict(level='error', text='Host were locked!')
+            invalid = Message(level='ERROR', text='Host were locked!')
 
-        if invalid_host_msg:
+        if invalid:
             for player in players:
-                store_msgs(request, player, invalid_host_msg, 'error')
+                messenger.store(player, [invalid], Session.ERROR)
         else:
-            sessions = [session_cls(host, p, request) for p in players]
+            sessions = [session_cls(host, p) for p in players]
             session_pool[host.hoststring] = sessions
 
     # here we stop if no valid host is left...
@@ -123,11 +124,10 @@ def process(request, session_cls, queryset, modeladmin):
 
         for session in sessions:
             # Use rework for final db-actions.
-            # To be able to add messsages we pass request.
-            session.rework(request)
+            session.rework()
 
             # store session-status and messages
-            store_msgs(request, session.player, session.msgs, session.status)
+            messenger.store(session.player, session.news, session.status)
 
     finally:
         # disconnect fabrics ssh-connections
@@ -161,29 +161,19 @@ class SessionTask(object):
 
             try:
                 session.process()
-            except Abortion:
-                session.status = 'error'
-                session.msgs.append(vars(ExceptionMessage()))
-            except NetworkError:
-                session.status = 'error'
-                session.msgs.append(vars(ExceptionMessage()))
-            except CommandTimeout:
-                session.status = 'error'
-                session.msgs.append(vars(ExceptionMessage()))
-
-            # FIXME: This is debugging-stuff and should go into the log.
-            # (Just leave a little msg to the user...)
+            except (Abortion, NetworkError, CommandTimeout):
+                session.set_status('ERROR')
+                session.news.append(ExceptionMessage())
             except Exception:
-                session.status = 'error'
-                session.msgs.append(vars(ExceptionMessage(print_tb=True)))
+                # FIXME: This is debugging-stuff and should go into the log.
+                # (Just leave a little msg to the user...)
+                session.set_status('ERROR')
+                session.news.append(ExceptionMessage(print_tb=True))
 
-            else:
-                if not session.status:
-                    session.status = 'success'
         return sessions
 
 
-class Session(object):
+class BaseSession(object):
     """This is the base-class for all your sessions."""
 
     short_description = None
@@ -192,48 +182,27 @@ class Session(object):
     models = list()
     """A list of models a session will be used with as admin-action."""
 
-    def __init__(self, host, player, request):
+    SUCCESS = 'success'
+    WARNING = 'warning'
+    ERROR = 'error'
+
+    def __init__(self, host, player):
         self.host = host
         self.player = player
-        self.msgs = list()
-        self.status = None
+        self.news = list()
+        self.status = self.SUCCESS
 
-    def fcmd(self, cmd):
-        return cmd.format(**self.player.__dict__)
+    def set_status(self, status):
+        try: status = getattr(self, status)
+        except AttributeError: pass
 
-    def validate(self, result, regex='.*'):
-        if not re.match(regex, result.stdout):
-            self.msgs.append(vars(ExecutionMessage(result, 'error')))
-            self.status = 'warning'
-            return False
-        elif result.return_code or result.stderr:
-            self.msgs.append(vars(ExecutionMessage(result, 'warning')))
-            self.status = 'warning'
-            return False
+        if status in (self.SUCCESS, self.WARNING, self.ERROR):
+            self.status = status
         else:
-            return True
+            raise ValueError('Invalid session-status: {}'.format(status))
 
-    # tasks
-    def message(self, cmd, **kwargs):
-        result = run(cmd, **kwargs)
-        if self.validate(result):
-            self.msgs.append(vars(PreMessage('info', result.stdout)))
-
-    def update_field(self, field, cmd, regex='(.*)'):
-
-        try: getattr(self.player, field)
-        except AttributeError as e: raise e
-
-        result = run(cmd)
-        if self.validate(result, regex):
-            try:
-                value = re.match(regex, result.stdout).groups()[0]
-            except IndexError:
-                value = result.stdout or None
-            finally:
-                setattr(self.player, field, value)
-        else:
-            setattr(self.player, field, None)
+    def format_cmd(self, cmd):
+        return cmd.format(**vars(self.player))
 
     def process(self):
         """Real work is done here...
@@ -246,9 +215,51 @@ class Session(object):
         """
         raise NotImplementedError('Got to define your own run-method for a session!')
 
-    def rework(self, request):
+    def rework(self):
         """This method is called after fabric's work is done."""
 
-        # TODO: define a pre_save to check if changes has been done
+        # FIXME: Do not update entries_updated here! This is a model-
+        # related action.
         self.player.entries_updated = datetime.datetime.now()
         self.player.save()
+
+
+class Session(BaseSession):
+    """This is the base-class for all your sessions."""
+
+    def validate(self, result, regex='.*'):
+        if not re.match(regex, result.stdout) or result.return_code:
+            return False
+        else:
+            return True
+
+    def message(self, cmd, **kwargs):
+        result = run(cmd, **kwargs)
+        valid = self.validate(result)
+
+        if not valid: level = 'ERROR'
+        elif result.stderr: level = 'WARNING'
+        else: level = 'INFO'
+
+        self.news.append(ExecutionMessage(result, level))
+
+        return valid
+
+    def update_field(self, field, cmd, regex='(.*)'):
+        try: getattr(self.player, field)
+        except AttributeError as e: raise e
+
+        result = run(cmd)
+        valid = self.validate(result, regex)
+
+        if valid and result.stdout:
+            try: value = re.match(regex, result.stdout).groups()[0]
+            except IndexError: value = result.stdout
+        else:
+            value = None
+
+        if not value:
+            self.news.append(ExecutionMessage(result, 'ERROR'))
+
+        setattr(self.player, field, value)
+        return bool(value)

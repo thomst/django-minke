@@ -5,7 +5,7 @@ from django.contrib.admin.templatetags.admin_list import result_headers
 from django.contrib.admin.templatetags.admin_list import result_hidden_fields
 from django.contrib.admin.templatetags.admin_list import results
 
-from ..messages import get_msgs
+from ..messages import Messenger
 
 register = Library()
 
@@ -13,14 +13,15 @@ register = Library()
 @register.inclusion_tag("admin/config_list_results.html")
 def config_result_list(cl, request):
 
-    # FIXME: got a good indicator here
+    # FIXME: got a good indicator here; e.g. MinkeAdmin
     if True:
+        messenger = Messenger(request)
         result_list = list(results(cl))
         for result, obj in zip(result_list, cl.result_list):
-            msgs = get_msgs(request, obj)
-            if not msgs: continue
-            result.minke_status = msgs.get('status', str())
-            result.minke_messages = msgs.get('msgs', list())
+            report = messenger.get(object=obj)
+            if not report: continue
+            result.minke_status = report.get('status', str())
+            result.minke_news = report.get('news', list())
     else:
         result_list = list(results(cl))
 

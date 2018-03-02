@@ -31,10 +31,10 @@
         <tr><td colspan="{{ result|length }}">{{ result.form.non_field_errors }}</td></tr>
     {% endif %}
     <tr class="{% cycle 'row1' 'row2' %} {{ result.minke_status }}">{% for item in result %}{{ item }}{% endfor %}</tr>
-    {% if result.minke_messages %}
-        <tr class="minke_messages {{ result.minke_status }}"><td colspan="{{ result|length }}"><ul class="messagelist">
-        {% for message in result.minke_messages %}
-            <li class="minke_message {{ message.level }}">{{ message.text|safe }}</li>
+    {% if result.minke_news %}
+        <tr class="minke_news {{ result.minke_status }}"><td colspan="{{ result|length }}"><ul class="messagelist">
+        {% for message in result.minke_news %}
+            <li class="{{ message.level }}">{{ message.text|safe }}</li>
         {% endfor %}
         </ul></td></tr>
     {% endif %}

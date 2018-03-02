@@ -4,14 +4,15 @@ import paramiko
 
 from django.shortcuts import render
 from fabric.api import env
-from .messages import clear_msgs
+from .messages import Messenger
 from .engine import process
 from .forms import SSHKeyPassPhrase
 
 
-def clear_messages(modeladmin, request, queryset):
-    clear_msgs(request, modeladmin.model, queryset)
-clear_messages.short_description = 'Clear minke-messages'
+def clear_news(modeladmin, request, queryset):
+    messenger = Messenger(request)
+    messenger.remove(objects=queryset)
+clear_news.short_description = 'Clear minke-news'
 
 
 class Action(object):

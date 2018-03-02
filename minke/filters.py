@@ -1,7 +1,8 @@
 from django.contrib import admin
 from django.utils.translation import gettext_lazy as _
 
-from .messages import get_msgs
+from .engine import Session
+from .messages import Messenger
 
 
 class StatusFilter(admin.SimpleListFilter):
@@ -10,30 +11,27 @@ class StatusFilter(admin.SimpleListFilter):
 
     def __init__(self, request, params, model, model_admin):
         super(StatusFilter, self).__init__(request, params, model, model_admin)
-        self.states = ('success', 'warning', 'error')
+        self.states = (Session.SUCCESS, Session.WARNING, Session.ERROR)
 
         # are there messages for this model?
-        try:
-            assert bool(request.session['minke'][model.__name__])
-        except (AssertionError, KeyError):
-            self.msgs = None
-        else:
-            self.msgs = request.session['minke'][model.__name__]
+        messenger = Messenger(request)
+        self.reports = messenger.get(model)
 
     def has_output(self):
-        return bool(self.msgs)
+        return bool(self.reports)
 
     def values(self):
         return self.value().split(',') if self.value() else list()
 
     def queryset(self, request, queryset):
-        if self.value():
-            ids = list()
-            for status in self.values():
-                ids += [int(id) for id, m in self.msgs.items() if m['status'] == status]
-            return queryset.filter(id__in=ids)
-        else:
-            return queryset
+        if not self.value(): return queryset
+
+        ids = list()
+        for status in self.values():
+            for id, report in self.reports.items():
+                if not report['status'] == status: continue
+                ids.append(int(id))
+        return queryset.filter(id__in=ids)
 
     def choices(self, changelist):
         yield {
