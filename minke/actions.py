@@ -93,4 +93,4 @@ class Action(object):
                     'form': form})
 
         # hopefully we are prepared...
-        process(request, self.session_cls, queryset, modeladmin)
+        process(request, self.session_cls, queryset)

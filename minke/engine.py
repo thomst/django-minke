@@ -33,14 +33,12 @@ def get_players(host, queryset):
     else:
         return list(queryset.filter(host=host))
 
-# FIXME: Do not use modeladmin here. Processing sessions should be
-# context-independent.
-def process(request, session_cls, queryset, modeladmin):
+def process(request, session_cls, queryset):
     """Initiate fabric's session-processing."""
 
     # clear already stored messages for this model
     messenger = Messenger(request)
-    messenger.remove(modeladmin.model)
+    messenger.remove(queryset.model)
 
     session_pool = dict()
     hosts = get_hosts(queryset)
@@ -61,42 +59,24 @@ def process(request, session_cls, queryset, modeladmin):
             for player in players:
                 messenger.store(player, [invalid], Session.ERROR)
         else:
+            # Grouping sessions by hosts.
             sessions = [session_cls(host, p) for p in players]
             session_pool[host.hoststring] = sessions
 
-    # here we stop if no valid host is left...
+    # Stop here if no valid hosts are left...
     if not session_pool: return
 
     try:
-        processor = SessionTask(session_cls, session_pool)
-        result = execute(processor.run, hosts=session_pool.keys())
-    except Exception:
-        # FIXME: This is debugging-stuff and should go into the log.
-        # (Just leave a little msg to the user...)
-        msg = '<pre>{}</pre>'.format(traceback.format_exc())
-        modeladmin.message_user(request, mark_safe(msg), 'ERROR')
-    else:
-        sessions = list()
+        session_task = SessionTask(session_cls, session_pool)
+        result = execute(session_task.run, hosts=session_pool.keys())
+
         for host_sessions in result.values():
+            for session in host_sessions:
+                # Use rework for final db-actions.
+                session.rework()
 
-            # If something unexpected hinders the processor to return the
-            # session-objects, we've got to deal with it here...
-            try:
-                assert isinstance(host_sessions[0], Session)
-            except (AssertionError, TypeError, IndexError):
-                # FIXME: This should not happen. But we might put some
-                # debugging-stuff here using logging-mechanisms
-                msg = '<pre>{}</pre>'.format(traceback.format_exc())
-                modeladmin.message_user(request, mark_safe(msg), 'ERROR')
-            else:
-                sessions += host_sessions
-
-        for session in sessions:
-            # Use rework for final db-actions.
-            session.rework()
-
-            # store session-status and messages
-            messenger.store(session.player, session.news, session.status)
+                # store session-status and messages
+                messenger.store(session.player, session.news, session.status)
 
     finally:
         # disconnect fabrics ssh-connections
@@ -109,16 +89,12 @@ def process(request, session_cls, queryset, modeladmin):
 
 class SessionTask(object):
     """
-    Basically a wrapper-class for Session used with fabric's execute-function.
+    Wrapper-class for session-processing with fabric.
 
-    The SessionTask's run-method is passed to fabric's execute-function.
-    At this point a host-based and parallized multiprocessing will take place
-    and orchestrated by fabric.
-
-    This class allows us to serialize sessions that run with distinct objects
-    associated with the same host in a parallized multiprocessing-context.
-
-    Also we take care of exceptions that might be thrown within session.process.
+    The run-method will be executed in a parallized multiprocessing
+    context that is orchestrated by fabric. Itself processes sessions
+    grouped by the associated host. This way we beware the parallel
+    execution of two sessions on one host.
     """
     def __init__(self, session_cls, session_pool):
         self.session_cls = session_cls
@@ -134,8 +110,10 @@ class SessionTask(object):
                 session.set_status('ERROR')
                 session.news.append(ExceptionMessage())
             except Exception:
-                # FIXME: This is debugging-stuff and should go into the log.
-                # (Just leave a little msg to the user...)
+                # FIXME: Actually this is debugging-stuff and should
+                # not be handled as a minke-news! We could return the
+                # exception instead of the session and raise it in the
+                # main process.
                 session.set_status('ERROR')
                 session.news.append(ExceptionMessage(print_tb=True))
 
@@ -143,8 +121,7 @@ class SessionTask(object):
 
 
 class BaseSession(object):
-    """Base-class for all sessions.
-    Implement the base-functionality of a session-class."""
+    """Implement the base-functionality of a session-class."""
 
     SUCCESS = 'success'
     WARNING = 'warning'
@@ -165,23 +142,20 @@ class BaseSession(object):
         else:
             raise ValueError('Invalid session-status: {}'.format(status))
 
-    def format_cmd(self, cmd):
-        return cmd.format(**vars(self.player))
-
     def process(self):
         """Real work is done here...
 
         This is the part of a session which is executed within fabric's
         multiprocessing-szenario. It's the right place for all
-        fabric-operations. But keep it clean of all database-related stuff.
-        Database-connections are multiplied with spawend processes and are not
-        reliable anymore. Database-stuff should be done within __init__ or rework.
+        fabric-operations. But keep it clean of database-related stuff.
+        Database-connections are multiplied with spawend processes and
+        then are not reliable anymore.
         """
         raise NotImplementedError('Your session must define a process-method!')
 
     def rework(self):
         """This method is called after fabric's work is done.
-        All database-related actions should be done here"""
+        Database-related actions should be done here."""
         pass
 
 
@@ -197,6 +171,9 @@ class ActionSession(BaseSession):
 
 
 class Session(ActionSession):
+
+    def format_cmd(self, cmd):
+        return cmd.format(**vars(self.player))
 
     def validate(self, result, regex='.*'):
         return re.match(regex, result.stdout) and not result.return_code
