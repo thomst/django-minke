@@ -4,16 +4,16 @@ from __future__ import unicode_literals
 from django.core.urlresolvers import reverse
 from django.contrib import admin
 
-from engine import registry
-from actions import Action
-from actions import clear_news
+from .actions import registry
+from .actions import Action
+from .actions import clear_news
 
 
 class MinkeAdmin(admin.ModelAdmin):
 
     def get_actions(self, request):
         actions = super(MinkeAdmin, self).get_actions(request)
-        sessions = [s for s in registry if self.model in s.models]
+        sessions = [s for s in registry if self.model in s.action_models]
         minke_actions = [Action(s) for s in sessions]
 
         if minke_actions:

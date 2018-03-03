@@ -5,7 +5,6 @@ import datetime
 import traceback
 
 from django.utils.html import mark_safe
-from django.core.exceptions import FieldDoesNotExist
 
 from fabric.api import run, env, execute
 from fabric.network import disconnect_all
@@ -21,36 +20,6 @@ from .exceptions import NetworkError
 from .exceptions import CommandTimeout
 
 
-registry = list()
-def register(session_cls, models=None, short_description=None):
-    """Registered sessions will be automatically added as admin-actions by
-    MinkeAdmin. Therefore at least one model must be specified for a session,
-    either listed in session's model-attribute or passed to the register-method.
-    """
-
-    if models:
-        if not type(models) == list: models = [models]
-        session_cls.models = models
-
-    if short_description:
-        session_cls.short_description = short_description
-
-    if not issubclass(session_cls, Session):
-        raise ValueError('Registered class must subclass Session.')
-
-    if not session_cls.models:
-        raise ValueError('At least one model must be specified for a session.')
-
-    for model in session_cls.models:
-        try:
-            assert model == Host or model._meta.get_field('host').rel.to == Host
-        except (AssertionError, FieldDoesNotExist):
-            raise ValueError('Sessions could only be used with Host '
-                             'or a model with a relation to Host.')
-
-    registry.append(session_cls)
-
-
 def get_hosts(queryset):
     if queryset.model == Host:
         return queryset
@@ -64,10 +33,10 @@ def get_players(host, queryset):
     else:
         return list(queryset.filter(host=host))
 
+# FIXME: Do not use modeladmin here. Processing sessions should be
+# context-independent.
 def process(request, session_cls, queryset, modeladmin):
-    """This method is called by actions.Action. It initiate and wrappes all work
-    done by fabric using fabric's execute-function.
-    """
+    """Initiate fabric's session-processing."""
 
     # clear already stored messages for this model
     messenger = Messenger(request)
@@ -174,13 +143,8 @@ class SessionTask(object):
 
 
 class BaseSession(object):
-    """This is the base-class for all your sessions."""
-
-    short_description = None
-    """Used as action's short_description."""
-
-    models = list()
-    """A list of models a session will be used with as admin-action."""
+    """Base-class for all sessions.
+    Implement the base-functionality of a session-class."""
 
     SUCCESS = 'success'
     WARNING = 'warning'
@@ -213,25 +177,29 @@ class BaseSession(object):
         Database-connections are multiplied with spawend processes and are not
         reliable anymore. Database-stuff should be done within __init__ or rework.
         """
-        raise NotImplementedError('Got to define your own run-method for a session!')
+        raise NotImplementedError('Your session must define a process-method!')
 
     def rework(self):
-        """This method is called after fabric's work is done."""
-
-        # FIXME: Do not update entries_updated here! This is a model-
-        # related action.
-        self.player.entries_updated = datetime.datetime.now()
-        self.player.save()
+        """This method is called after fabric's work is done.
+        All database-related actions should be done here"""
+        pass
 
 
-class Session(BaseSession):
-    """This is the base-class for all your sessions."""
+class ActionSession(BaseSession):
+    """A session-class to be registered as an admin-action.
+
+    Attributes:
+        action_description   The action's short-description.
+        action_models       Models that use the session as an action.
+    """
+    action_description = None
+    action_models = list()
+
+
+class Session(ActionSession):
 
     def validate(self, result, regex='.*'):
-        if not re.match(regex, result.stdout) or result.return_code:
-            return False
-        else:
-            return True
+        return re.match(regex, result.stdout) and not result.return_code
 
     def message(self, cmd, **kwargs):
         result = run(cmd, **kwargs)
@@ -244,6 +212,9 @@ class Session(BaseSession):
         self.news.append(ExecutionMessage(result, level))
 
         return valid
+
+
+class UpdateEntriesSession(Session):
 
     def update_field(self, field, cmd, regex='(.*)'):
         try: getattr(self.player, field)
@@ -263,3 +234,6 @@ class Session(BaseSession):
 
         setattr(self.player, field, value)
         return bool(value)
+
+    def rework(self):
+        self.player.save()
