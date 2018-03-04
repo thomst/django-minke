@@ -1,16 +1,14 @@
 # -*- coding: utf-8 -*-
 
-import re
+from fabric.api import env, execute
+from fabric.network import disconnect_all
 
 from django.utils.html import mark_safe
 
-from fabric.api import run, env, execute
-from fabric.network import disconnect_all
-
+import minke.sessions
 from .models import Host
 from .messages import Messenger
 from .messages import Message
-from .messages import ExecutionMessage
 from .messages import ExceptionMessage
 from .exceptions import Abortion
 from .exceptions import NetworkError
@@ -53,8 +51,9 @@ def process(request, session_cls, queryset):
             invalid = Message(level='ERROR', text='Host were locked!')
 
         if invalid:
+            error = minke.sessions.Session.ERROR
             for player in players:
-                messenger.store(player, [invalid], Session.ERROR)
+                messenger.store(player, [invalid], error)
         else:
             # Grouping sessions by hosts.
             sessions = [session_cls(host, p) for p in players]
@@ -115,99 +114,3 @@ class SessionTask(object):
                 session.news.append(ExceptionMessage(print_tb=True))
 
         return sessions
-
-
-class BaseSession(object):
-    """Implement the base-functionality of a session-class."""
-
-    SUCCESS = 'success'
-    WARNING = 'warning'
-    ERROR = 'error'
-
-    def __init__(self, host, player):
-        self.host = host
-        self.player = player
-        self.news = list()
-        self.status = self.SUCCESS
-
-    def set_status(self, status):
-        try: status = getattr(self, status)
-        except AttributeError: pass
-
-        if status in (self.SUCCESS, self.WARNING, self.ERROR):
-            self.status = status
-        else:
-            raise ValueError('Invalid session-status: {}'.format(status))
-
-    def process(self):
-        """Real work is done here...
-
-        This is the part of a session which is executed within fabric's
-        multiprocessing-szenario. It's the right place for all
-        fabric-operations. But keep it clean of database-related stuff.
-        Database-connections are multiplied with spawend processes and
-        then are not reliable anymore.
-        """
-        raise NotImplementedError('Your session must define a process-method!')
-
-    def rework(self):
-        """This method is called after fabric's work is done.
-        Database-related actions should be done here."""
-        pass
-
-
-class ActionSession(BaseSession):
-    """A session-class to be registered as an admin-action.
-
-    Attributes:
-        action_description  The action's short-description.
-        action_models       Models that use the session as an action.
-    """
-    action_description = None
-    action_models = list()
-
-
-class Session(ActionSession):
-
-    def format_cmd(self, cmd):
-        return cmd.format(**vars(self.player))
-
-    def validate(self, result, regex='.*'):
-        return re.match(regex, result.stdout) and not result.return_code
-
-    def message(self, cmd, **kwargs):
-        result = run(cmd, **kwargs)
-        valid = self.validate(result)
-
-        if not valid: level = 'ERROR'
-        elif result.stderr: level = 'WARNING'
-        else: level = 'INFO'
-
-        self.news.append(ExecutionMessage(result, level))
-
-        return valid
-
-
-class UpdateEntriesSession(Session):
-
-    def update_field(self, field, cmd, regex='(.*)'):
-        try: getattr(self.player, field)
-        except AttributeError as e: raise e
-
-        result = run(cmd)
-        valid = self.validate(result, regex)
-
-        if valid and result.stdout:
-            try: value = re.match(regex, result.stdout).groups()[0]
-            except IndexError: value = result.stdout
-        else:
-            value = None
-
-        if not value:
-            self.news.append(ExecutionMessage(result, 'ERROR'))
-
-        setattr(self.player, field, value)
-        return bool(value)
-
-    def rework(self):
-        self.player.save()

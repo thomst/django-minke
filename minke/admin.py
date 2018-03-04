@@ -4,22 +4,20 @@ from __future__ import unicode_literals
 from django.core.urlresolvers import reverse
 from django.contrib import admin
 
-from .actions import registry
-from .actions import Action
+from .sessions import registry
 from .actions import clear_news
+from .messages import Messenger
 
 
 class MinkeAdmin(admin.ModelAdmin):
 
     def get_actions(self, request):
         actions = super(MinkeAdmin, self).get_actions(request)
-        sessions = [s for s in registry if self.model in s.action_models]
-        minke_actions = [Action(s) for s in sessions]
+        minke_actions = [s.as_action() for s in registry if self.model in s.action_models]
 
-        if minke_actions:
-            try: assert request.session['minke'][self.model.__name__]
-            except (AssertionError, KeyError): pass
-            else: minke_actions.append(clear_news)
+        messenger = Messenger(request)
+        data = messenger.get(self.model)
+        if data: minke_actions.append(clear_news)
 
         for action in minke_actions:
             actions[action.__name__] = (

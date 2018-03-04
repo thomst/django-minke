@@ -8,7 +8,7 @@ def register(models=None, short_description=None):
         pass
     """
     def _session_wrapper(session_cls):
-        from minke.actions import register
+        from minke.sessions import register
         register(session_cls, models, short_description)
         return session_cls
     return _session_wrapper
