@@ -1,20 +1,17 @@
 # -*- coding: utf-8 -*-
 
 import re
-import datetime
-import traceback
 
 from django.utils.html import mark_safe
 
 from fabric.api import run, env, execute
 from fabric.network import disconnect_all
 
+from .models import Host
 from .messages import Messenger
 from .messages import Message
-from .messages import PreMessage
 from .messages import ExecutionMessage
 from .messages import ExceptionMessage
-from .models import Host
 from .exceptions import Abortion
 from .exceptions import NetworkError
 from .exceptions import CommandTimeout
@@ -163,7 +160,7 @@ class ActionSession(BaseSession):
     """A session-class to be registered as an admin-action.
 
     Attributes:
-        action_description   The action's short-description.
+        action_description  The action's short-description.
         action_models       Models that use the session as an action.
     """
     action_description = None
