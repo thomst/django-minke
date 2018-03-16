@@ -6,8 +6,9 @@ from fabric.api import env
 
 from django.shortcuts import render
 from django.views.generic import View
+from django.contrib import messages
 
-from . import engine
+from minke import engine
 from .forms import SSHKeyPassPhrase
 
 
@@ -36,7 +37,8 @@ class SessionView(View):
 
         # do we have any option to get a key at all?
         if not agent_works and not env.key and not env.key_filename:
-            #TODO: error-msg and redirect
+            msg = 'Got no keys from the agent nor have a key-file!'
+            messages.add_message(request, messages.ERROR, msg)
             return
 
         # no agent-keys or env.key?
