@@ -7,9 +7,9 @@
         <input type="hidden" name="action" value="{{ action }}">
 
         <div>
-            {{ form.pass_phrase }}
+            {{ form.minke_initial_password }}
             <input type="submit" class="default" style="float: none" value="Submit">
-            {{ form.pass_phrase.errors }}
+            {{ form.minke_initial_password.errors }}
         </div>
 
         {% for object in objects %}

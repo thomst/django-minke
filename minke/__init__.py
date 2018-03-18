@@ -15,9 +15,10 @@ env.key = None
 env.pool_size = 24
 
 # load django-settings for fabric
-for key, value in settings.FABRIC.items():
-    if hasattr(env, key):
-        setattr(env, key, value)
+if hasattr(settings, 'FABRIC_ENV'):
+    for key, value in settings.FABRIC_ENV.items():
+        if hasattr(env, key):
+            setattr(env, key, value)
 
 # These configs are essential for minke to work with fabric
 # in multiprocessing manner and should not be overwritten.

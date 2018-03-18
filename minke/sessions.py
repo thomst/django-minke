@@ -92,7 +92,7 @@ class ActionSession(BaseSession):
     @classmethod
     def as_action(cls):
         def action(modeladmin, request, queryset):
-            return SessionView().post(request, cls, queryset)
+            return SessionView().process(request, cls, queryset)
         action.__name__ = cls.__name__
         action.short_description = cls.short_description
         return action
