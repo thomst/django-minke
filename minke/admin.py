@@ -13,16 +13,21 @@ class MinkeAdmin(admin.ModelAdmin):
 
     def get_actions(self, request):
         actions = super(MinkeAdmin, self).get_actions(request)
-        minke_actions = [s.as_action() for s in registry if self.model in s.action_models]
+        prep_action = lambda a: (a, a.__name__, a.short_description)
 
+        # add sessions depending on the model and the user-perms...
+        for session in registry:
+            if not self.model in session.models:
+                continue
+            if not request.user.has_perms(session.permission_required):
+                continue
+            action = session.as_action()
+            actions[action.__name__] = prep_action(action)
+
+        # add clear-news if there are any minke-news for this model...
         messenger = Messenger(request)
         data = messenger.get(self.model)
-        if data: minke_actions.append(clear_news)
-
-        for action in minke_actions:
-            actions[action.__name__] = (
-                action,
-                action.__name__,
-                action.short_description)
+        if data:
+            actions[clear_news.__name__] = prep_action(clear_news)
 
         return actions

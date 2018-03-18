@@ -47,3 +47,8 @@ class Host(models.Model):
 
     def __str__(self):
         return self.host
+
+    class Meta:
+        permissions = (
+            ('run_minke_sessions', 'Run Minke-sessions'),
+        )

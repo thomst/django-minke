@@ -12,14 +12,21 @@ from .messages import ExecutionMessage
 
 
 registry = list()
-def register(session_cls, models=None, short_description=None):
-    """Register sessions to use them as an admin-action for all models passed
-    as parameter or defined as the session's action_models.
-    """
+def register(session_cls, models=None, short_description=None, \
+             permission_required=None):
+    """Register session-classes.
+    They will be provided as admin-actions for the specified models"""
 
     if models:
-        if not type(models) == list: models = [models]
-        session_cls.action_models = models
+        if not type(models) == tuple:
+            models = (models,)
+        session_cls.models = session_cls.models + models
+
+    if permission_required:
+        if not type(permission_required) == tuple:
+            permission_required = (permission_required,)
+        session_cls.permission_required = \
+            session_cls.permission_required + permission_required
 
     if short_description:
         session_cls.short_description = short_description
@@ -27,10 +34,10 @@ def register(session_cls, models=None, short_description=None):
     if not issubclass(session_cls, Session):
         raise ValueError('Registered class must subclass Session.')
 
-    if not session_cls.action_models:
+    if not session_cls.models:
         raise ValueError('At least one model must be specified for a session.')
 
-    for model in session_cls.action_models:
+    for model in session_cls.models:
         try:
             assert model == Host or model._meta.get_field('host').rel.to == Host
         except (AssertionError, FieldDoesNotExist):
@@ -79,26 +86,24 @@ class BaseSession(object):
         pass
 
 
-class ActionSession(BaseSession):
-    """A session-class to be registered as an admin-action.
+class AdminSession(BaseSession):
+    """Implement attributes for admin-site-integration."""
 
-    Attributes:
-        short_description   The action's short-description.
-        action_models       Models that use the session as an action.
-    """
+    models = tuple()
     short_description = None
-    action_models = list()
+    permission_required = ('minke.run_minke_sessions',)
 
     @classmethod
     def as_action(cls):
         def action(modeladmin, request, queryset):
-            return SessionView().process(request, cls, queryset)
+            session_view = SessionView.as_view()
+            return session_view(request, session_cls=cls, queryset=queryset)
         action.__name__ = cls.__name__
         action.short_description = cls.short_description
         return action
 
 
-class Session(ActionSession):
+class Session(AdminSession):
 
     def format_cmd(self, cmd):
         return cmd.format(**vars(self.player))

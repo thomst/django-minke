@@ -8,27 +8,50 @@ from django.conf import settings
 from django.shortcuts import render
 from django.views.generic import View
 from django.contrib import messages
+from django.contrib.auth.mixins import PermissionRequiredMixin
 
 from minke import engine
 from .forms import InitialPasswordForm
 
 
-class SessionView(View):
+class SessionView(PermissionRequiredMixin, View):
 
-    def get_queryset(self, request):
-        raise NotImplementedError('TODO: implement get_queryset...')
+    raise_exception = True
+    permission_denied_message = 'You are not allowed to run {}!'
 
-    def get_session_cls(self, request):
-        raise NotImplementedError('TODO: implement get_session_cls...')
+    def get_permission_denied_message(self):
+        session_cls = self.get_session_cls()
+        msg = self.permission_denied_message.format(session_cls.__name__)
+        return msg
+
+    def get_permission_required(self):
+        session_cls = self.get_session_cls()
+        self.permission_required = session_cls.permission_required
+        return super(SessionView, self).get_permission_required()
+
+    def get_queryset(self):
+        if self.kwargs.get('queryset', None):
+            self.queryset = self.kwargs['queryset']
+
+        if hasattr(self, 'queryset'):
+            return self.queryset
+        else:
+            raise AttributeError('Missing queryset!')
+
+    def get_session_cls(self):
+        if self.kwargs.get('session_cls', None):
+            self.session_cls = self.kwargs['session_cls']
+
+        if hasattr(self, 'session_cls'):
+            return self.session_cls
+        else:
+            raise AttributeError('Missing session-class!')
 
     def post(self, request, *args, **kwargs):
-        session_cls = self.get_sesssion_class(request)
-        queryset = self.get_queryset(request)
-        return self.process(self, request, session_cls, queryset)
+        session_cls = self.get_session_cls()
+        queryset = self.get_queryset()
 
-    def process(self, request, session_cls, queryset):
-        """Try to prepare fabric for key-authentication..."""
-
+        # Render initial-password-form...
         if getattr(settings, 'MINKE_INITIAL_PASSWORD_FORM', False):
             if request.POST.has_key('minke_initial_password'):
                 form = InitialPasswordForm(request.POST)
@@ -39,7 +62,7 @@ class SessionView(View):
                 env.password = request.POST['minke_initial_password']
             else:
                 return render(request, 'minke/ssh_private_key_form.html',
-                    {'title': u'Pass the pass-phrase to encrypt the ssh-key.',
+                    {'title': u'Initial password used by fabric.',
                     'action': session_cls.__name__,
                     'objects': queryset,
                     'form': form})
