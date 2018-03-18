@@ -50,5 +50,5 @@ class Host(models.Model):
 
     class Meta:
         permissions = (
-            ('run_minke_sessions', 'Run Minke-sessions'),
+            ('run_host_minke_sessions', 'Can run minke-sessions'),
         )

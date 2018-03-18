@@ -12,7 +12,8 @@ from .messages import ExecutionMessage
 
 
 registry = list()
-def register(session_cls, models=None, short_description=None, \
+def register(session_cls, models=None,
+             short_description=None,
              permission_required=None):
     """Register session-classes.
     They will be provided as admin-actions for the specified models"""
@@ -91,7 +92,7 @@ class AdminSession(BaseSession):
 
     models = tuple()
     short_description = None
-    permission_required = ('minke.run_minke_sessions',)
+    permission_required = tuple()
 
     @classmethod
     def as_action(cls):

@@ -14,6 +14,6 @@ class Migration(migrations.Migration):
     operations = [
         migrations.AlterModelOptions(
             name='host',
-            options={'permissions': (('run_minke_sessions', 'Run Minke-sessions'),)},
+            options={'permissions': (('run_host_minke_sessions', 'Can run minke-sessions'),)},
         ),
     ]
