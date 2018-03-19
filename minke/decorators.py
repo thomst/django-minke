@@ -1,5 +1,8 @@
 
-def register(models=None, short_description=None, permission_required=None):
+def register(models=None,
+             short_description=None,
+             permission_required=None,
+             create_permission=False):
     """
     Register sessions as an admin-action with the associated models:
 
@@ -9,6 +12,9 @@ def register(models=None, short_description=None, permission_required=None):
     """
     def _session_wrapper(session_cls):
         from minke.sessions import register
-        register(session_cls, models, short_description, permission_required)
+        register(session_cls, models=models,
+                 short_description=short_description,
+                 permission_required=permission_required,
+                 create_permission=create_permission)
         return session_cls
     return _session_wrapper

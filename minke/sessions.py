@@ -5,6 +5,9 @@ import re
 from fabric.api import run
 
 from django.core.exceptions import FieldDoesNotExist
+from django.contrib.auth.models import Permission
+from django.contrib.contenttypes.models import ContentType
+from django.utils.text import camel_case_to_spaces, slugify
 
 from .views import SessionView
 from .models import Host
@@ -14,7 +17,8 @@ from .messages import ExecutionMessage
 registry = list()
 def register(session_cls, models=None,
              short_description=None,
-             permission_required=None):
+             permission_required=None,
+             create_permission=False):
     """Register session-classes.
     They will be provided as admin-actions for the specified models"""
 
@@ -44,6 +48,27 @@ def register(session_cls, models=None,
         except (AssertionError, FieldDoesNotExist):
             raise ValueError('Sessions could only be used with Host '
                              'or a model with a relation to Host.')
+
+    if create_permission:
+        # We only create a permission for one model. Otherwise a user would
+        # must have all permissions for all session-models and not as expected
+        # only the permission for the model she wants to run the session with.
+        model = session_cls.models[0]
+        content_type = ContentType.objects.get_for_model(session_cls.models[0])
+        model_name = slugify(model.__name__)
+        session_name = session_cls.__name__
+        session_codename = camel_case_to_spaces(session_name).replace(' ', '_')
+        codename = 'run_{}_on_{}'.format(session_codename, model_name)
+        permission_name = '{}.{}'.format(model._meta.app_label, codename)
+
+        # create permission...
+        permission = Permission.objects.get_or_create(
+            name='Can run {}'.format(session_name),
+            codename=codename,
+            content_type=content_type)
+
+        # add permission to permission_required...
+        session_cls.permission_required += (permission_name,)
 
     registry.append(session_cls)
 
