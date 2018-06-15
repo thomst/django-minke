@@ -45,5 +45,8 @@ class Host(models.Model):
         self.hoststring = format.format(**vars(self))
         super(Host, self).save(*args, **kwargs)
 
+    class Meta:
+        ordering = ['host']
+
     def __str__(self):
         return self.host
