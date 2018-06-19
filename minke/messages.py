@@ -86,6 +86,20 @@ class PreMessage(Message):
         self.text = '<pre>{}</pre>'.format(text)
 
 
+class TableMessage(Message):
+    def __init__(self, data, level='info', css=None):
+        self.set_level(level)
+        if css:
+            style = ['{}:{};'.format(k, v) for k, v in css.items()]
+            style = 'style="{}"'.format(' '.join(style))
+        else:
+            style = str()
+        columns = ['</td><td>'.join(columns) for columns in data]
+        rows = '</td></tr><tr><td>'.join(columns)
+        table = '<table {}><tr><td>{}</td></tr></table>'.format(style, rows)
+        self.text = table
+
+
 class ExecutionMessage(Message):
     TEMPLATE = """
         <table>
