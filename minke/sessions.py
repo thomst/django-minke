@@ -134,8 +134,11 @@ class Session(AdminSession):
     def format_cmd(self, cmd):
         return cmd.format(**vars(self.player))
 
-    def validate(self, result, regex='.*'):
-        return re.match(regex, result.stdout) and not result.return_code
+    def validate(self, result, regex=None):
+        if regex and result.return_code == 0:
+            return re.match(regex, result.stdout)
+        else:
+            return result.return_code == 0
 
     def message(self, cmd, **kwargs):
         result = run(cmd, **kwargs)
