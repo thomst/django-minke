@@ -89,11 +89,10 @@ class PreMessage(Message):
 class TableMessage(Message):
     def __init__(self, data, level='info', css=None):
         self.set_level(level)
-        if css:
-            style = ['{}:{};'.format(k, v) for k, v in css.items()]
-            style = 'style="{}"'.format(' '.join(style))
-        else:
-            style = str()
+        css_params = dict(width='680px', color='#666')
+        css_params.update(css or dict())
+        style = ['{}:{};'.format(k, v) for k, v in css_params.items()]
+        style = 'style="{}"'.format(' '.join(style))
         columns = ['</td><td>'.join(columns) for columns in data]
         rows = '</td></tr><tr><td>'.join(columns)
         table = '<table {}><tr><td>{}</td></tr></table>'.format(style, rows)
