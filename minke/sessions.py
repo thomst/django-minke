@@ -54,6 +54,8 @@ def register(session_cls, models=None,
         # must have all permissions for all session-models and not as expected
         # only the permission for the model she wants to run the session with.
         model = session_cls.models[0]
+        # FIXME: Applying minke-migrations before the migrations of registered
+        # models will fail at this line...
         content_type = ContentType.objects.get_for_model(session_cls.models[0])
         model_name = slugify(model.__name__)
         session_name = session_cls.__name__
