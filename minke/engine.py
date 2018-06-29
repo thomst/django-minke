@@ -7,7 +7,6 @@ from django.utils.html import mark_safe
 
 import minke.sessions
 from .models import Host
-from .messages import Messenger
 from .messages import Message
 from .messages import ExceptionMessage
 from .exceptions import Abortion
@@ -28,12 +27,8 @@ def get_players(host, queryset):
     else:
         return list(queryset.filter(host=host))
 
-def process(request, session_cls, queryset):
+def process(session_cls, queryset, messenger):
     """Initiate fabric's session-processing."""
-
-    # clear already stored messages for this model
-    messenger = Messenger(request)
-    messenger.remove(queryset.model)
 
     session_pool = dict()
     hosts = get_hosts(queryset)

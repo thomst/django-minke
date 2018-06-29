@@ -12,6 +12,7 @@ from django.contrib.auth.mixins import PermissionRequiredMixin
 
 from minke import engine
 from .forms import InitialPasswordForm
+from .messages import Messenger
 
 
 class SessionView(PermissionRequiredMixin, View):
@@ -78,5 +79,9 @@ class SessionView(PermissionRequiredMixin, View):
             messages.add_message(request, messages.ERROR, msg)
             return
 
+        # initiate the messenger and clear already stored messages for this model
+        messenger = Messenger(request)
+        messenger.remove(queryset.model)
+
         # hopefully we are prepared...
-        engine.process(request, session_cls, queryset)
+        engine.process(session_cls, queryset, messenger)
