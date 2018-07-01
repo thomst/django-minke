@@ -48,8 +48,11 @@ class SessionView(PermissionRequiredMixin, View):
     def post(self, request, *args, **kwargs):
         session_cls = self.get_session_cls()
         queryset = self.get_queryset()
+
+        # do we have to render a form first?
         password_form = getattr(settings, 'MINKE_INITIAL_PASSWORD_FORM', None)
         session_form = bool(session_cls.FORM) or None
+        session_data = dict()
 
         if password_form or session_form:
             minke_form = MinkeForm(dict(
@@ -83,8 +86,7 @@ class SessionView(PermissionRequiredMixin, View):
 
             if session_form:
                 session_data = session_form.cleaned_data
-            else:
-                session_data = dict()
+
 
         # do we have a chance to get keys from an ssh-agent?
         if not env.no_agent:

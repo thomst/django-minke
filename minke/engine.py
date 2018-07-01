@@ -44,7 +44,7 @@ def process(session_cls, queryset, messenger, session_data):
                 messenger.store(player, [invalid], error)
         else:
             # Grouping sessions by hosts.
-            sessions = [session_cls(host, p, session_data) for p in players]
+            sessions = [session_cls(host, p, **session_data) for p in players]
             sessions_per_host[host.hoststring] = sessions
 
     # Stop here if no valid hosts are left...

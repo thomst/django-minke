@@ -82,7 +82,7 @@ class BaseSession(object):
     ERROR = 'error'
     FORM = None
 
-    def __init__(self, host, player, session_data):
+    def __init__(self, host, player, **session_data):
         self.host = host
         self.player = player
         self.session_data = session_data
