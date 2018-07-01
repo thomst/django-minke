@@ -14,7 +14,7 @@ from .exceptions import NetworkError
 from .exceptions import CommandTimeout
 
 
-def process(session_cls, queryset, messenger):
+def process(session_cls, queryset, messenger, session_data):
     """Initiate fabric's session-processing."""
 
     # get players per host
@@ -44,7 +44,7 @@ def process(session_cls, queryset, messenger):
                 messenger.store(player, [invalid], error)
         else:
             # Grouping sessions by hosts.
-            sessions = [session_cls(host, p) for p in players]
+            sessions = [session_cls(host, p, session_data) for p in players]
             sessions_per_host[host.hoststring] = sessions
 
     # Stop here if no valid hosts are left...

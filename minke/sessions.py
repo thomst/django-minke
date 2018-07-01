@@ -80,10 +80,12 @@ class BaseSession(object):
     SUCCESS = 'success'
     WARNING = 'warning'
     ERROR = 'error'
+    FORM = None
 
-    def __init__(self, host, player):
+    def __init__(self, host, player, session_data):
         self.host = host
         self.player = player
+        self.session_data = session_data
         self.news = list()
         self.status = self.SUCCESS
 

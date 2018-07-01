@@ -1,0 +1,47 @@
+{% extends "admin/base_site.html" %}
+
+{% block extrahead %}
+    {{ minke_form.media }}
+    {% if password_form %}{{ password_form.media }}{% endif %}
+    {% if session_form %}{{ session_form.media }}{% endif %}
+{% endblock %}
+
+{% block content %}
+<form action="" method="post">
+
+    {% csrf_token %}
+    {{ minke_form }}
+
+    {% if password_form %}
+        <fieldset><table>{{ password_form.as_table }}</table></fieldset>
+    {% endif %}
+
+    {% if session_form %}
+        <fieldset><table>{{ session_form }}</table></fieldset>
+    {% endif %}
+
+    <fieldset>
+        <input type="submit" class="default" style="float: none" value="Submit">
+        <a class="default" style="float: none" href="">Abbrechen</a>
+    </fieldset>
+
+    <fieldset><ul class="{{ object_list_type }}">
+        {% for object in objects %}
+            {% if object_list_type == 'checkbox' %}
+                <li>
+                    <input id="{{ object.pk }}" type="checkbox" name="_selected_action" value="{{ object.pk }}" checked>
+                    <label for="{{ object.pk }}">{{ object }}</label>
+                </li>
+            {% elif object_list_type == 'list' %}
+                <li>
+                    {{ object }}
+                    <input type="hidden" name="_selected_action" value="{{ object.pk }}">
+                </li>
+            {% else %}
+                <input type="hidden" name="_selected_action" value="{{ object.pk }}">
+            {% endif %}
+        {% endfor %}
+    </ul></fieldset>
+
+</form>
+{% endblock %}
