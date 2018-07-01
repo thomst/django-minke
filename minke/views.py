@@ -31,10 +31,8 @@ class SessionView(PermissionRequiredMixin, View):
         return super(SessionView, self).get_permission_required()
 
     def get_queryset(self):
-        if self.kwargs.get('queryset', None):
-            self.queryset = self.kwargs['queryset']
-
-        if hasattr(self, 'queryset'):
+        self.queryset = self.kwargs.get('queryset', None)
+        if self.queryset is not None:
             return self.queryset
         else:
             raise AttributeError('Missing queryset!')
