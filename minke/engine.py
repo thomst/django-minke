@@ -14,27 +14,20 @@ from .exceptions import NetworkError
 from .exceptions import CommandTimeout
 
 
-def get_hosts(queryset):
-    if queryset.model == Host:
-        return queryset
-    else:
-        host_ids = [o.host_id for o in queryset.all()]
-        return Host.objects.filter(id__in=host_ids)
-
-def get_players(host, queryset):
-    if queryset.model == Host:
-        return [host]
-    else:
-        return list(queryset.filter(host=host))
-
 def process(session_cls, queryset, messenger):
     """Initiate fabric's session-processing."""
 
-    session_pool = dict()
-    hosts = get_hosts(queryset)
+    # get players per host
+    players_per_host = dict()
+    for player in queryset:
+        host = player if isinstance(player, Host) else player.get_host()
+        if not players_per_host.has_key(host):
+            players_per_host[host] = list()
+        players_per_host[host].append(player)
 
-    for host in hosts:
-        players = get_players(host, queryset)
+    # validate hosts and prepare sessions
+    sessions_per_host = dict()
+    for host, players in players_per_host.items():
 
         # skip invalid hosts (disabled or locked)
         invalid = None
@@ -52,33 +45,33 @@ def process(session_cls, queryset, messenger):
         else:
             # Grouping sessions by hosts.
             sessions = [session_cls(host, p) for p in players]
-            session_pool[host.hoststring] = sessions
+            sessions_per_host[host.hoststring] = sessions
 
     # Stop here if no valid hosts are left...
-    if not session_pool: return
+    if not sessions_per_host: return
 
     try:
-        session_task = SessionTask(session_cls, session_pool)
-        result = execute(session_task.run, hosts=session_pool.keys())
-
-        for host_sessions in result.values():
-            for session in host_sessions:
-                # Use rework for final db-actions.
-                session.rework()
-
-                # store session-status and messages
-                messenger.store(session.player, session.news, session.status)
-
+        host_sessions = HostSessions(sessions_per_host)
+        result = execute(host_sessions.run, hosts=sessions_per_host.keys())
     finally:
         # disconnect fabrics ssh-connections
         disconnect_all()
 
         # release the lock
-        for hoststring in session_pool.keys():
-            Host.objects.release_lock(hoststring=hoststring)
+        Host.objects.release_lock(hoststring__in=sessions_per_host.keys())
+
+    # finish up...
+    for host_sessions in result.values():
+        for session in host_sessions:
+            # Use rework for final db-actions.
+            session.rework()
+
+            # store session-status and messages
+            messenger.store(session.player, session.news, session.status)
 
 
-class SessionTask(object):
+
+class HostSessions(object):
     """
     Wrapper-class for session-processing with fabric.
 
@@ -87,12 +80,11 @@ class SessionTask(object):
     grouped by the associated host. This way we beware the parallel
     execution of two sessions on one host.
     """
-    def __init__(self, session_cls, session_pool):
-        self.session_cls = session_cls
-        self.session_pool = session_pool
+    def __init__(self, sessions_per_host):
+        self.sessions_per_host = sessions_per_host
 
     def run(self):
-        sessions = self.session_pool[env.host_string]
+        sessions = self.sessions_per_host[env.host_string]
         for session in sessions:
 
             try:

@@ -3,9 +3,10 @@
 import re
 from django.db import models
 
+from .exceptions import InvalidMinkeSetup
 
-class HostManager(models.Manager):
 
+class HostQuerySet(models.QuerySet):
     def get_lock(self, **kwargs):
         """Get a lock for a host."""
         # As the update action returns the rows that haven been updated
@@ -13,17 +14,11 @@ class HostManager(models.Manager):
         # by a single sql-statement and is therefore the most atomic way
         # to get a lock. This is the reason why we use a query instead of
         # the object himself.
-        return bool(self.model.objects \
-                    .filter(locked=False, **kwargs) \
-                    .update(locked=True))
+        return bool(self.filter(locked=False, **kwargs).update(locked=True))
 
     def release_lock(self, **kwargs):
-        """Release a lock for a host."""
-        # This could be done by a model-method as well. To be consistent we
-        # implemented it in the same style as get_lock.
-        return self.model.objects \
-                    .filter(locked=True, **kwargs) \
-                    .update(locked=False)
+        """Release the lock for hosts."""
+        return self.filter(locked=True, **kwargs).update(locked=False)
 
 
 class Host(models.Model):
@@ -37,7 +32,7 @@ class Host(models.Model):
     locked = models.BooleanField(default=False)
 
     unique_together = (("user", "hostname"),)
-    objects = HostManager()
+    objects = HostQuerySet.as_manager()
 
     def save(self, *args, **kwargs):
         if self.port: format = '{user}@{hostname}:{port}'
@@ -50,3 +45,27 @@ class Host(models.Model):
 
     def __str__(self):
         return self.host
+
+
+class MinkeManager(models.Manager):
+    def get_queryset(self):
+        queryset = super(MinkeManager, self).get_queryset()
+        return queryset.select_related(self.model.HOST_LOOKUP)
+
+
+class MinkeModel(models.Model):
+    objects = MinkeManager()
+    HOST_LOOKUP = 'host'
+
+    def get_host(self):
+        host = self
+        for attr in self.HOST_LOOKUP.split('__'):
+            host = getattr(host, attr, None)
+        if not isinstance(host, Host):
+            msg = "Invalid host-lookup: {}".format(self.HOST_LOOKUP)
+            raise InvalidMinkeSetup(msg)
+        else:
+            return host
+
+    class Meta:
+        abstract = True

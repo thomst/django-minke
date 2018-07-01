@@ -12,6 +12,7 @@ from django.utils.text import camel_case_to_spaces, slugify
 from .views import SessionView
 from .models import Host
 from .messages import ExecutionMessage
+from .exceptions import InvalidMinkeSetup
 
 
 registry = list()
@@ -37,17 +38,15 @@ def register(session_cls, models=None,
         session_cls.short_description = short_description
 
     if not issubclass(session_cls, Session):
-        raise ValueError('Registered class must subclass Session.')
+        raise InvalidMinkeSetup('Registered class must subclass Session.')
 
     if not session_cls.models:
-        raise ValueError('At least one model must be specified for a session.')
+        raise InvalidMinkeSetup('At least one model must be specified for a session.')
 
     for model in session_cls.models:
-        try:
-            assert model == Host or model._meta.get_field('host').rel.to == Host
-        except (AssertionError, FieldDoesNotExist):
-            raise ValueError('Sessions could only be used with Host '
-                             'or a model with a relation to Host.')
+        if model is not Host and not hasattr(model, 'get_host'):
+            raise InvalidMinkeSetup(
+                'Models used with sessions must define a get_host-method.')
 
     if create_permission:
         # We only create a permission for one model. Otherwise a user would
