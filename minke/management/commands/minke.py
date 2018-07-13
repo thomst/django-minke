@@ -69,7 +69,6 @@ class Command(BaseCommand):
 
     def add_arguments(self, parser):
         parser.add_argument(
-            '-l',
             '--list',
             action='store_true',
             help='List all available sessions.')
@@ -94,6 +93,16 @@ class Command(BaseCommand):
         parser.add_argument(
             '--url-query',
             help='Filter objects by url-query.')
+        parser.add_argument(
+            '-o',
+            '--offset',
+            type=int,
+            help='Offset')
+        parser.add_argument(
+            '-l',
+            '--limit',
+            type=int,
+            help='Limit')
 
     def handle(self, *args, **options):
         session = options['session']
@@ -146,10 +155,17 @@ class Command(BaseCommand):
             self.usage(str(error))
             return
 
+        # slicing the queryset
+        offset = options['offset']
+        limit = options['limit']
+        if type(offset) is type(limit) is int: limit = offset + limit
+        queryset = queryset[offset:limit]
+
         # initialize the messenger
         messenger = ConsoleMessenger(
             silent=options['silent'],
             no_color=options['no_color'],
             no_prefix=options['no_prefix'])
 
+        # go for it...
         process(session_cls, queryset, messenger, dict())
