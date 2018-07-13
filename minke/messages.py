@@ -60,12 +60,15 @@ class Messenger(MessengerMixin):
 
 
 class ConsoleMessenger(MessengerMixin):
-    def __init__(self, silent=False):
+    def __init__(self, silent=False, no_color=False, no_prefix=False):
         self.data = dict()
         self.table = list()
         self.silent = silent
+        self.no_color = no_color
+        self.no_prefix = no_prefix
 
     def colorize(self, text, key, header=False):
+        if self.no_color: return text
         key = key.strip()
         codes = [
             dict(
@@ -118,9 +121,12 @@ class ConsoleMessenger(MessengerMixin):
             if row[0] == 0:
                 line = self.colorize(prefix, row[3], True)
             else:
-                prefix = self.colorize(prefix, row[3])
+                prefix = self.colorize(prefix, row[3]) + spacer[0]
                 level = self.colorize(row[-2], row[-2])
-                line = prefix + spacer[0] + level + spacer[row[0]] + row[-1]
+                if self.no_prefix:
+                    line = level + spacer[row[0]] + row[-1]
+                else:
+                    line = prefix + level + spacer[row[0]] + row[-1]
             print line
 
     def process(self):

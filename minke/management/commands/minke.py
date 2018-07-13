@@ -79,6 +79,10 @@ class Command(BaseCommand):
             action='store_true',
             help='Skip output of inconspicuous players.')
         parser.add_argument(
+            '--no-prefix',
+            action='store_true',
+            help='Hide prefix.')
+        parser.add_argument(
             'session',
             nargs='?',
             help='Session to work with.')
@@ -142,5 +146,10 @@ class Command(BaseCommand):
             self.usage(str(error))
             return
 
-        messenger = ConsoleMessenger(silent=options['silent'])
+        # initialize the messenger
+        messenger = ConsoleMessenger(
+            silent=options['silent'],
+            no_color=options['no_color'],
+            no_prefix=options['no_prefix'])
+
         process(session_cls, queryset, messenger, dict())
