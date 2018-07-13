@@ -60,9 +60,10 @@ class Messenger(MessengerMixin):
 
 
 class ConsoleMessenger(MessengerMixin):
-    def __init__(self):
+    def __init__(self, silent=False):
         self.data = dict()
         self.table = list()
+        self.silent = silent
 
     def colorize(self, text, key, header=False):
         key = key.strip()
@@ -83,14 +84,18 @@ class ConsoleMessenger(MessengerMixin):
         model = self.data.keys()[0]
         model_data = self.data.values()[0]
         for id, obj_data in model_data.items():
-            name, status, row_type = obj_data['name'], obj_data['status'], 0
-            self.table.append([row_type, model, name, status])
-            for news in obj_data.get('news', list()):
-                msg, level = news['text'], news['level']
-                row_type = 1
+            name = obj_data['name']
+            status = obj_data['status']
+            news = obj_data.get('news', list())
+            type = 0
+            if self.silent and status == 'success' and not news: continue
+            self.table.append([type, model, name, status])
+            for msgs in news:
+                msg, level = msgs['text'], msgs['level']
+                type = 1
                 for line in msg.splitlines():
-                    self.table.append([row_type, model, name, status, level, line])
-                    row_type = 2
+                    self.table.append([type, model, name, status, level, line])
+                    type = 2
 
     def normalize_cols(self):
         col_width = dict()
