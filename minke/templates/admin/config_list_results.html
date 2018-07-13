@@ -34,7 +34,7 @@
     {% if result.minke_news %}
         <tr class="minke_news {{ result.minke_status }}"><td colspan="{{ result|length }}"><ul class="messagelist">
         {% for message in result.minke_news %}
-            <li class="{{ message.level }}">{{ message.text|safe }}</li>
+            <li class="{{ message.level }}">{{ message.html|safe }}</li>
         {% endfor %}
         </ul></td></tr>
     {% endif %}

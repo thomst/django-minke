@@ -69,6 +69,7 @@ def process(session_cls, queryset, messenger, session_data):
             # store session-status and messages
             messenger.store(session.player, session.news, session.status)
 
+    messenger.process()
 
 
 class HostSessions(object):
