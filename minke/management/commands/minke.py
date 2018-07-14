@@ -11,8 +11,52 @@ class FilterArgumentError(Exception):
     pass
 
 
+class InvalidFormData(Exception):
+    pass
+
+
 class Command(BaseCommand):
     help = 'Minke-Api (dev)'
+
+    def add_arguments(self, parser):
+        parser.add_argument(
+            '--list',
+            action='store_true',
+            help='List all available sessions.')
+        parser.add_argument(
+            '-s',
+            '--silent',
+            action='store_true',
+            help='Skip output of inconspicuous players.')
+        parser.add_argument(
+            '--no-prefix',
+            action='store_true',
+            help='Hide prefix.')
+        parser.add_argument(
+            'session',
+            nargs='?',
+            help='Session to work with.')
+        parser.add_argument(
+            'model',
+            nargs='?',
+            help='Model to work with. (Only neccessary if a session '
+                 'could be used on multiple models)')
+        parser.add_argument(
+            '--url-query',
+            help='Filter objects by url-query.')
+        parser.add_argument(
+            '--form-data',
+            help='Key-value-pairs used for the session-form.')
+        parser.add_argument(
+            '-o',
+            '--offset',
+            type=int,
+            help='Offset')
+        parser.add_argument(
+            '-l',
+            '--limit',
+            type=int,
+            help='Limit')
 
     def usage(self, error_msg=None):
         if error_msg: print 'ERROR:', error_msg
@@ -67,42 +111,43 @@ class Command(BaseCommand):
     def filter_queryset(self, queryset, options):
         return queryset
 
-    def add_arguments(self, parser):
-        parser.add_argument(
-            '--list',
-            action='store_true',
-            help='List all available sessions.')
-        parser.add_argument(
-            '-s',
-            '--silent',
-            action='store_true',
-            help='Skip output of inconspicuous players.')
-        parser.add_argument(
-            '--no-prefix',
-            action='store_true',
-            help='Hide prefix.')
-        parser.add_argument(
-            'session',
-            nargs='?',
-            help='Session to work with.')
-        parser.add_argument(
-            'model',
-            nargs='?',
-            help='Model to work with. (Only neccessary if a session '
-                 'could be used on multiple models)')
-        parser.add_argument(
-            '--url-query',
-            help='Filter objects by url-query.')
-        parser.add_argument(
-            '-o',
-            '--offset',
-            type=int,
-            help='Offset')
-        parser.add_argument(
-            '-l',
-            '--limit',
-            type=int,
-            help='Limit')
+    def get_form_data(self, session_cls, options):
+        form_cls = session_cls.FORM
+        if not session_cls.FORM: return dict()
+
+        # form-data passed via command-line?
+        form_data = options['form_data']
+        if form_data:
+            try:
+                form_data = eval('dict({})'.format(form_data))
+                form = form_cls(form_data)
+                assert form.is_valid()
+            except AssertionError:
+                msg = 'Invalid form-data: {}\n'.format(form_data)
+                for field, error in form.errors.items():
+                    msg += '{}: {}'.format(field, error[0])
+                raise InvalidFormData(msg)
+            except Exception as error:
+                msg = 'Invalid form-data: {}\n{}'.format(form_data, error)
+                raise InvalidFormData(msg)
+
+        # otherwise prompt for it
+        else:
+            form = form_cls()
+            form_data = dict()
+            fields = form.visible_fields()
+            for field in fields:
+                if field.help_text: print field.help_text
+                form_data[field.name] = raw_input(field.name + ': ')
+            form = form_cls(form_data)
+            while not form.is_valid():
+                for field, error in form.errors.items():
+                    if error: print error[0]
+                    form_data[field] = raw_input(field + ': ')
+                form = form_cls(form_data)
+
+        # got valid form-data now
+        return form.cleaned_data
 
     def handle(self, *args, **options):
         session = options['session']
@@ -141,6 +186,13 @@ class Command(BaseCommand):
         else:
             model_cls = session_cls.models[0]
 
+        # get form-data if needed
+        try:
+            form_data = self.get_form_data(session_cls, options)
+        except InvalidFormData as error:
+            self.usage(str(error))
+            return
+
         # get queryset
         try:
             queryset = self.get_queryset(model_cls, options)
@@ -168,4 +220,4 @@ class Command(BaseCommand):
             no_prefix=options['no_prefix'])
 
         # go for it...
-        process(session_cls, queryset, messenger, dict())
+        process(session_cls, queryset, messenger, form_data)
