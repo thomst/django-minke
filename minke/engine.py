@@ -48,7 +48,9 @@ def process(session_cls, queryset, messenger, session_data):
             sessions_per_host[host.hoststring] = sessions
 
     # Stop here if no valid hosts are left...
-    if not sessions_per_host: return
+    if not sessions_per_host:
+        messenger.process()
+        return
 
     try:
         host_sessions = HostSessions(sessions_per_host)
