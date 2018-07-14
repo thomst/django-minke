@@ -32,11 +32,11 @@ def process(session_cls, queryset, messenger, session_data):
         # skip invalid hosts (disabled or locked)
         invalid = None
         if host.disabled:
-            invalid = Message(level='ERROR', text='Host were disabled!')
+            invalid = Message('Host were disabled!', 'ERROR')
 
         # Never let a host be involved in two simultaneous sessions...
         elif not Host.objects.get_lock(id=host.id):
-            invalid = Message(level='ERROR', text='Host were locked!')
+            invalid = Message('Host were locked!', 'ERROR')
 
         if invalid:
             error = minke.sessions.Session.ERROR
