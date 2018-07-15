@@ -1,0 +1,17 @@
+[
+{
+    "model": "testapp.server",
+    "pk": 1,
+    "fields": {
+        "host": 1,
+        "hostname": "nino"
+    }
+},
+{
+    "model": "testapp.anysystem",
+    "pk": 1,
+    "fields": {
+        "server": 1
+    }
+}
+]

@@ -1,0 +1,15 @@
+[
+{
+    "model": "minke.host",
+    "pk": 1,
+    "fields": {
+        "host": "localhost",
+        "user": "thomas",
+        "hostname": "localhost",
+        "port": null,
+        "hoststring": "thomas@localhost",
+        "disabled": false,
+        "locked": false
+    }
+}
+]
