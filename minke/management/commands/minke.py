@@ -77,8 +77,7 @@ class Command(BaseCommand):
         # get a request-instance with session-middleware
         model_label = model_cls._meta.label_lower.replace('.', '_')
         url_pattern = 'admin:' + model_label + '_changelist'
-        url = reverse(url_pattern)
-        url += '?' + url_query
+        url = reverse(url_pattern) + '?' + url_query
         request_factory = RequestFactory()
         request = request_factory.get(url)
         middleware = SessionMiddleware()

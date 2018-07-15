@@ -10,8 +10,9 @@ def register(models=None,
     class MySession(Session):
         pass
     """
+    from minke.sessions import register
+
     def _session_wrapper(session_cls):
-        from minke.sessions import register
         register(session_cls, models=models,
                  short_description=short_description,
                  permission_required=permission_required,
