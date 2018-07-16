@@ -130,6 +130,7 @@ class ConsoleMessenger(MessengerMixin):
             print line
 
     def process(self):
+        if not self.data: return
         self.build_table()
         self.normalize_cols()
         self.print_table()
