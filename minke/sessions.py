@@ -4,6 +4,7 @@ import re
 
 from fabric.api import run
 
+from django.db.utils import OperationalError
 from django.core.exceptions import FieldDoesNotExist
 from django.contrib.auth.models import Permission
 from django.contrib.contenttypes.models import ContentType
@@ -26,13 +27,12 @@ def register(session_cls, models=None,
     if models:
         if not type(models) == tuple:
             models = (models,)
-        session_cls.models = session_cls.models + models
+        session_cls.models = models
 
     if permission_required:
         if not type(permission_required) == tuple:
             permission_required = (permission_required,)
-        session_cls.permission_required = \
-            session_cls.permission_required + permission_required
+        session_cls.permission_required = permission_required
 
     if short_description:
         session_cls.short_description = short_description
@@ -52,10 +52,14 @@ def register(session_cls, models=None,
         # We only create a permission for one model. Otherwise a user would
         # must have all permissions for all session-models and not as expected
         # only the permission for the model she wants to run the session with.
+        # FIXME: Better solution here?
         model = session_cls.models[0]
-        # FIXME: Applying minke-migrations before the migrations of registered
-        # models will fail at this line...
-        content_type = ContentType.objects.get_for_model(session_cls.models[0])
+
+        # Applying minke-migrations tumbles over get_for_model if the
+        # migrations for this model aren't applied yet.
+        try: content_type = ContentType.objects.get_for_model(model)
+        except OperationalError: return
+
         model_name = slugify(model.__name__)
         session_name = session_cls.__name__
         session_codename = camel_case_to_spaces(session_name).replace(' ', '_')
