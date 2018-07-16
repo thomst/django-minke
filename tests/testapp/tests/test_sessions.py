@@ -10,21 +10,21 @@ from minke.sessions import Session
 from minke.exceptions import InvalidMinkeSetup
 from minke.models import Host
 from ..models import Server
+from .utils import create_multiple_hosts
+from .utils import create_testapp_player
+
+
+class TestSession(Session):
+    def process(self):
+        pass
 
 
 class SessionTest(TestCase):
-    fixtures = ['minke.json', 'testapp.json']
-
     def setUp(self):
-        # session-class
-        self.host = Host.objects.get(id=1)
+        create_multiple_hosts()
+        create_testapp_player()
         self.server = Server.objects.get(id=1)
-
-        class TestSession(Session):
-            def process(self):
-                pass
-
-        self.session_cls = TestSession
+        self.host = self.server.host
 
     def test_01_register_session(self):
 
@@ -32,40 +32,37 @@ class SessionTest(TestCase):
         class Foobar(object):
             pass
 
-        def reset_registry():
-            self.session_cls.models = tuple()
-            registry = list()
-
         # wrong session-class
         args = [Foobar]
-        regex = '.*must subclass Session.*'
+        regex = 'must subclass Session'
         self.assertRaisesRegex(InvalidMinkeSetup, regex, register, *args)
-        reset_registry()
+        TestSession.models = tuple()
 
         # missing minke-models
-        args = [self.session_cls]
-        regex = '.*one model must be specified.*'
+        args = [TestSession]
+        regex = 'one model must be specified'
         self.assertRaisesRegex(InvalidMinkeSetup, regex, register, *args)
-        reset_registry()
+        TestSession.models = tuple()
 
         # missing get_host-method
-        args = [self.session_cls, Foobar]
-        regex = '.*get_host-method.*'
+        args = [TestSession, Foobar]
+        regex = 'get_host-method'
         self.assertRaisesRegex(InvalidMinkeSetup, regex, register, *args)
-        reset_registry()
+        TestSession.models = tuple()
 
         # register TestSession
-        register(self.session_cls, Server)
-        self.assertTrue(self.session_cls in registry)
-        reset_registry()
+        register(TestSession, Server)
+        self.assertTrue(TestSession in registry)
+        TestSession.models = tuple()
 
         # register with create_permission
-        register(self.session_cls, Server, create_permission=True)
-        self.assertTrue(self.session_cls in registry)
+        register(TestSession, Server, create_permission=True)
+        self.assertTrue(TestSession in registry)
         Permission.objects.get(codename='run_test_session_on_server')
+        TestSession.models = tuple()
 
     def test_02_set_status(self):
-        session = self.session_cls(self.host, self.server)
+        session = TestSession(self.host, self.server)
         session.set_status('error')
         self.assertTrue(session.status == 'error')
         session.set_status(session.ERROR)

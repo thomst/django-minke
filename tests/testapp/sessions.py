@@ -15,13 +15,25 @@ from .models import AnySystem
 from .forms import TestForm
 
 
-@register(Server, 'Update hostname.', create_permission=True)
+@register((Host, Server, AnySystem), 'Do nothing.')
+class DummySession(Session):
+    def process(self):
+        pass
+
+
+@register(Server, 'Do nothing (one-model-session).')
+class SingleModelDummySession(Session):
+    def process(self):
+        pass
+
+
+@register(Server, 'Update hostname.')
 class TestUpdateEntriesSession(UpdateEntriesSession):
     def process(self):
         self.update_field('hostname', 'hostname', '^[a-z0-9._-]+$')
 
 
-@register((Host, Server, AnySystem), 'Test the session form.', create_permission=True)
+@register((Host, Server, AnySystem), 'Test the session form.')
 class TestFormSession(Session):
     FORM = TestForm
 
