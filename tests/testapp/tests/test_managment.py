@@ -7,6 +7,7 @@ from django.test import TestCase
 from django.core.management import call_command
 from django import forms
 
+from minke.management.commands import minke as mm_module
 from minke.management.commands.minke import Command
 from minke.management.commands.minke import InvalidFormData
 from minke.management.commands.minke import FilterArgumentError
@@ -20,15 +21,20 @@ from ..models import Server, AnySystem
 # from ..sessions import TestFormSession, TestUpdateEntriesSession
 
 
-class StdOutList(list):
+class InOut(list):
+    def __init__(self, *inputs):
+        self.inputs = iter(inputs)
+
     def __enter__(self):
+        mm_module.raw_input = lambda x: self.inputs.next()
+        self._stdin = sys.stdin
         self._stdout = sys.stdout
-        sys.stdout = self._stringio = StringIO()
+        sys.stdout = self._out = StringIO()
         return self
 
     def __exit__(self, *args):
-        self.extend(self._stringio.getvalue().splitlines())
-        del self._stringio    # free up some memory
+        mm_module.raw_input = raw_input
+        self.extend(self._out.getvalue().splitlines())
         sys.stdout = self._stdout
 
 
@@ -128,63 +134,81 @@ class MinkeManagerTest(TestCase):
 
         self.reset_options()
 
-    def test_03_call_minke_manager(self):
-
+    def test_03_invalid_calls(self):
         # list sessions
-        with StdOutList() as out:
+        with InOut() as out:
             call_command('minke', '--list')
         self.assertIn('DummySession', out)
         self.assertIn('TestFormSession', out)
         self.assertIn('TestUpdateEntriesSession', out)
 
         # call without model
-        with StdOutList() as out:
+        with InOut() as out:
             call_command('minke', 'DummySession')
         self.assertRegex(out[0], 'ERROR: No model specified')
 
         # call without model
-        with StdOutList() as out:
+        with InOut() as out:
             call_command('minke', 'DummySession')
         self.assertRegex(out[0], 'ERROR: No model specified')
 
-        # call without invalid session
-        with StdOutList() as out:
+        # call with invalid session
+        with InOut() as out:
             call_command('minke', 'Fake')
         self.assertRegex(out[0], 'ERROR: Unknown session')
 
-        # call without invalid model
-        with StdOutList() as out:
+        # call with invalid model
+        with InOut() as out:
             call_command('minke', 'DummySession', 'Fake')
         self.assertRegex(out[0], 'ERROR: Invalid model for')
 
+        # call with invalid url_query
+        with InOut() as out:
+            call_command('minke', 'DummySession', 'Server', '--url-query=foobar')
+        self.assertRegex(out[0], 'ERROR: Incorrect url-query')
+
+    def test_04_valid_calls(self):
+        # list sessions
+        with InOut() as out:
+            call_command('minke', '--list')
+        self.assertIn('DummySession', out)
+        self.assertIn('TestFormSession', out)
+        self.assertIn('TestUpdateEntriesSession', out)
+
         # valid call
-        with StdOutList() as out:
+        with InOut() as out:
             call_command('minke', 'DummySession', 'Server', '--no-color')
         self.assertRegex(out[0], 'host_[0-9]{1,2}_label[0-9]{3}')
         self.assertEqual(len(out), 20)
 
         # valid call without model
         # works if session where registered with only one model
-        with StdOutList() as out:
+        with InOut() as out:
             call_command('minke', 'SingleModelDummySession', '--no-color')
         self.assertRegex(out[0], 'host_[0-9]{1,2}_label[0-9]{3}')
         self.assertEqual(len(out), 20)
 
         # valid call with silent-option
         # skips output for successful processes without any messages
-        with StdOutList() as no_out:
+        with InOut() as no_out:
             call_command('minke', 'SingleModelDummySession', '--silent')
         self.assertEqual(len(no_out), 0)
 
         # slicing the queryset with offset and limit
-        with StdOutList() as out_0_10:
+        with InOut() as out_0_10:
             call_command('minke', 'SingleModelDummySession', '--no-color',
                          '--offset=0', '--limit=10')
         self.assertEqual(len(out_0_10), 10)
 
         # slicing the queryset with offset and limit
-        with StdOutList() as out_10_20:
+        with InOut() as out_10_20:
             call_command('minke', 'SingleModelDummySession', '--no-color',
                          '--offset=10', '--limit=20')
         self.assertEqual(len(out_10_20), 10)
         self.assertListEqual(sorted(out_0_10 + out_10_20), sorted(out))
+
+        # read form-data from stdin
+        with InOut('123', '', 'abc', '123') as out:
+            call_command('minke', 'TestFormSession', 'Server', '--limit=0')
+        self.assertRegex(out[2], 'This field is required')
+        self.assertRegex(out[3], 'Enter a whole number')
