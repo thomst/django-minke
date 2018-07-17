@@ -14,10 +14,11 @@ def create_supersuer():
 
 def create_localhost():
     user = getpass.getuser()
-    Host.objects.create(
+    host = Host.objects.create(
         hostname='localhost',
         host='localhost',
         user=user)
+    Server.objects.create(host=host, hostname='localhost')
 
 def create_multiple_hosts():
     for i in range(20):
