@@ -143,10 +143,19 @@ class Message(object):
 
     def __init__(self, data, level='INFO'):
         self.data = data
+
+        # try to resolve level-code.
+        # it could be passed as 'error', 'ERROR' or self.ERROR
         try: level = getattr(self, level)
-        except AttributeError: pass
-        if level in (self.INFO, self.WARNING, self.ERROR): self.level = level
-        else: raise ValueError('Invalid message-level: {}'.format(level))
+        except (AttributeError, TypeError): pass
+
+        # check level: either a valid level-code or a boolean.
+        if level in (self.INFO, self.WARNING, self.ERROR):
+            self.level = level
+        elif type(level) is bool:
+            self.level = self.INFO if level else self.ERROR
+        else:
+            raise ValueError('Invalid message-level: {}'.format(level))
 
     @property
     def text(self):
