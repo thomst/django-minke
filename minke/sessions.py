@@ -13,6 +13,7 @@ from django.utils.text import camel_case_to_spaces, slugify
 from .views import SessionView
 from .models import Host
 from .messages import ExecutionMessage
+from .messages import PreMessage
 from .exceptions import InvalidMinkeSetup
 
 
@@ -21,8 +22,10 @@ def register(session_cls, models=None,
              short_description=None,
              permission_required=None,
              create_permission=False):
-    """Register session-classes.
-    They will be provided as admin-actions for the specified models"""
+    """
+    Register session-classes.
+    They will be provided as admin-actions for the specified models
+    """
 
     if models:
         if not type(models) == tuple:
@@ -79,7 +82,9 @@ def register(session_cls, models=None,
 
 
 class BaseSession(object):
-    """Implement the base-functionality of a session-class."""
+    """
+    Implement the base-functionality of a session-class.
+    """
 
     SUCCESS = 'success'
     WARNING = 'warning'
@@ -94,16 +99,27 @@ class BaseSession(object):
         self.status = self.SUCCESS
 
     def set_status(self, status):
+        """
+        Set session-status.
+
+        The session-status can be 'error', 'warning' or 'success'.
+        You can pass a status-code as 'error', 'ERROR' or self.ERROR.
+        You can also pass a boolean while True means 'success' and False 'error'.
+        (The default session-status is 'success'.)
+        """
         try: status = getattr(self, status)
-        except AttributeError: pass
+        except (AttributeError, TypeError): pass
 
         if status in (self.SUCCESS, self.WARNING, self.ERROR):
             self.status = status
+        elif type(status) is bool:
+            self.status = self.SUCCESS if status else self.ERROR
         else:
             raise ValueError('Invalid session-status: {}'.format(status))
 
     def process(self):
-        """Real work is done here...
+        """
+        Real work is done here...
 
         This is the part of a session which is executed within fabric's
         multiprocessing-szenario. It's the right place for all
@@ -114,13 +130,16 @@ class BaseSession(object):
         raise NotImplementedError('Your session must define a process-method!')
 
     def rework(self):
-        """This method is called after fabric's work is done.
+        """
+        This method is called after fabric's work is done.
         Database-related actions should be done here."""
         pass
 
 
 class AdminSession(BaseSession):
-    """Implement attributes for admin-site-integration."""
+    """
+    Implement attributes for admin-site-integration.
+    """
 
     models = tuple()
     short_description = None
@@ -139,47 +158,79 @@ class AdminSession(BaseSession):
 class Session(AdminSession):
 
     def format_cmd(self, cmd):
-        return cmd.format(**vars(self.player))
+        """
+        Will format a given command-string using the player's attributes
+        and the session_data while the session_data has precedence.
+        """
+        params = vars(self.player)
+        params.update(self.session_data)
+        return cmd.format(**params)
 
-    def validate(self, result, regex=None):
+    def valid(self, result, regex=None):
+        """
+        Validate result.
+
+        Return True if rtn-code is 0.
+        If regex is given it must also match stdout.
+        """
         if regex and result.return_code == 0:
-            return re.match(regex, result.stdout)
+            return bool(re.match(regex, result.stdout))
         else:
             return result.return_code == 0
 
     def message(self, cmd, **kwargs):
+        """
+        Just run cmd and leave a message.
+        """
         result = run(cmd, **kwargs)
-        valid = self.validate(result)
+        valid = self.valid(result)
 
-        if not valid: level = 'ERROR'
-        elif result.stderr: level = 'WARNING'
-        else: level = 'INFO'
-
-        self.news.append(ExecutionMessage(result, level))
+        if not valid or result.stderr:
+            level = 'WARNING' if valid else 'ERROR'
+            self.news.append(ExecutionMessage(result, level))
+        else:
+            self.news.append(PreMessage(result, 'INFO'))
 
         return valid
 
 
 class UpdateEntriesSession(Session):
 
-    def update_field(self, field, cmd, regex='(.*)'):
+    def update_field(self, field, cmd, regex=None):
+        """
+        Update a field using either the stdout or the first matching-group
+        from regex.
+        """
+        # is field a player-attribute?
         try: getattr(self.player, field)
         except AttributeError as e: raise e
 
+        # run cmd
         result = run(cmd)
-        valid = self.validate(result, regex)
+        valid = self.valid(result, regex)
 
+        # A valid call and stdout? Then try to use the first captured
+        # regex-group or just use stdout as value.
         if valid and result.stdout:
-            try: value = re.match(regex, result.stdout).groups()[0]
-            except IndexError: value = result.stdout
-        else:
+            try:
+                assert regex
+                value = re.match(regex, result.stdout).groups()[0]
+            except (AssertionError, IndexError):
+                value = result.stdout
+
+        # call were valid but no stdout? Leave a warning.
+        elif valid and not result.stdout:
+            self.news.append(ExecutionMessage(result, 'WARNING'))
             value = None
 
-        if not value:
+        # call failed.
+        else:
+            value = None
             self.news.append(ExecutionMessage(result, 'ERROR'))
 
         setattr(self.player, field, value)
         return bool(value)
 
     def rework(self):
+        # TODO: catch exceptions that may be raised because of invalid values.
         self.player.save()
