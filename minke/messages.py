@@ -4,8 +4,7 @@ from __future__ import unicode_literals
 import sys
 import traceback
 
-from django.contrib import admin
-from django.db import models
+from django.utils.html import escape
 
 
 class MessengerMixin(object):
@@ -165,13 +164,13 @@ class Message(object):
 
     @property
     def html(self):
-        return self.data
+        return escape(self.data)
 
 
 class PreMessage(Message):
     @property
     def html(self):
-        return '<pre>{}</pre>'.format(self.data)
+        return '<pre>{}</pre>'.format(escape(self.data))
 
 
 class TableMessage(Message):
@@ -199,7 +198,12 @@ class TableMessage(Message):
         css_params.update(self.css)
         style = ['{}:{};'.format(k, v) for k, v in css_params.items()]
         style = 'style="{}"'.format(' '.join(style))
-        columns = ['</td><td>'.join(columns) for columns in self.data]
+        escaped_data = []
+        for row in self.data:
+            escaped_data.append(list())
+            for column in row:
+                escaped_data[-1].append(escape(column))
+        columns = ['</td><td>'.join(columns) for columns in escaped_data]
         rows = '</td></tr><tr><td>'.join(columns)
         table = '<table {}><tr><td>{}</td></tr></table>'.format(style, rows)
         return table
@@ -237,8 +241,8 @@ class ExecutionMessage(Message):
         return template.format(
             cmd=self.data.command,
             rtn=self.data.return_code,
-            stdout=self.data.stdout,
-            stderr=self.data.stderr)
+            stdout=escape(self.data.stdout),
+            stderr=escape(self.data.stderr))
 
 
 class ExceptionMessage(PreMessage):
