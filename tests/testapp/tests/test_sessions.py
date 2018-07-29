@@ -27,8 +27,8 @@ class TestSession(UpdateEntriesSession):
         # message-tests
         if self.session_data.has_key('message'):
             # message-calls: valid, valid + stderr, invalid
-            self.message('echo "hello world"')
-            self.message('echo "hello world" &>2')
+            self.message('echo "hello wörld"')
+            self.message('echo "hello wörld" &>2')
             self.message('[ 1 == 2 ]')
 
         # update_field-tests
@@ -150,7 +150,7 @@ class SessionTest(TestCase):
         self.assertEqual(news[0].level, 'info')
         self.assertEqual(news[1].level, 'info')
         self.assertEqual(news[2].level, 'error')
-        self.assertEqual(news[0].text, 'hello world')
+        self.assertEqual(news[0].text, 'hello wörld')
         self.assertEqual(news[1].text, '')
         self.assertRegex(news[2].text, 'code\[1\] +\[ 1 == 2 \]')
 

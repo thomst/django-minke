@@ -1,4 +1,5 @@
 # -*- coding: utf-8 -*-
+from __future__ import unicode_literals
 
 from fabric.api import env, execute
 from fabric.network import disconnect_all

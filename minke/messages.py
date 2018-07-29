@@ -1,3 +1,5 @@
+# -*- coding: utf-8 -*-
+from __future__ import unicode_literals
 
 import sys
 import traceback
@@ -127,7 +129,7 @@ class ConsoleMessenger(MessengerMixin):
                     line = level + spacer[row[0]] + row[-1]
                 else:
                     line = prefix + level + spacer[row[0]] + row[-1]
-            print line
+            print line.encode('utf-8')
 
     def process(self):
         if not self.data: return
@@ -159,11 +161,11 @@ class Message(object):
 
     @property
     def text(self):
-        return str(self.data)
+        return self.data
 
     @property
     def html(self):
-        return str(self.data)
+        return self.data
 
 
 class PreMessage(Message):
@@ -216,10 +218,11 @@ class ExecutionMessage(Message):
     def text(self):
         lines = list()
         rtn, cmd = self.data.return_code, self.data.command
-        stdout, stderr = self.data.stdout, self.data.stderr
         lines.append('code[{}]'.format(rtn).ljust(10) + cmd)
-        for line in stdout.splitlines(): lines.append('stdout'.ljust(10) + line)
-        for line in stderr.splitlines(): lines.append('stderr'.ljust(10) + line)
+        for line in self.data.stdout.splitlines():
+            lines.append('stdout'.ljust(10) + line)
+        for line in self.data.stderr.splitlines():
+            lines.append('stderr'.ljust(10) + line)
         return '\n'.join(lines)
 
     @property
@@ -234,15 +237,16 @@ class ExecutionMessage(Message):
         return template.format(
             cmd=self.data.command,
             rtn=self.data.return_code,
-            stdout=self.data.stdout or None,
-            stderr=self.data.stderr or None)
+            stdout=self.data.stdout,
+            stderr=self.data.stderr)
 
 
 class ExceptionMessage(PreMessage):
     def __init__(self, level='error', print_tb=False):
+        type, value, tb = sys.exc_info()
         if print_tb:
-            data = traceback.format_exc()
+            data = traceback.format_exception(type, value, tb)
         else:
-            type, value, trb = sys.exc_info()
-            data = "{}: {}".format(type.__name__, value)
+            data = traceback.format_exception_only(type, value)
+        data = str().join(data).decode('utf-8')
         super(ExceptionMessage, self).__init__(data, level)

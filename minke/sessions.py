@@ -1,4 +1,5 @@
 # -*- coding: utf-8 -*-
+from __future__ import unicode_literals
 
 import re
 
@@ -15,6 +16,7 @@ from .models import Host
 from .messages import ExecutionMessage
 from .messages import PreMessage
 from .exceptions import InvalidMinkeSetup
+from .utils import UnicodeResult
 
 
 registry = list()
@@ -157,6 +159,12 @@ class AdminSession(BaseSession):
 
 class Session(AdminSession):
 
+    def run(self, cmd, encoding='utf-8'):
+        # TODO: encoding is host-specific
+        # There should be a get_encoding-method for minke-models that returns
+        # a host-attribute holding the codec.
+        return UnicodeResult(run(cmd), encoding)
+
     def format_cmd(self, cmd):
         """
         Will format a given command-string using the player's attributes
@@ -182,7 +190,7 @@ class Session(AdminSession):
         """
         Just run cmd and leave a message.
         """
-        result = run(cmd, **kwargs)
+        result = self.run(cmd, **kwargs)
         valid = self.valid(result)
 
         if not valid or result.stderr:
@@ -206,7 +214,7 @@ class UpdateEntriesSession(Session):
         except AttributeError as e: raise e
 
         # run cmd
-        result = run(cmd)
+        result = self.run(cmd)
         valid = self.valid(result, regex)
 
         # A valid call and stdout? Then try to use the first captured

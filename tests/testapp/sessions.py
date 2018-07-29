@@ -1,3 +1,5 @@
+# -*- coding: utf-8 -*-
+from __future__ import unicode_literals
 
 from fabric.api import run
 
@@ -25,6 +27,14 @@ class DummySession(Session):
 class SingleModelDummySession(Session):
     def process(self):
         pass
+
+
+@register(Server, 'Echo unicode-literals.')
+class EchoUnicodeSession(Session):
+    def process(self):
+        cmd = 'echo "¡ ¢ £ ¤ ¥ ¦ § ¨ © ª « ¬ ­ ® ¯ ° ± ² ³ ´ µ"'
+        result = self.run(self.format_cmd(cmd))
+        self.news.append(Message(result))
 
 
 @register(Server, 'Update hostname.')
