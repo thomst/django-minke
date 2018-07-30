@@ -159,12 +159,6 @@ class AdminSession(BaseSession):
 
 class Session(AdminSession):
 
-    def run(self, cmd, encoding='utf-8'):
-        # TODO: encoding is host-specific
-        # There should be a get_encoding-method for minke-models that returns
-        # a host-attribute holding the codec.
-        return UnicodeResult(run(cmd), encoding)
-
     def format_cmd(self, cmd):
         """
         Will format a given command-string using the player's attributes
@@ -186,7 +180,13 @@ class Session(AdminSession):
         else:
             return result.return_code == 0
 
-    def message(self, cmd, **kwargs):
+    def run(self, cmd, encoding='utf-8'):
+        # TODO: encoding is host-specific
+        # There should be a get_encoding-method for minke-models that returns
+        # a host-attribute holding the codec.
+        return UnicodeResult(run(cmd), encoding)
+
+    def execute(self, cmd, **kwargs):
         """
         Just run cmd and leave a message.
         """
@@ -200,6 +200,20 @@ class Session(AdminSession):
             self.news.append(PreMessage(result, 'INFO'))
 
         return valid
+
+
+class SingleActionSession(Session):
+    COMMAND = None
+
+    def get_cmd(self):
+        if not self.COMMAND:
+            raise InvalidMinkeSetup('Missing COMMAND for SingleActionSession!')
+        else:
+            return self.format_cmd(self.COMMAND)
+
+    def process(self):
+        valid = self.execute(self.get_cmd())
+        self.set_status(valid)
 
 
 class UpdateEntriesSession(Session):

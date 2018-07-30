@@ -27,9 +27,9 @@ class TestSession(UpdateEntriesSession):
         # message-tests
         if self.session_data.has_key('message'):
             # message-calls: valid, valid + stderr, invalid
-            self.message('echo "hello wörld"')
-            self.message('echo "hello wörld" &>2')
-            self.message('[ 1 == 2 ]')
+            self.execute('echo "hello wörld"')
+            self.execute('echo "hello wörld" &>2')
+            self.execute('[ 1 == 2 ]')
 
         # update_field-tests
         elif self.session_data.has_key('update'):
