@@ -239,7 +239,7 @@ class ExecutionMessage(Message):
             </table>
             """
         return template.format(
-            cmd=self.data.command,
+            cmd=escape(self.data.command),
             rtn=self.data.return_code,
             stdout=escape(self.data.stdout),
             stderr=escape(self.data.stderr))
