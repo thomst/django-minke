@@ -4,6 +4,7 @@ from __future__ import unicode_literals
 from django.core.management.base import BaseCommand
 from django.core.management.base import CommandError
 from django.contrib.admin.options import IncorrectLookupParameters
+from django.core.exceptions import FieldError
 
 from ...engine import process
 from ...messages import ConsoleMessenger
@@ -104,7 +105,7 @@ class Command(BaseCommand):
                 list_display_links, list_filter, modeladmin.date_hierarchy,
                 search_fields, list_select_related, modeladmin.list_per_page,
                 modeladmin.list_max_show_all, modeladmin.list_editable, modeladmin)
-        except IncorrectLookupParameters:
+        except (IncorrectLookupParameters, FieldError):
             raise IncorrectLookupParameters
 
         # prepared to get the queryset
