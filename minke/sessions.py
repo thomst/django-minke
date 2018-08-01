@@ -184,7 +184,7 @@ class Session(AdminSession):
         # TODO: encoding is host-specific
         # There should be a get_encoding-method for minke-models that returns
         # a host-attribute holding the codec.
-        return UnicodeResult(run(cmd), encoding)
+        return UnicodeResult(run(cmd), encoding, 'replace')
 
     def execute(self, cmd, **kwargs):
         """
