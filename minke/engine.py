@@ -12,6 +12,7 @@ from .messages import Message
 from .messages import ExceptionMessage
 from .exceptions import Abortion
 from .exceptions import NetworkError
+from .exceptions import SocketError
 from .exceptions import CommandTimeout
 
 
@@ -93,7 +94,7 @@ class HostSessions(object):
 
             try:
                 session.process()
-            except (Abortion, NetworkError, CommandTimeout):
+            except (Abortion, NetworkError, CommandTimeout, SocketError):
                 session.set_status('ERROR')
                 session.news.append(ExceptionMessage())
             except Exception:
