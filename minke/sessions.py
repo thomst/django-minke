@@ -196,7 +196,7 @@ class Session(AdminSession):
         if not valid or result.stderr:
             level = 'WARNING' if valid else 'ERROR'
             self.news.append(ExecutionMessage(result, level))
-        else:
+        elif result:
             self.news.append(PreMessage(result, 'INFO'))
 
         return valid
