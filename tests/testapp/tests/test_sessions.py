@@ -29,7 +29,7 @@ class TestSession(UpdateEntriesSession):
     def test_execute(self):
         # execute-calls: valid, valid + stderr, invalid
         self.execute('echo "hello wörld"')
-        self.execute('echo "hello wörld" &>2')
+        self.execute('echo "hello wörld" 1>&2')
         self.execute('[ 1 == 2 ]')
         return self
 
@@ -150,10 +150,10 @@ class SessionTest(TestCase):
         session = process_session(session, self.host.hoststring)
         news = session.news
         self.assertEqual(news[0].level, 'info')
-        self.assertEqual(news[1].level, 'info')
+        self.assertEqual(news[1].level, 'warning')
         self.assertEqual(news[2].level, 'error')
         self.assertEqual(news[0].text, 'hello wörld')
-        self.assertEqual(news[1].text, '')
+        self.assertRegex(news[1].text, 'code\[0\] +echo "hello wörld" 1>&2')
         self.assertRegex(news[2].text, 'code\[1\] +\[ 1 == 2 \]')
 
         # test update_field

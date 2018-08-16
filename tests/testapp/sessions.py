@@ -34,7 +34,7 @@ class EchoUnicodeSession(Session):
     def process(self):
         cmd = 'echo "¡ ¢ £ ¤ ¥ ¦ § ¨ © ª « ¬ ­ ® ¯ ° ± ² ³ ´ µ"'
         result = self.run(self.format_cmd(cmd))
-        self.news.append(Message(result))
+        self.news.append(ExecutionMessage(result))
 
 
 @register(Server, 'Update hostname.')
