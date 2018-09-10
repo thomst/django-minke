@@ -16,4 +16,4 @@ class UnicodeResult(unicode):
 
     @property
     def stdout(self):
-        return self
+        return unicode(self)
