@@ -182,7 +182,7 @@ class SessionTest(TestCase):
         session = TestSession(self.host, self.server, test='unicode_result')
         result = process_session(session, self.host.hoststring)
         self.assertEqual(type(result), UnicodeResult)
-        self.assertEqual(type(result.stdout), UnicodeResult)
+        self.assertEqual(type(result.stdout), unicode)
         self.assertEqual(type(result.stderr), unicode)
         self.assertEqual(result, 'hällo')
         self.assertEqual(result.stderr, 'wörld')
@@ -204,7 +204,7 @@ class SessionTest(TestCase):
 
         result = UnicodeResult(attr_str, 'utf-8', 'replace')
         self.assertEqual(type(result), UnicodeResult)
-        self.assertEqual(type(result.stdout), UnicodeResult)
+        self.assertEqual(type(result.stdout), unicode)
         self.assertEqual(type(result.stderr), unicode)
         self.assertEqual(result, 'hällo')
         self.assertEqual(result.stdout, 'hällo')
