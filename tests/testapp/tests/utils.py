@@ -9,11 +9,13 @@ from minke.models import Host
 from ..models import Server, AnySystem
 
 
-def create_supersuer():
+def create_user():
     User.objects.create_superuser(
         'admin',
         'admin@testapp.org',
         'adminpassword')
+    anyuser = User(username='anyuser', password='anyuserpassword')
+    anyuser.save()
 
 def create_localhost():
     user = getpass.getuser()
