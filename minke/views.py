@@ -49,12 +49,12 @@ class SessionView(PermissionRequiredMixin, View):
         session_cls = self.get_session_cls()
         queryset = self.get_queryset()
 
-        # do we have to render a form first?
         password_form = getattr(settings, 'MINKE_INITIAL_PASSWORD_FORM', None)
         session_form = bool(session_cls.FORM) or None
         confirm = session_cls.CONFIRM
         session_data = dict()
 
+        # do we have to render a form?
         if password_form or session_form or confirm:
             minke_form = MinkeForm(dict(action=session_cls.__name__))
 
@@ -71,14 +71,17 @@ class SessionView(PermissionRequiredMixin, View):
             valid &= not password_form or password_form.is_valid()
             valid &= not session_form or session_form.is_valid()
 
+            params = dict(
+                title=session_cls.short_description,
+                minke_form=minke_form,
+                password_form=password_form,
+                session_form=session_form,
+                objects=queryset,
+                object_list=confirm
+            )
+
             if not valid or not from_form:
-                return render(request, 'minke/minke_form.html',
-                    {'title': 'Minke-Form',
-                    'minke_form': minke_form,
-                    'password_form': password_form,
-                    'session_form': session_form,
-                    'objects': queryset,
-                    'object_list': confirm})
+                return render(request, 'minke/minke_form.html', params)
 
             if password_form:
                 env.password = password_form.cleaned_data['initial_password']
