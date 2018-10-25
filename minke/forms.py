@@ -6,7 +6,6 @@ from django import forms
 
 class MinkeForm(forms.Form):
     action = forms.CharField(required=True, widget=forms.HiddenInput())
-    from_form = forms.CharField(required=True, widget=forms.HiddenInput())
 
     class Media:
         css = {'all': ('minke/css/minke_form.css',)}

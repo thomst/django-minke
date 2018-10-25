@@ -92,6 +92,7 @@ class BaseSession(object):
     WARNING = 'warning'
     ERROR = 'error'
     FORM = None
+    CONFIRM = False
 
     def __init__(self, host, player, **session_data):
         self.host = host
