@@ -13,6 +13,7 @@ from django.utils.text import camel_case_to_spaces, slugify
 
 from .views import SessionView
 from .models import Host
+from .models import BaseSession
 from .messages import ExecutionMessage
 from .messages import PreMessage
 from .exceptions import InvalidMinkeSetup
@@ -83,42 +84,19 @@ def register(session_cls, models=None,
     registry.append(session_cls)
 
 
-class BaseSession(object):
-    """
-    Implement the base-functionality of a session-class.
-    """
-
-    SUCCESS = 'success'
-    WARNING = 'warning'
-    ERROR = 'error'
+class Session(BaseSession):
     FORM = None
     CONFIRM = False
 
-    def __init__(self, host, player, **session_data):
-        self.host = host
+    class Meta:
+        proxy = True
+
+    def __init__(self, player, **session_data):
+        super(Session, self).__init__()
+        self.session_name = self.__class__.__name__
         self.player = player
         self.session_data = session_data
         self.news = list()
-        self.status = self.SUCCESS
-
-    def set_status(self, status):
-        """
-        Set session-status.
-
-        The session-status can be 'error', 'warning' or 'success'.
-        You can pass a status-code as 'error', 'ERROR' or self.ERROR.
-        You can also pass a boolean while True means 'success' and False 'error'.
-        (The default session-status is 'success'.)
-        """
-        try: status = getattr(self, status)
-        except (AttributeError, TypeError): pass
-
-        if status in (self.SUCCESS, self.WARNING, self.ERROR):
-            self.status = status
-        elif type(status) is bool:
-            self.status = self.SUCCESS if status else self.ERROR
-        else:
-            raise ValueError('Invalid session-status: {}'.format(status))
 
     def process(self):
         """
@@ -139,11 +117,7 @@ class BaseSession(object):
         pass
 
 
-class AdminSession(BaseSession):
-    """
-    Implement attributes for admin-site-integration.
-    """
-
+    # admin-action-logic
     models = tuple()
     short_description = None
     permission_required = tuple()
@@ -158,8 +132,7 @@ class AdminSession(BaseSession):
         return action
 
 
-class Session(AdminSession):
-
+    # helper-methods
     def format_cmd(self, cmd):
         """
         Will format a given command-string using the player's attributes

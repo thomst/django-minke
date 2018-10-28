@@ -6,6 +6,8 @@ import traceback
 
 from django.utils.html import escape
 
+from .models import BaseMessage
+
 
 class MessengerMixin(object):
     def store(self, obj, news=None, status=None):
@@ -137,40 +139,27 @@ class ConsoleMessenger(MessengerMixin):
         self.print_table()
 
 
-class Message(object):
-    INFO = 'info'
-    WARNING = 'warning'
-    ERROR = 'error'
+class Message(BaseMessage):
 
-    def __init__(self, data, level='INFO'):
-        self.data = data
+    class Meta:
+        proxy = True
 
-        # try to resolve level-code.
-        # it could be passed as 'error', 'ERROR' or self.ERROR
-        try: level = getattr(self, level)
-        except (AttributeError, TypeError): pass
+    def __init__(self, data, level='info'):
+        super(Message, self).__init__()
+        self.level = level
+        self.text = self.get_text(data)
+        self.html = self.get_html(data)
 
-        # check level: either a valid level-code or a boolean.
-        if level in (self.INFO, self.WARNING, self.ERROR):
-            self.level = level
-        elif type(level) is bool:
-            self.level = self.INFO if level else self.ERROR
-        else:
-            raise ValueError('Invalid message-level: {}'.format(level))
+    def get_text(self, data):
+        return data
 
-    @property
-    def text(self):
-        return self.data
-
-    @property
-    def html(self):
-        return escape(self.data)
+    def get_html(self, data):
+        return escape(data)
 
 
 class PreMessage(Message):
-    @property
-    def html(self):
-        return '<pre>{}</pre>'.format(escape(self.data))
+    def get_html(self, data):
+        return '<pre>{}</pre>'.format(escape(data))
 
 
 class TableMessage(Message):
@@ -178,28 +167,26 @@ class TableMessage(Message):
         self.css = css or dict()
         super(TableMessage, self).__init__(data, level)
 
-    @property
-    def text(self):
+    def get_text(self, data):
         widths = dict()
-        for row_data in self.data:
+        for row_data in data:
             for i, col in enumerate(row_data):
                 if widths.get(i, -1) < len(col):
                     widths[i] = len(col)
         rows = list()
         spacer = '    '
-        for row_data in self.data:
+        for row_data in data:
             ljust_row = [s.ljust(widths[i]) for i, s in enumerate(row_data)]
             rows.append(spacer.join(ljust_row))
         return '\n'.join(rows)
 
-    @property
-    def html(self):
+    def get_html(self, data):
         css_params = dict(width='680px', color='#666')
         css_params.update(self.css)
         style = ['{}:{};'.format(k, v) for k, v in css_params.items()]
         style = 'style="{}"'.format(' '.join(style))
         escaped_data = []
-        for row in self.data:
+        for row in data:
             escaped_data.append(list())
             for column in row:
                 escaped_data[-1].append(escape(column))
@@ -218,19 +205,17 @@ class ExecutionMessage(Message):
         </table>
         """
 
-    @property
-    def text(self):
+    def get_text(self, data):
         lines = list()
-        rtn, cmd = self.data.return_code, self.data.command
+        rtn, cmd = data.return_code, data.command
         lines.append('code[{}]'.format(rtn).ljust(10) + cmd)
-        for line in self.data.stdout.splitlines():
+        for line in data.stdout.splitlines():
             lines.append('stdout'.ljust(10) + line)
-        for line in self.data.stderr.splitlines():
+        for line in data.stderr.splitlines():
             lines.append('stderr'.ljust(10) + line)
         return '\n'.join(lines)
 
-    @property
-    def html(self):
+    def get_html(self, data):
         template = """
             <table>
                 <tr><td><code>[{rtn}]</code></td><td><code>{cmd}</code></td></tr>
@@ -239,10 +224,10 @@ class ExecutionMessage(Message):
             </table>
             """
         return template.format(
-            cmd=escape(self.data.command),
-            rtn=self.data.return_code,
-            stdout=escape(self.data.stdout),
-            stderr=escape(self.data.stderr))
+            cmd=escape(data.command),
+            rtn=data.return_code,
+            stdout=escape(data.stdout),
+            stderr=escape(data.stderr))
 
 
 class ExceptionMessage(PreMessage):

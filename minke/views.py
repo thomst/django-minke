@@ -101,9 +101,5 @@ class SessionView(PermissionRequiredMixin, View):
             messages.add_message(request, messages.ERROR, msg)
             return
 
-        # initiate the messenger and clear already stored messages for this model
-        messenger = Messenger(request)
-        messenger.remove(queryset.model)
-
         # hopefully we are prepared...
-        engine.process(session_cls, queryset, messenger, session_data)
+        engine.process(session_cls, queryset, session_data, request.user)
