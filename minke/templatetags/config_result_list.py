@@ -6,8 +6,9 @@ from django.template import Library
 from django.contrib.admin.templatetags.admin_list import result_headers
 from django.contrib.admin.templatetags.admin_list import result_hidden_fields
 from django.contrib.admin.templatetags.admin_list import results
+from django.contrib.contenttypes.models import ContentType
 
-from ..messages import Messenger
+from ..models import BaseSession
 
 register = Library()
 
@@ -17,13 +18,24 @@ def config_result_list(cl, request):
 
     # FIXME: got a good indicator here; e.g. MinkeAdmin
     if True:
-        messenger = Messenger(request)
         result_list = list(results(cl))
+        # ct = ContentType.objects.get_for_model(cl.result_list.model)
+        # ids = cl.result_list.all().values('id')
+        sessions = BaseSession.objects.get_currents(request.user, cl.result_list)
+        # sessions = BaseSession.objects.filter(
+        #     user=request.user,
+        #     content_type=ct,
+        #     object_id__in=ids,
+        #     current=True)
         for result, obj in zip(result_list, cl.result_list):
-            report = messenger.get(object=obj)
-            if not report: continue
-            result.minke_status = report.get('status', str())
-            result.minke_news = report.get('news', list())
+            try:
+                session = sessions.get(object_id=obj.id)
+            except BaseSession.DoesNotExist:
+                pass
+            else:
+                result.session = session
+                # result.minke_status = session.status
+                # result.minke_news = session.messages.all()
     else:
         result_list = list(results(cl))
 

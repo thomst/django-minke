@@ -139,10 +139,14 @@ class ConsoleMessenger(MessengerMixin):
         self.print_table()
 
 
-class Message(BaseMessage):
-
+# We declare the Meta-class whithin a mixin.
+# Otherwise the proxy-attribute won't be inherited by child-classes of Session.
+class ProxyMixin(object):
     class Meta:
         proxy = True
+
+
+class Message(ProxyMixin, BaseMessage):
 
     def __init__(self, data, level='info'):
         super(Message, self).__init__()

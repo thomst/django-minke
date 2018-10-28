@@ -18,6 +18,10 @@
         #result_list tr.minke_news.success {background-color: #e8ffe8;}
         #result_list tr.minke_news.warning {background-color: #ffffe6;}
         #result_list tr.minke_news.error {background-color: #fff6f6;}
+        #result_list tr.running input {display: none;}
+        #result_list tr.initialized input {display: none;}
+        #result_list tr.running td:first-child:after {content: 'R';}
+        #result_list tr.initialized td:first-child:after {content: 'W';}
     </style>
 {% endblock %}
 

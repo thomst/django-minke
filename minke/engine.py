@@ -33,30 +33,33 @@ def process(session_cls, queryset, session_data, user):
     # validate hosts and prepare sessions
     host_sessions = dict()
     for host, players in host_players.items():
+        sessions = list()
+        errormsg = None
+
         for player in players:
             session = session_cls()
             session.user = user
             session.player = player
             session.session_data = session_data
             session.save()
+            sessions.append(session)
 
-            if host.disabled:
-                message = Message('Host were disabled!', 'error')
-                session.message_set.add(message, bulk=False)
+        if host.disabled:
+            errormsg = Message('Host were disabled!', 'error')
+
+        # Never let a host be involved in two simultaneous sessions...
+        elif not Host.objects.get_lock(id=host.id):
+            errormsg = Message('Host were locked!', 'error')
+
+        if errormsg:
+            for session in sessions:
+                session.messages.add(errormsg, bulk=False)
                 session.status = 'error'
                 session.proc_status = 'done'
                 session.save()
 
-            # Never let a host be involved in two simultaneous sessions...
-            elif not Host.objects.get_lock(id=host.id):
-                message = Message('Host were locked!', 'error')
-                session.message_set.add(message, bulk=False)
-                session.status = 'error'
-                session.proc_status = 'done'
-                session.save()
-
+        # Grouping sessions by hosts.
         else:
-            # Grouping sessions by hosts.
             host_sessions[host.hoststring] = sessions
 
     # Stop here if no valid hosts are left...
@@ -95,7 +98,7 @@ class SessionProcessor(object):
     def run(self):
         sessions = self.host_sessions[env.host_string]
         for session in sessions:
-            self.queue.put(('start_session', (session, 'running')))
+            self.queue.put(('start_session', session))
             try:
                 session.process()
             except (Abortion, NetworkError, CommandTimeout, SocketError):
@@ -111,12 +114,12 @@ class SessionProcessor(object):
             finally:
                 self.queue.put(('end_session', session))
 
-        self.queue.put(('release_lock', session.host))
+        self.queue.put(('release_lock', session.player.get_host()))
 
 
 class QueueProcessor(Thread):
-    def __init__(self, queue, host_sessions):
-        super(ProcessQueue, self).__init__()
+    def __init__(self, host_sessions, queue):
+        super(QueueProcessor, self).__init__()
         self.queue = queue
         self.host_sessions = host_sessions
 
@@ -127,7 +130,7 @@ class QueueProcessor(Thread):
                 disconnect_all()
                 break
             else:
-                get_attr(self, action)(arg)
+                getattr(self, action)(arg)
 
     def start_session(self, session):
         session.proc_status = 'running'
@@ -138,7 +141,7 @@ class QueueProcessor(Thread):
         session.proc_status = 'done'
         session.save()
         for message in session.news:
-            session.message_set.add(message, bulk=False)
+            session.messages.add(message, bulk=False)
 
     def release_lock(self, host):
         Host.objects.release_lock(id=host.id)

@@ -8,11 +8,28 @@ from django.db import models
 from django.contrib.auth.models import User
 from django.contrib.contenttypes.fields import GenericForeignKey
 from django.contrib.contenttypes.models import ContentType
+from django.contrib.contenttypes.fields import GenericRelation
+from django.contrib.contenttypes.models import ContentType
 
 from .exceptions import InvalidMinkeSetup
 
 
+class BaseSessionQuerySet(models.QuerySet):
+    def get_currents(self, user, queryset):
+        content_type = ContentType.objects.get_for_model(queryset.model)
+        return self.filter(
+            user=user,
+            content_type=content_type,
+            object_id__in=queryset.all().values('id'),
+            current=True)
+
+    def clear_currents(self, user, queryset):
+        return self.get_currents(user, queryset).update(current=False)
+
+
 class BaseSession(models.Model):
+    objects = BaseSessionQuerySet.as_manager()
+
     RESULT_STATES = (
         ('success', 'success'),
         ('warning', 'warning'),
@@ -30,7 +47,6 @@ class BaseSession(models.Model):
     session_name = models.CharField(max_length=128)
     session_data = PickledObjectField(blank=True)
     current = models.BooleanField(default=True)
-    running = models.BooleanField(default=True)
     status = models.CharField(max_length=128, choices=RESULT_STATES, default='success')
     proc_status = models.CharField(max_length=128, choices=PROC_STATES, default='initialized')
 
@@ -41,7 +57,7 @@ class BaseMessage(models.Model):
         ('warning', 'warning'),
         ('error', 'error'),
     )
-    session = models.ForeignKey(BaseSession, on_delete=models.CASCADE)
+    session = models.ForeignKey(BaseSession, on_delete=models.CASCADE, related_name='messages')
     level = models.CharField(max_length=128, choices=LEVELS)
     text = models.TextField()
     html = models.TextField()
@@ -97,6 +113,8 @@ class MinkeManager(models.Manager):
 class MinkeModel(models.Model):
     objects = MinkeManager()
     HOST_LOOKUP = 'host'
+
+    # sessions = GenericRelation(BaseSession, related_query_name='players')
 
     def get_host(self):
         host = self

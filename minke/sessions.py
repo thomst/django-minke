@@ -84,18 +84,19 @@ def register(session_cls, models=None,
     registry.append(session_cls)
 
 
-class Session(BaseSession):
-    FORM = None
-    CONFIRM = False
-
+# We declare the Meta-class whithin a mixin.
+# Otherwise the proxy-attribute won't be inherited by child-classes of Session.
+class ProxyMixin(object):
     class Meta:
         proxy = True
 
-    def __init__(self, player, **session_data):
-        super(Session, self).__init__()
-        self.session_name = self.__class__.__name__
-        self.player = player
-        self.session_data = session_data
+
+class Session(ProxyMixin, BaseSession):
+    FORM = None
+    CONFIRM = False
+
+    def __init__(self, *args, **kwargs):
+        super(Session, self).__init__(*args, **kwargs)
         self.news = list()
 
     def process(self):

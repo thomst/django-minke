@@ -9,11 +9,12 @@ from django.shortcuts import render
 from django.views.generic import View
 from django.contrib import messages
 from django.contrib.auth.mixins import PermissionRequiredMixin
+from django.contrib.contenttypes.models import ContentType
 
 from minke import engine
 from .forms import MinkeForm
 from .forms import InitialPasswordForm
-from .messages import Messenger
+from .models import BaseSession
 
 
 class SessionView(PermissionRequiredMixin, View):
@@ -100,6 +101,16 @@ class SessionView(PermissionRequiredMixin, View):
             msg = 'Got no keys from the agent nor have a key-file!'
             messages.add_message(request, messages.ERROR, msg)
             return
+
+        # clear current-messages for this model
+        BaseSession.objects.clear_currents(request.user, queryset)
+        # content_type = ContentType.objects.get_for_model(queryset.model)
+        # BaseSession.objects.filter(
+        #     user=request.user,
+        #     content_type=content_type,
+        #     object_id__in=queryset.all().values('id'),
+        #     current=True
+        #     ).update(current=False)
 
         # hopefully we are prepared...
         engine.process(session_cls, queryset, session_data, request.user)
