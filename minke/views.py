@@ -104,13 +104,6 @@ class SessionView(PermissionRequiredMixin, View):
 
         # clear current-messages for this model
         BaseSession.objects.clear_currents(request.user, queryset)
-        # content_type = ContentType.objects.get_for_model(queryset.model)
-        # BaseSession.objects.filter(
-        #     user=request.user,
-        #     content_type=content_type,
-        #     object_id__in=queryset.all().values('id'),
-        #     current=True
-        #     ).update(current=False)
 
         # hopefully we are prepared...
         engine.process(session_cls, queryset, session_data, request.user)

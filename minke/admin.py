@@ -25,11 +25,6 @@ class MinkeAdmin(admin.ModelAdmin):
         if sessions:
             actions[clear_news.__name__] = prep_action(clear_news)
 
-        # messenger = Messenger(request)
-        # data = messenger.get(self.model)
-        # if data:
-        #     actions[clear_news.__name__] = prep_action(clear_news)
-
         # add sessions depending on the model and the user-perms...
         for session in registry:
             if not self.model in session.models:

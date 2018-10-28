@@ -19,14 +19,7 @@ def config_result_list(cl, request):
     # FIXME: got a good indicator here; e.g. MinkeAdmin
     if True:
         result_list = list(results(cl))
-        # ct = ContentType.objects.get_for_model(cl.result_list.model)
-        # ids = cl.result_list.all().values('id')
         sessions = BaseSession.objects.get_currents(request.user, cl.result_list)
-        # sessions = BaseSession.objects.filter(
-        #     user=request.user,
-        #     content_type=ct,
-        #     object_id__in=ids,
-        #     current=True)
         for result, obj in zip(result_list, cl.result_list):
             try:
                 session = sessions.get(object_id=obj.id)
@@ -34,8 +27,6 @@ def config_result_list(cl, request):
                 pass
             else:
                 result.session = session
-                # result.minke_status = session.status
-                # result.minke_news = session.messages.all()
     else:
         result_list = list(results(cl))
 

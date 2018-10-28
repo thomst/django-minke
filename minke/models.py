@@ -47,7 +47,7 @@ class BaseSession(models.Model):
     session_name = models.CharField(max_length=128)
     session_data = PickledObjectField(blank=True)
     current = models.BooleanField(default=True)
-    status = models.CharField(max_length=128, choices=RESULT_STATES, default='success')
+    status = models.CharField(max_length=128, choices=RESULT_STATES)
     proc_status = models.CharField(max_length=128, choices=PROC_STATES, default='initialized')
 
 

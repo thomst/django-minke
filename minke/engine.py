@@ -38,6 +38,7 @@ def process(session_cls, queryset, session_data, user):
 
         for player in players:
             session = session_cls()
+            session.session_name = session_cls.__name__
             session.user = user
             session.player = player
             session.session_data = session_data
@@ -109,7 +110,7 @@ class SessionProcessor(object):
                 # not be handled as a minke-news! We could return the
                 # exception instead of the session and raise it in the
                 # main process.
-                session.set_status('error')
+                session.status = 'error'
                 session.news.append(ExceptionMessage(print_tb=True))
             finally:
                 self.queue.put(('end_session', session))
@@ -139,6 +140,7 @@ class QueueProcessor(Thread):
     def end_session(self, session):
         session.rework()
         session.proc_status = 'done'
+        if not session.status: session.status = 'success'
         session.save()
         for message in session.news:
             session.messages.add(message, bulk=False)
