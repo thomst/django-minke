@@ -72,7 +72,7 @@ def process(session_cls, queryset, session_data, user):
 
     initiator_thread = Thread(target=initiator, args=(host_sessions, queue))
     initiator_thread.start()
-    # initiator_thread.join()
+    if session_cls.JOIN: initiator_thread.join()
 
 
 def initiator(host_sessions, queue):
