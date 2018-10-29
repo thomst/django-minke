@@ -150,9 +150,14 @@ class Message(ProxyMixin, BaseMessage):
 
     def __init__(self, data, level='info'):
         super(Message, self).__init__()
-        self.level = level
         self.text = self.get_text(data)
         self.html = self.get_html(data)
+
+        # deprecated - for backward-compatibility
+        if type(level) == bool:
+            self.level = 'info' if level else 'error'
+        else:
+            self.level = level.lower()
 
     def get_text(self, data):
         return data

@@ -100,6 +100,13 @@ class Session(ProxyMixin, BaseSession):
         super(Session, self).__init__(*args, **kwargs)
         self.news = list()
 
+    # DEPRICATED
+    def set_status(self, status):
+        if type(status) == bool:
+            self.status = 'success' if status else 'error'
+        else:
+            self.status = status.lower()
+
     def process(self):
         """
         Real work is done here...
