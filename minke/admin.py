@@ -3,7 +3,6 @@ from __future__ import unicode_literals
 
 from django.core.urlresolvers import reverse
 from django.contrib import admin
-from django.contrib.contenttypes.models import ContentType
 
 from .sessions import registry
 from .actions import clear_news
@@ -16,12 +15,8 @@ class MinkeAdmin(admin.ModelAdmin):
         actions = super(MinkeAdmin, self).get_actions(request)
         prep_action = lambda a: (a, a.__name__, a.short_description)
 
-        # # add clear-news if there are any minke-news for this model...
-        content_type = ContentType.objects.get_for_model(self.model)
-        sessions = BaseSession.objects.filter(
-            user=request.user,
-            content_type=content_type,
-            current=True)
+        # add clear-news if there are any minke-news for this model...
+        sessions = BaseSession.objects.get_currents_by_model(request.user, self.model)
         if sessions:
             actions[clear_news.__name__] = prep_action(clear_news)
 

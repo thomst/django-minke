@@ -23,6 +23,13 @@ class BaseSessionQuerySet(models.QuerySet):
             object_id__in=queryset.all().values('id'),
             current=True)
 
+    def get_currents_by_model(self, user, model):
+        content_type = ContentType.objects.get_for_model(model)
+        return self.filter(
+            user=user,
+            content_type=content_type,
+            current=True)
+
     def clear_currents(self, user, queryset):
         return self.get_currents(user, queryset).update(current=False)
 
