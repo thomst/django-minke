@@ -31,7 +31,7 @@
         <tr><td colspan="{{ result|length }}">{{ result.form.non_field_errors }}</td></tr>
     {% endif %}
     <tr class="{% cycle 'row1' 'row2' %} {{ result.session.status }} {{ result.session.proc_status }}">{% for item in result %}{{ item }}{% endfor %}</tr>
-    {% if result.session.messages %}
+    {% if result.session.messages.all %}
         <tr class="minke_news {{ result.session.status }}"><td colspan="{{ result|length }}"><ul class="messagelist">
         {% for message in result.session.messages.all %}
             <li class="{{ message.level }}">{{ message.html|safe }}</li>
