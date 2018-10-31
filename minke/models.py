@@ -20,7 +20,7 @@ class BaseSessionQuerySet(models.QuerySet):
         return self.filter(
             user=user,
             content_type=content_type,
-            object_id__in=queryset.all().values('id'),
+            object_id__in=list(queryset.all().values_list('id', flat=True)),
             current=True)
 
     def get_currents_by_model(self, user, model):
