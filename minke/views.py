@@ -49,6 +49,7 @@ class SessionView(PermissionRequiredMixin, View):
     def post(self, request, *args, **kwargs):
         session_cls = self.get_session_cls()
         queryset = self.get_queryset()
+        join = session_cls.JOIN
 
         password_form = getattr(settings, 'MINKE_INITIAL_PASSWORD_FORM', None)
         session_form = bool(session_cls.FORM) or None
@@ -57,16 +58,18 @@ class SessionView(PermissionRequiredMixin, View):
 
         # do we have to render a form?
         if password_form or session_form or confirm:
-            minke_form = MinkeForm(dict(action=session_cls.__name__))
-
             from_form = request.POST.get('minke_form', False)
-            if password_form:
-                if from_form: password_form = InitialPasswordForm(request.POST)
-                else: password_form = InitialPasswordForm()
 
-            if session_form:
-                if from_form: session_form = session_cls.FORM(request.POST)
-                else: session_form = session_cls.FORM()
+            if from_form:
+                minke_form = MinkeForm(request.POST)
+                if password_form: InitialPasswordForm(request.POST)
+                if session_form: session_cls.FORM(request.POST)
+            else:
+                minke_form = MinkeForm(dict(
+                    action=session_cls.__name__,
+                    join=session_cls.JOIN))
+                if password_form: InitialPasswordForm()
+                if session_form: session_cls.FORM()
 
             valid = minke_form.is_valid()
             valid &= not password_form or password_form.is_valid()
@@ -83,6 +86,8 @@ class SessionView(PermissionRequiredMixin, View):
 
             if not valid or not from_form:
                 return render(request, 'minke/minke_form.html', params)
+            else:
+                join = minke_form.cleaned_data['join']
 
             if password_form:
                 env.password = password_form.cleaned_data['initial_password']
@@ -106,4 +111,4 @@ class SessionView(PermissionRequiredMixin, View):
         BaseSession.objects.clear_currents(request.user, queryset)
 
         # hopefully we are prepared...
-        engine.process(session_cls, queryset, session_data, request.user)
+        engine.process(session_cls, queryset, session_data, request.user, join)

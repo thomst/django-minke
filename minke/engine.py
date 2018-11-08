@@ -19,7 +19,7 @@ from .exceptions import SocketError
 from .exceptions import CommandTimeout
 
 
-def process(session_cls, queryset, session_data, user):
+def process(session_cls, queryset, session_data, user, join):
     """Initiate fabric's session-processing."""
 
     # get players per host
@@ -72,7 +72,7 @@ def process(session_cls, queryset, session_data, user):
 
     initiator_thread = Thread(target=initiator, args=(host_sessions, queue))
     initiator_thread.start()
-    if session_cls.JOIN: initiator_thread.join()
+    if join: initiator_thread.join()
 
 
 def initiator(host_sessions, queue):

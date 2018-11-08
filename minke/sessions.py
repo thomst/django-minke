@@ -94,7 +94,7 @@ class ProxyMixin(object):
 class Session(ProxyMixin, BaseSession):
     FORM = None
     CONFIRM = False
-    JOIN = False
+    JOIN = True
 
     def __init__(self, *args, **kwargs):
         super(Session, self).__init__(*args, **kwargs)
