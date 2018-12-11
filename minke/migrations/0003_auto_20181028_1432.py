@@ -36,7 +36,7 @@ class Migration(migrations.Migration):
                 ('session_name', models.CharField(max_length=128)),
                 ('session_data', picklefield.fields.PickledObjectField(blank=True, editable=False)),
                 ('current', models.BooleanField(default=True)),
-                ('status', models.CharField(choices=[('success', 'success'), ('warning', 'warning'), ('error', 'error')], default='success', max_length=128)),
+                ('status', models.CharField(choices=[('success', 'success'), ('warning', 'warning'), ('error', 'error')], max_length=128)),
                 ('proc_status', models.CharField(choices=[('initialized', 'initialized'), ('running', 'running'), ('done', 'done')], default='initialized', max_length=128)),
                 ('content_type', models.ForeignKey(on_delete=django.db.models.deletion.CASCADE, to='contenttypes.ContentType')),
                 ('user', models.ForeignKey(on_delete=django.db.models.deletion.CASCADE, to=settings.AUTH_USER_MODEL)),
