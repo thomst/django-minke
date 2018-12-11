@@ -57,6 +57,14 @@ class BaseSession(models.Model):
     status = models.CharField(max_length=128, choices=RESULT_STATES)
     proc_status = models.CharField(max_length=128, choices=PROC_STATES, default='initialized')
 
+    def set_current(self):
+        self.current = True
+        BaseSession.objects.filter(
+            user=self.user,
+            content_type=self.content_type,
+            object_id=self.object_id,
+            current=True).exclude(id=self.id).update(current=False)
+
 
 class BaseMessage(models.Model):
     LEVELS = (

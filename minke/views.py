@@ -105,8 +105,5 @@ class SessionView(PermissionRequiredMixin, View):
             messages.add_message(request, messages.ERROR, msg)
             return
 
-        # clear current-messages for this model
-        BaseSession.objects.clear_currents(request.user, queryset)
-
         # hopefully we are prepared...
-        engine.process(session_cls, queryset, session_data, request.user, join)
+        engine.process(session_cls, queryset, session_data, request.user, join, request)

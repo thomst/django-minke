@@ -8,6 +8,7 @@ from fabric.api import env, execute
 from fabric.network import disconnect_all
 
 from django.utils.html import mark_safe
+from django.contrib import messages
 
 import minke.sessions
 from .models import Host
@@ -19,7 +20,7 @@ from .exceptions import SocketError
 from .exceptions import CommandTimeout
 
 
-def process(session_cls, queryset, session_data, user, join):
+def process(session_cls, queryset, session_data, user, join, request=None):
     """Initiate fabric's session-processing."""
 
     # get players per host
@@ -33,35 +34,30 @@ def process(session_cls, queryset, session_data, user, join):
     # validate hosts and prepare sessions
     host_sessions = dict()
     for host, players in host_players.items():
-        sessions = list()
-        errormsg = None
 
+        if host.disabled:
+            mgs = '{}: Host is disabled.'.format(', '.join([unicode(p) for p in players]))
+            if request: messages.warning(request, mgs)
+            else: print msg
+            continue
+
+        # Never let a host be involved in two simultaneous sessions...
+        elif not Host.objects.get_lock(id=host.id):
+            mgs = '{}: Host is locked.'.format(', '.join([unicode(p) for p in players]))
+            if request: messages.warning(request, mgs)
+            else: print msg
+            continue
+
+        host_sessions[host.hoststring] = list()
         for player in players:
             session = session_cls()
             session.session_name = session_cls.__name__
             session.user = user
             session.player = player
             session.session_data = session_data
+            session.set_current()
             session.save()
-            sessions.append(session)
-
-        if host.disabled:
-            errormsg = Message('Host were disabled!', 'error')
-
-        # Never let a host be involved in two simultaneous sessions...
-        elif not Host.objects.get_lock(id=host.id):
-            errormsg = Message('Host were locked!', 'error')
-
-        if errormsg:
-            for session in sessions:
-                session.messages.add(errormsg, bulk=False)
-                session.status = 'error'
-                session.proc_status = 'done'
-                session.save()
-
-        # Grouping sessions by hosts.
-        else:
-            host_sessions[host.hoststring] = sessions
+            host_sessions[host.hoststring].append(session)
 
     # Stop here if no valid hosts are left...
     if not host_sessions: return
