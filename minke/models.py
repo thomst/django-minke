@@ -85,7 +85,21 @@ class HostQuerySet(models.QuerySet):
         return self.filter(locked=True, **kwargs).update(locked=False)
 
 
-class Host(models.Model):
+class HostLookupMixin(object):
+    HOST_LOOKUP = ''
+
+    def get_host(self):
+        host = self
+        for attr in self.HOST_LOOKUP.split('__'):
+            host = getattr(host, attr, None)
+        if not isinstance(host, Host):
+            msg = "Invalid host-lookup: {}".format(self.HOST_LOOKUP)
+            raise InvalidMinkeSetup(msg)
+        else:
+            return host
+
+
+class Host(models.Model, HostLookupMixin):
     host = models.SlugField(max_length=128, unique=True)
     user = models.SlugField(max_length=128)
     hostname = models.CharField(max_length=128)
@@ -117,21 +131,11 @@ class MinkeManager(models.Manager):
         return queryset.select_related(self.model.HOST_LOOKUP)
 
 
-class MinkeModel(models.Model):
+class MinkeModel(models.Model, HostLookupMixin):
     objects = MinkeManager()
     HOST_LOOKUP = 'host'
 
     # sessions = GenericRelation(BaseSession, related_query_name='players')
-
-    def get_host(self):
-        host = self
-        for attr in self.HOST_LOOKUP.split('__'):
-            host = getattr(host, attr, None)
-        if not isinstance(host, Host):
-            msg = "Invalid host-lookup: {}".format(self.HOST_LOOKUP)
-            raise InvalidMinkeSetup(msg)
-        else:
-            return host
 
     class Meta:
         abstract = True

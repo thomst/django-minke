@@ -25,7 +25,7 @@ def process(session_cls, queryset, session_data, user, join):
     # get players per host
     host_players = dict()
     for player in queryset:
-        host = player if isinstance(player, Host) else player.get_host()
+        host = player.get_host()
         if not host_players.has_key(host):
             host_players[host] = list()
         host_players[host].append(player)
