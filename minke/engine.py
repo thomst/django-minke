@@ -35,17 +35,13 @@ def process(session_cls, queryset, session_data, user, join, request=None):
     host_sessions = dict()
     for host, players in host_players.items():
 
-        if host.disabled:
-            mgs = '{}: Host is disabled.'.format(', '.join([unicode(p) for p in players]))
-            if request: messages.warning(request, mgs)
-            else: print msg
-            continue
-
-        # Never let a host be involved in two simultaneous sessions...
-        elif not Host.objects.get_lock(id=host.id):
-            mgs = '{}: Host is locked.'.format(', '.join([unicode(p) for p in players]))
-            if request: messages.warning(request, mgs)
-            else: print msg
+        # Skip disabled or locked hosts...
+        if host.disabled or not Host.objects.get_lock(id=host.id):
+            for player in players:
+                msg = 'disabled' if host.disabled else 'locked'
+                mgs = '{}: Host is {}.'.format(player, msg)
+                if request: messages.warning(request, mgs)
+                else: print msg
             continue
 
         host_sessions[host.hoststring] = list()
