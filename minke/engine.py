@@ -39,8 +39,8 @@ def process(session_cls, queryset, session_data, user, join, request=None):
         if host.disabled or not Host.objects.get_lock(id=host.id):
             for player in players:
                 msg = 'disabled' if host.disabled else 'locked'
-                mgs = '{}: Host is {}.'.format(player, msg)
-                if request: messages.warning(request, mgs)
+                msg = '{}: Host is {}.'.format(player, msg)
+                if request: messages.warning(request, msg)
                 else: print msg
             continue
 
