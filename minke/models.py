@@ -65,17 +65,38 @@ class BaseSession(models.Model):
             object_id=self.object_id,
             current=True).exclude(id=self.id).update(current=False)
 
+    def prnt(self):
+        colors = dict(
+            success = '\033[0;37;42m',
+            warning = '\033[0;30;43m',
+            error   = '\033[1;37;41m')
+        player = unicode(self.player).ljust(40)
+        status = self.status.rjust(7)
+        print colors[self.status] + player + status + '\033[0m'
+        for msg in self.messages.all(): msg.prnt()
+
 
 class BaseMessage(models.Model):
     LEVELS = (
         ('info', 'info'),
         ('warning', 'warning'),
-        ('error', 'error'),
-    )
+        ('error', 'error'))
+
     session = models.ForeignKey(BaseSession, on_delete=models.CASCADE, related_name='messages')
     level = models.CharField(max_length=128, choices=LEVELS)
     text = models.TextField()
     html = models.TextField()
+
+    def prnt(self):
+        colors = dict(
+            info    = '\033[0;32m',
+            warning = '\033[0;33m',
+            error   = '\033[1;31m')
+        prefix = colors[self.level] + self.level + '\033[0m'
+        delimiter = ' *| '
+        for line in self.text.splitlines():
+            print prefix + delimiter + line
+            delimiter = '  | '
 
 
 class HostQuerySet(models.QuerySet):

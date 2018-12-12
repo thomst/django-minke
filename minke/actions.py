@@ -3,7 +3,6 @@ from __future__ import unicode_literals
 
 from django.contrib.contenttypes.models import ContentType
 
-from .messages import Messenger
 from .models import BaseSession
 
 

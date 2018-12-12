@@ -59,7 +59,7 @@ def process(session_cls, queryset, session_data, user, join, request=None):
     if not host_sessions: return
 
     queue = Queue()
-    queue_processor = QueueProcessor(host_sessions, queue)
+    queue_processor = QueueProcessor(host_sessions, queue, request)
     queue_processor.start()
 
     initiator_thread = Thread(target=initiator, args=(host_sessions, queue))
@@ -111,10 +111,11 @@ class SessionProcessor(object):
 
 
 class QueueProcessor(Thread):
-    def __init__(self, host_sessions, queue):
+    def __init__(self, host_sessions, queue, request):
         super(QueueProcessor, self).__init__()
         self.queue = queue
         self.host_sessions = host_sessions
+        self.request = request
 
     def run(self):
         while True:
@@ -132,10 +133,14 @@ class QueueProcessor(Thread):
     def end_session(self, session):
         session.rework()
         session.proc_status = 'done'
-        if not session.status: session.status = 'success'
+        if not session.status:
+            session.status = 'success'
         session.save()
+
         for message in session.news:
             session.messages.add(message, bulk=False)
+
+        if not self.request: session.prnt()
 
     def release_lock(self, host):
         Host.objects.release_lock(id=host.id)

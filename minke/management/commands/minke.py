@@ -5,9 +5,10 @@ from django.core.management.base import BaseCommand
 from django.core.management.base import CommandError
 from django.contrib.admin.options import IncorrectLookupParameters
 from django.core.exceptions import FieldError
+from django.contrib.auth.models import User
+from django.contrib.auth import authenticate
 
 from ...engine import process
-from ...messages import ConsoleMessenger
 from ...sessions import registry
 
 
@@ -32,10 +33,6 @@ class Command(BaseCommand):
             '--silent',
             action='store_true',
             help='Skip output of inconspicuous players.')
-        parser.add_argument(
-            '--no-prefix',
-            action='store_true',
-            help='Hide prefix.')
         parser.add_argument(
             'session',
             nargs='?',
@@ -152,6 +149,21 @@ class Command(BaseCommand):
         # got valid form-data now
         return form.cleaned_data
 
+    def get_user(self, options):
+        # TODO: add options
+        username = options.get('username', None)
+        password = options.get('password', None)
+        if username:
+            user = authenticate(unsername=username, password=password)
+        else:
+            # FIXME: Need a config for this!
+            # use admin as default-user
+            try:
+                user = User.objects.get(username='admin')
+            except User.DoesNotExist:
+                user = None
+        return user
+
     def handle(self, *args, **options):
         session = options['session']
         model = options['model']
@@ -159,6 +171,13 @@ class Command(BaseCommand):
         # No session is given nor are we asked to list sessions.
         if not options['list'] and not session:
             self.usage()
+            return
+
+        # Do we have a user?
+        user = self.get_user(options)
+        if not user:
+            # TODO: More detailed error-msg
+            self.usage('Invalid user.')
             return
 
         # List available session-classes
@@ -216,11 +235,5 @@ class Command(BaseCommand):
         if type(offset) is type(limit) is int: limit = offset + limit
         queryset = queryset[offset:limit]
 
-        # initialize the messenger
-        messenger = ConsoleMessenger(
-            silent=options['silent'],
-            no_color=options['no_color'],
-            no_prefix=options['no_prefix'])
-
         # go for it...
-        process(session_cls, queryset, messenger, form_data)
+        process(session_cls, queryset, form_data, user, False)
