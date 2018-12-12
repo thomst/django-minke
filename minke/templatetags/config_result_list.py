@@ -20,13 +20,12 @@ def config_result_list(cl, request):
     if True:
         result_list = list(results(cl))
         sessions = BaseSession.objects.get_currents(request.user, cl.result_list)
+        sessions = list(sessions.prefetch_related('messages'))
+
         for result, obj in zip(result_list, cl.result_list):
-            try:
-                session = sessions.get(object_id=obj.id)
-            except BaseSession.DoesNotExist:
-                pass
-            else:
-                result.session = session
+            session = next(iter([s for s in sessions if s.object_id == obj.id]), None)
+            result.session = session
+
     else:
         result_list = list(results(cl))
 
