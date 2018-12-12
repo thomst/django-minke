@@ -2,6 +2,8 @@
 from __future__ import unicode_literals
 
 import re
+from time import time
+
 from picklefield.fields import PickledObjectField
 
 from django.db import models
@@ -10,17 +12,18 @@ from django.contrib.contenttypes.fields import GenericForeignKey
 from django.contrib.contenttypes.models import ContentType
 from django.contrib.contenttypes.fields import GenericRelation
 from django.contrib.contenttypes.models import ContentType
+from django.core.exceptions import FieldError
 
 from .exceptions import InvalidMinkeSetup
 
 
 class BaseSessionQuerySet(models.QuerySet):
-    def get_currents(self, user, queryset):
-        content_type = ContentType.objects.get_for_model(queryset.model)
+    def get_currents(self, user, players):
+        content_type = ContentType.objects.get_for_model(players.model)
         return self.filter(
             user=user,
             content_type=content_type,
-            object_id__in=list(queryset.all().values_list('id', flat=True)),
+            object_id__in=list(players.all().values_list('id', flat=True)),
             current=True)
 
     def get_currents_by_model(self, user, model):
@@ -30,8 +33,8 @@ class BaseSessionQuerySet(models.QuerySet):
             content_type=content_type,
             current=True)
 
-    def clear_currents(self, user, queryset):
-        return self.get_currents(user, queryset).update(current=False)
+    def clear_currents(self, user, players):
+        return self.get_currents(user, players).update(current=False)
 
 
 class BaseSession(models.Model):
@@ -56,14 +59,6 @@ class BaseSession(models.Model):
     current = models.BooleanField(default=True)
     status = models.CharField(max_length=128, choices=RESULT_STATES)
     proc_status = models.CharField(max_length=128, choices=PROC_STATES, default='initialized')
-
-    def set_current(self):
-        self.current = True
-        BaseSession.objects.filter(
-            user=self.user,
-            content_type=self.content_type,
-            object_id=self.object_id,
-            current=True).exclude(id=self.id).update(current=False)
 
     def prnt(self):
         colors = dict(
@@ -100,35 +95,27 @@ class BaseMessage(models.Model):
 
 
 class HostQuerySet(models.QuerySet):
-    def get_lock(self, **kwargs):
-        """Get a lock for a host."""
-        # As the update action returns the rows that haven been updated
-        # it will be 0 for an already locked host. An update is performed
-        # by a single sql-statement and is therefore the most atomic way
-        # to get a lock. This is the reason why we use a query instead of
-        # the object himself.
-        return bool(self.filter(locked=False, **kwargs).update(locked=True))
+    def release_lock(self):
+        return self.update(locked=None)
 
-    def release_lock(self, **kwargs):
-        """Release the lock for hosts."""
-        return self.filter(locked=True, **kwargs).update(locked=False)
+    def get_lock(self):
+        # The most atomic way to get a lock is a update-query.
+        # We use a timestamp to be able to identify the updated objects.
+        timestamp = repr(time())
+        self.filter(locked=None).update(locked=timestamp)
+        return timestamp
 
+    def get_actives(self, lock):
+        return self.filter(disabled=False).filter(locked=lock)
 
-class HostLookupMixin(object):
-    HOST_LOOKUP = ''
+    def get_hosts(self):
+        return self
 
-    def get_host(self):
-        host = self
-        for attr in self.HOST_LOOKUP.split('__'):
-            host = getattr(host, attr, None)
-        if not isinstance(host, Host):
-            msg = "Invalid host-lookup: {}".format(self.HOST_LOOKUP)
-            raise InvalidMinkeSetup(msg)
-        else:
-            return host
+    def host_filter(self, hosts):
+        return self & hosts
 
 
-class Host(models.Model, HostLookupMixin):
+class Host(models.Model):
     host = models.SlugField(max_length=128, unique=True)
     user = models.SlugField(max_length=128)
     hostname = models.CharField(max_length=128)
@@ -136,7 +123,7 @@ class Host(models.Model, HostLookupMixin):
     hoststring = models.CharField(max_length=255, unique=True)
 
     disabled = models.BooleanField(default=False)
-    locked = models.BooleanField(default=False)
+    locked = models.CharField(max_length=20, blank=True, null=True)
 
     unique_together = (("user", "hostname"),)
     objects = HostQuerySet.as_manager()
@@ -147,6 +134,9 @@ class Host(models.Model, HostLookupMixin):
         self.hoststring = format.format(**vars(self))
         super(Host, self).save(*args, **kwargs)
 
+    def get_host(self):
+        return self
+
     class Meta:
         ordering = ['host']
 
@@ -154,15 +144,61 @@ class Host(models.Model, HostLookupMixin):
         return self.host
 
 
+class MinkeQuerySet(models.QuerySet):
+    def get_hosts(self):
+        lookup = self.model.get_reverse_host_lookup() + '__id__in'
+        ids = self.values_list('id', flat=True)
+        try:
+            return Host.objects.filter(**{lookup:ids})
+        except FieldError:
+            msg = "Invalid reverse-host-lookup: {}".format(lookup)
+            raise InvalidMinkeSetup(msg)
+
+    def host_filter(self, hosts):
+        lookup = self.model.HOST_LOOKUP + '__id__in'
+        ids = hosts.values_list('id', flat=True)
+        try:
+            return self.filter(**{lookup:ids})
+        except FieldError:
+            msg = "Invalid host-lookup: {}".format(lookup)
+            raise InvalidMinkeSetup(msg)
+
+
 class MinkeManager(models.Manager):
     def get_queryset(self):
-        queryset = super(MinkeManager, self).get_queryset()
-        return queryset.select_related(self.model.HOST_LOOKUP)
+        queryset = MinkeQuerySet(self.model, using=self._db)
+        try:
+            return queryset.select_related(self.model.HOST_LOOKUP)
+        except FieldError:
+            msg = "Invalid host-lookup: {}".format(self.model.HOST_LOOKUP)
+            raise InvalidMinkeSetup(msg)
 
 
-class MinkeModel(models.Model, HostLookupMixin):
+class MinkeModel(models.Model):
     objects = MinkeManager()
     HOST_LOOKUP = 'host'
+    REVERSE_HOST_LOOKUP = None
+
+    @classmethod
+    def get_reverse_host_lookup(cls):
+        if cls.REVERSE_HOST_LOOKUP:
+            lookup = self.REVERSE_HOST_LOOKUP
+        else:
+            lookup_list = cls.HOST_LOOKUP.split('__')
+            lookup_list.reverse()
+            lookup_list.append(cls.__name__.lower())
+            lookup = '__'.join(lookup_list[1:])
+        return lookup
+
+    def get_host(self):
+        host = self
+        for attr in self.HOST_LOOKUP.split('__'):
+            host = getattr(host, attr, None)
+        if not isinstance(host, Host):
+            msg = "Invalid host-lookup: {}".format(self.HOST_LOOKUP)
+            raise InvalidMinkeSetup(msg)
+        else:
+            return host
 
     # sessions = GenericRelation(BaseSession, related_query_name='players')
 

@@ -12,6 +12,7 @@ from django.contrib import messages
 
 import minke.sessions
 from .models import Host
+from .models import BaseSession
 from .messages import Message
 from .messages import ExceptionMessage
 from .exceptions import Abortion
@@ -23,37 +24,35 @@ from .exceptions import CommandTimeout
 def process(session_cls, queryset, session_data, user, join, request=None):
     """Initiate fabric's session-processing."""
 
-    # get players per host
-    host_players = dict()
-    for player in queryset:
-        host = player.get_host()
-        if not host_players.has_key(host):
-            host_players[host] = list()
-        host_players[host].append(player)
+    hosts = queryset.get_hosts()
+    lock = hosts.get_lock()
+    active_hosts = hosts.get_actives(lock)
+    active_players = queryset.host_filter(active_hosts)
+    BaseSession.objects.clear_currents(user, active_players)
 
     # validate hosts and prepare sessions
     host_sessions = dict()
-    for host, players in host_players.items():
+    for player in queryset.all():
+        host = player.get_host()
 
         # Skip disabled or locked hosts...
-        if host.disabled or not Host.objects.get_lock(id=host.id):
-            for player in players:
-                msg = 'disabled' if host.disabled else 'locked'
-                msg = '{}: Host is {}.'.format(player, msg)
-                if request: messages.warning(request, msg)
-                else: print msg
+        if host.disabled or host.locked and host.locked != lock:
+            msg = 'disabled' if host.disabled else 'locked'
+            msg = '{}: Host is {}.'.format(player, msg)
+            if request: messages.warning(request, msg)
+            else: print msg
             continue
 
-        host_sessions[host.hoststring] = list()
-        for player in players:
-            session = session_cls()
-            session.session_name = session_cls.__name__
-            session.user = user
-            session.player = player
-            session.session_data = session_data
-            session.set_current()
-            session.save()
-            host_sessions[host.hoststring].append(session)
+        session = session_cls()
+        session.session_name = session_cls.__name__
+        session.user = user
+        session.player = player
+        session.session_data = session_data
+        session.save()
+
+        if not host_sessions.has_key(host.hoststring):
+            host_sessions[host.hoststring] = list()
+        host_sessions[host.hoststring].append(session)
 
     # Stop here if no valid hosts are left...
     if not host_sessions: return
@@ -143,7 +142,7 @@ class QueueProcessor(Thread):
         if not self.request: session.prnt()
 
     def release_lock(self, host):
-        Host.objects.release_lock(id=host.id)
+        Host.objects.filter(id=host.id).release_lock()
 
     def save_message(self, message):
         message.save()
