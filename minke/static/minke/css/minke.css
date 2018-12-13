@@ -16,3 +16,9 @@
 #result_list tr.initialized input {display: none;}
 #result_list tr.running td:first-child:after {content: 'R'; font-weight: bold}
 #result_list tr.initialized td:first-child:after {content: 'W'; font-weight: bold}
+#result_list tr {
+    -webkit-transition:background 2s;
+    -moz-transition:background 2s;
+    -o-transition:background 2s;
+    transition:background 2s
+}
