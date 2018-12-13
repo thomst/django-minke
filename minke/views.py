@@ -9,7 +9,9 @@ from django.shortcuts import render
 from django.views.generic import View
 from django.contrib import messages
 from django.contrib.auth.mixins import PermissionRequiredMixin
+from django.contrib.auth.mixins import LoginRequiredMixin
 from django.contrib.contenttypes.models import ContentType
+from django.http import JsonResponse
 
 from minke import engine
 from .forms import MinkeForm
@@ -33,18 +35,14 @@ class SessionView(PermissionRequiredMixin, View):
         return super(SessionView, self).get_permission_required()
 
     def get_queryset(self):
-        self.queryset = self.kwargs.get('queryset', None)
-        if self.queryset is not None:
-            return self.queryset
-        else:
-            raise AttributeError('Missing queryset!')
+        queryset = self.kwargs.get('queryset', None)
+        if queryset is not None: return queryset
+        else: raise AttributeError('Missing queryset!')
 
     def get_session_cls(self):
-        self.session_cls = self.kwargs.get('session_cls', None)
-        if self.session_cls:
-            return self.session_cls
-        else:
-            raise AttributeError('Missing session-class!')
+        session_cls = self.kwargs.get('session_cls', None)
+        if session_cls: return session_cls
+        else: raise AttributeError('Missing session-class!')
 
     def post(self, request, *args, **kwargs):
         session_cls = self.get_session_cls()
@@ -107,3 +105,49 @@ class SessionView(PermissionRequiredMixin, View):
 
         # hopefully we are prepared...
         engine.process(session_cls, queryset, session_data, request.user, join, request)
+
+
+class MessageView(LoginRequiredMixin, View):
+    raise_exception = True
+
+    def get_queryset(self):
+        try:
+            object_ids = self.request.GET['object_ids'].split(',')
+        except KeyError:
+            raise AttributeError('Missing object-ids.')
+        try:
+            model = self.kwargs['model']
+        except KeyError:
+            raise AttributeError('Missing model.')
+        try:
+            content_type = ContentType.objects.get(model=model)
+        except ContentType.DoesNotExist:
+            raise AttributeError('Invalid model.')
+
+        return BaseSession.objects.filter(
+            object_id__in=object_ids,
+            content_type=content_type,
+            user=self.request.user,
+            current=True
+            ).prefetch_related('messages')
+
+    def get_dict(self, queryset):
+        data = dict()
+        for session in queryset:
+            session_dict = dict()
+            session_dict['status'] = session.status
+            session_dict['proc_status'] = session.proc_status
+            session_dict['object_id'] = session.object_id
+            session_dict['messages'] = list()
+            for message in session.messages.all():
+                message_dict = dict()
+                message_dict['level'] = message.level
+                message_dict['html'] = message.html
+                session_dict['messages'].append(message_dict)
+            data[session.object_id] = session_dict
+        return data
+
+    def get(self, request, *args, **kwargs):
+        queryset = self.get_queryset()
+        data = self.get_dict(queryset)
+        return JsonResponse(data)

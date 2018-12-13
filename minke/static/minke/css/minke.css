@@ -1,0 +1,18 @@
+#result_list ul.messagelist {margin-left: 25px;}
+#result_list ul.messagelist li {
+    padding-left: 45px;
+    margin-bottom: 8px;
+    border: 1px solid #eee;
+    background-position: 12px 12px;}
+#result_list tr.minke_news td {border: 0; padding: 8px 8px 0 8px;}
+#result_list ul.messagelist pre {margin: 0; padding: 0;}
+#result_list tr.success {background-color: #dfd;}
+#result_list tr.warning {background-color: #ffc;}
+#result_list tr.error {background-color: #ffefef;}
+#result_list tr.minke_news.success {background-color: #e8ffe8;}
+#result_list tr.minke_news.warning {background-color: #ffffe6;}
+#result_list tr.minke_news.error {background-color: #fff6f6;}
+#result_list tr.running input {display: none;}
+#result_list tr.initialized input {display: none;}
+#result_list tr.running td:first-child:after {content: 'R'; font-weight: bold}
+#result_list tr.initialized td:first-child:after {content: 'W'; font-weight: bold}
