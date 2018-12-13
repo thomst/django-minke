@@ -3,7 +3,6 @@ from django.conf import settings
 from fabric.api import env
 from fabric.state import output
 
-import templatetags
 from .decorators import register
 from .exceptions import Abortion
 
