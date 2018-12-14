@@ -17,17 +17,15 @@ function process_result(result) {
             $.each(data.messages, function(i, msg) {
                 ul.append($('<li></li>').addClass(msg.level).append(msg.html));
             });
-            msg_tr.show(2000);
+            msg_tr.show(500);
             ul.slideDown('fast');
         }
     });
 }
 
-function get_data(object_ids) {
-    if (!object_ids) {
-        var object_ids = $('tr.initialized input.action-select, tr.running input.action-select')
-            .map(function() {return $(this).val()}).get().join(',');
-    }
+function get_data() {
+    var object_ids = $('tr.initialized input.action-select, tr.running input.action-select')
+        .map(function() {return $(this).val()}).get().join(',');
     if (object_ids) {
         var url = baseurl + '?object_ids=' + object_ids;
         $.getJSON(url, process_result);
@@ -37,10 +35,6 @@ function get_data(object_ids) {
 }
 
 $(document).ready(function() {
-    var object_ids = $('tr:not(.done) input.action-select')
-        .map(function() {return $(this).val()})
-        .get().join(',');
-    get_data(object_ids);
     interval = setInterval(get_data, 2000);
 });
 

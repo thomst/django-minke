@@ -1,12 +1,27 @@
 # -*- coding: utf-8 -*-
 from __future__ import unicode_literals
 
+from django.contrib.admin.views.main import ChangeList
 from django.core.urlresolvers import reverse
 from django.contrib import admin
 
 from .sessions import registry
 from .actions import clear_news
 from .models import BaseSession
+from .views import MessageView
+
+
+class MinkeChangeList(ChangeList):
+    def __init__(self, request, modeladmin, *args, **kwargs):
+        super(MinkeChangeList, self).__init__(request, modeladmin, *args, **kwargs)
+        sessions = BaseSession.objects.get_currents(request.user, self.result_list)
+        sessions = list(sessions.prefetch_related('messages'))
+        minke_sessions = list()
+        for obj in self.result_list:
+            session = next((s for s in sessions if s.object_id == obj.id), None)
+            if session: minke_sessions.append(session)
+            else: minke_sessions.append(None)
+        self.minke_sessions = minke_sessions
 
 
 class MinkeAdmin(admin.ModelAdmin):
@@ -30,3 +45,6 @@ class MinkeAdmin(admin.ModelAdmin):
             actions[action.__name__] = prep_action(action)
 
         return actions
+
+    def get_changelist(self, request, **kwargs):
+        return MinkeChangeList
