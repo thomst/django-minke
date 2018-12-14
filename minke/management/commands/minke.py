@@ -65,11 +65,11 @@ class Command(BaseCommand):
 
     def get_queryset(self, model_cls, options):
         if options['url_query']:
-            return self.get_changelist_queryset(model_cls, options['url_query'])
+            return self.get_changelist_queryset(model_cls, options['url_query'], options)
         else:
             return model_cls.objects.all()
 
-    def get_changelist_queryset(self, model_cls, url_query):
+    def get_changelist_queryset(self, model_cls, url_query, options):
         from django.contrib import admin
         from django.test import RequestFactory
         from django.core.urlresolvers import reverse
@@ -81,13 +81,10 @@ class Command(BaseCommand):
         url = reverse(url_pattern) + '?' + url_query
         request_factory = RequestFactory()
         request = request_factory.get(url)
-        middleware = SessionMiddleware()
-        middleware.process_request(request)
-        request.session.save()
+        request.user = self.get_user(options)
 
         # get a changelist-class
         modeladmin = admin.site._registry[model_cls]
-        # modeladmin = modeladmin_cls(model_cls, admin.site)
         changelist_cls = modeladmin.get_changelist(request)
 
         # get a changelist-instance
