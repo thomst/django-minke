@@ -3,11 +3,15 @@
 
 {% block extrastyle %}
     {{ block.super }}
-    <link rel="stylesheet" type="text/css" href="{% static 'minke/css/minke.css' %}" />
+    {% if cl.minke_sessions %}
+        <link rel="stylesheet" type="text/css" href="{% static 'minke/css/minke.css' %}" />
+    {% endif %}
 {% endblock %}
 
 {% block extrahead %}
     {{ block.super }}
     {{ media.js }}
-    <script type="text/javascript" src="{% static 'minke/js/minke.js' %}"></script>
+    {% if cl.minke_sessions %}
+        <script type="text/javascript" src="{% static 'minke/js/minke.js' %}"></script>
+    {% endif %}
 {% endblock %}

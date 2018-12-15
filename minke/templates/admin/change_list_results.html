@@ -28,10 +28,11 @@
 </thead>
 <tbody>
 {% for result in results %}
+{% if result.form.non_field_errors %}
+    <tr><td colspan="{{ result|length }}">{{ result.form.non_field_errors }}</td></tr>
+{% endif %}
+{% if cl.minke_sessions %}
     {% get_session cl forloop.counter0 %}
-    {% if result.form.non_field_errors %}
-        <tr><td colspan="{{ result|length }}">{{ result.form.non_field_errors }}</td></tr>
-    {% endif %}
     <tr class="{% cycle 'row1' 'row2' %} {{ session.status }} {{ session.proc_status }}">{% for item in result %}{{ item }}{% endfor %}</tr>
     {% if session.messages.all %}
         <tr class="minke_news {{ session.status }}"><td colspan="{{ result|length }}"><ul class="messagelist">
@@ -40,6 +41,9 @@
         {% endfor %}
         </ul></td></tr>
     {% endif %}
+{% else %}
+    <tr class="{% cycle 'row1' 'row2' %}">{% for item in result %}{{ item }}{% endfor %}</tr>
+{% endif %}
 {% endfor %}
 </tbody>
 </table>
