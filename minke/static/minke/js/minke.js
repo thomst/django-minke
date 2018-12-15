@@ -1,41 +1,47 @@
 (function($) {
 
-var interval;
-var baseurl = window.location.protocol + '//' + window.location.host + '/minke' + window.location.pathname;
+var cf = {
+    interval : 800,
+    baseurl : window.location.protocol + '//' + window.location.host + '/minke' + window.location.pathname,
+    input_selector : 'tr.initialized input.action-select, tr.running input.action-select',
+    proc_statuus : 'initialized running',
+    error_msg : 'An error occured while loading session-data.\nPlease try to reload the page.'
+}
 
-function process_result(result) {
-    $.each(result, function(id, data){
-        var proc_statuus = 'initialized running';
-        var tr = $('tr input.action-select[value='+id+']').closest('tr');
-        tr.removeClass(proc_statuus).addClass(data.proc_status);
-        if (data.status) tr.addClass(data.status);
-        if (data.messages.length) {
-            var msg_tr = $('<tr></tr>').addClass('minke_news').addClass(data.status).hide();
-            var td = $('<td></td>').attr('colspan', 20);
-            var ul = $('<ul></ul>').addClass('messagelist').hide();
-            tr.after(msg_tr.append(td.append(ul)));
-            $.each(data.messages, function(i, msg) {
-                ul.append($('<li></li>').addClass(msg.level).append(msg.html));
-            });
-            msg_tr.show(500);
-            ul.slideDown('fast');
-        }
+function process_session (id, session) {
+    var tr = $('tr input.action-select[value='+id+']').closest('tr');
+    tr.removeClass(cf.proc_statuus).addClass(session.proc_status);
+    if (session.status) tr.addClass(session.status);
+    if (session.messages.length) process_messages(tr, session);
+}
+
+function process_messages (tr, session) {
+    var msgtr = $('<tr></tr>').addClass('minke_news')
+        .addClass(session.status).hide();
+    var td = $('<td></td>').attr('colspan', 20);
+    var ul = $('<ul></ul>').addClass('messagelist').hide();
+    tr.after(msgtr.append(td.append(ul)));
+    $.each(session.messages, function(i, msg) {
+        ul.append($('<li></li>').addClass(msg.level).append(msg.html));
     });
+    msgtr.show(500);
+    ul.slideDown('fast');
 }
 
 function get_data() {
-    var object_ids = $('tr.initialized input.action-select, tr.running input.action-select')
+    var object_ids = $(cf.input_selector)
         .map(function() {return $(this).val()}).get().join(',');
     if (object_ids) {
-        var url = baseurl + '?object_ids=' + object_ids;
-        $.getJSON(url, process_result);
+        $('#action-toggle').prop('disabled', true);
+        var url = cf.baseurl + '?object_ids=' + object_ids;
+        $.getJSON(url, function(result) {$.each(result, process_session)})
+            .done(function() {window.setTimeout(get_data, cf.interval)})
+            .fail(function() {alert(cf.error_msg)});
     } else {
-        clearInterval(interval);
+        $('#action-toggle').prop('disabled', false);
     }
 }
 
-$(document).ready(function() {
-    interval = setInterval(get_data, 2000);
-});
+$(document).ready(get_data);
 
 })(django.jQuery);
