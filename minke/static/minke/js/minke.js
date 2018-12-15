@@ -28,20 +28,26 @@ function process_messages (tr, session) {
     ul.slideDown('fast');
 }
 
-function get_data() {
+function get_json (url) {
+    $.getJSON(url, function(result) {$.each(result, process_session)})
+        .fail(function() {alert(cf.error_msg)})
+        .done(process)
+}
+
+function process() {
     var object_ids = $(cf.input_selector)
         .map(function() {return $(this).val()}).get().join(',');
     if (object_ids) {
         $('#action-toggle').prop('disabled', true);
+        $('#result_list').addClass('running');
         var url = cf.baseurl + '?object_ids=' + object_ids;
-        $.getJSON(url, function(result) {$.each(result, process_session)})
-            .done(function() {window.setTimeout(get_data, cf.interval)})
-            .fail(function() {alert(cf.error_msg)});
+        window.setTimeout(get_json, cf.interval, url);
     } else {
         $('#action-toggle').prop('disabled', false);
+        $('#result_list').removeClass('running');
     }
 }
 
-$(document).ready(get_data);
+$(document).ready(process);
 
 })(django.jQuery);
