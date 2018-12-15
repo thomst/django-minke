@@ -38,3 +38,7 @@ output.stdout = False
 output.stderr = False
 output.user = False
 output.aborts = False
+
+# default-settings
+if not hasattr(settings, 'MINKE_CLI_USER'):
+    settings.MINKE_CLI_USER = 'admin'

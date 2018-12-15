@@ -7,32 +7,18 @@ from django.contrib.admin.options import IncorrectLookupParameters
 from django.core.exceptions import FieldError
 from django.contrib.auth.models import User
 from django.contrib.auth import authenticate
+from django.conf import settings
 
 from ...engine import process
 from ...sessions import registry
-
-
-class FilterArgumentError(Exception):
-    pass
-
-
-class InvalidFormData(Exception):
-    pass
+from ...utils import item_by_attr
+from ...exceptions import InvalidMinkeSetup
 
 
 class Command(BaseCommand):
-    help = 'Minke-Api (dev)'
+    help = 'Run minke-sessions.'
 
     def add_arguments(self, parser):
-        parser.add_argument(
-            '--list',
-            action='store_true',
-            help='List all available sessions.')
-        parser.add_argument(
-            '-s',
-            '--silent',
-            action='store_true',
-            help='Skip output of inconspicuous players.')
         parser.add_argument(
             'session',
             nargs='?',
@@ -49,31 +35,101 @@ class Command(BaseCommand):
             '--form-data',
             help='Key-value-pairs used for the session-form.')
         parser.add_argument(
-            '-o',
             '--offset',
             type=int,
             help='Offset')
         parser.add_argument(
-            '-l',
             '--limit',
             type=int,
             help='Limit')
+        parser.add_argument(
+            '--list-sessions',
+            action='store_true',
+            help='List sessions. But do nothing.')
+        parser.add_argument(
+            '--list-players',
+            action='store_true',
+            help='List players. But do nothing.')
 
-    def usage(self, error_msg=None):
-        if error_msg: print 'ERROR:', error_msg
-        self.print_help('manage.py', 'minke')
+    def print_usage_and_quit(self, error=None):
+        if error:
+            print '\033[1;31m' + '[ERROR] ' + unicode(error) + '\033[0m'
+            print
+        self.print_help('manage.py', 'minkesessions')
+        quit(1 if error else 0)
+
+    def get_user(self, options):
+        user = settings.MINKE_CLI_USER
+        try:
+            user = User.objects.get(username=user)
+        except User.DoesNotExist:
+            msg = 'MINKE_CLI_USER does not exist: {user}'
+            raise InvalidMinkeSetup(msg)
+        return user
+
+    def get_session_cls(self, options):
+        session = options['session']
+        if not session:
+            msg = 'Missing session-argument'
+            raise CommandError(msg)
+
+        session_cls = item_by_attr(registry, '__name__', session)
+        if not session_cls:
+            msg = 'Unknown session: {}'.format(session)
+            raise CommandError(msg)
+
+        return session_cls
+
+    def get_model_cls(self, session_cls, options):
+        model = options['model']
+
+        if model:
+            model_cls = item_by_attr(session_cls.models, '__name__', model)
+            if not model_cls:
+                msg = 'Invalid model for {}: {}'.format(session_cls.__name__, model)
+                raise CommandError(msg)
+        elif len(session_cls.models) == 1:
+            model_cls = session_cls.models[0]
+        else:
+            msg = 'You need to specify a model to run {} with.'
+            msg = msg.format(session_cls, session_cls.models)
+            raise CommandError(msg)
+
+        return model_cls
 
     def get_queryset(self, model_cls, options):
         if options['url_query']:
-            return self.get_changelist_queryset(model_cls, options['url_query'], options)
+            queryset = self.get_changelist_queryset(model_cls, options)
         else:
-            return model_cls.objects.all()
+            queryset = model_cls.objects.all()
 
-    def get_changelist_queryset(self, model_cls, url_query, options):
+        # slicing the queryset
+        offset = options['offset']
+        limit = options['limit']
+        if type(offset) is type(limit) is int:
+            limit = offset + limit
+
+        try:
+            queryset = queryset[offset:limit]
+        except AssertionError:
+            msg = 'Invalid slicing: [{}:{}]'.format(offset, limit)
+            raise CommandError(msg)
+
+        # FIXME: OFFSET- and LIMIT-statements does not work in subqueries,
+        # which we use to get the host-query. Therefor we need a workaround:
+        if offset or limit:
+            ids = list(queryset.values_list('id', flat=True))
+            queryset = model_cls.objects.filter(id__in=ids)
+
+        return queryset
+
+    def get_changelist_queryset(self, model_cls, options):
         from django.contrib import admin
         from django.test import RequestFactory
         from django.core.urlresolvers import reverse
         from django.contrib.sessions.middleware import SessionMiddleware
+
+        url_query = options['url_query']
 
         # get a request-instance with session-middleware
         model_label = model_cls._meta.label_lower.replace('.', '_')
@@ -100,13 +156,11 @@ class Command(BaseCommand):
                 search_fields, list_select_related, modeladmin.list_per_page,
                 modeladmin.list_max_show_all, modeladmin.list_editable, modeladmin)
         except (IncorrectLookupParameters, FieldError):
-            raise IncorrectLookupParameters
+            msg = 'Invalid url-query: {}'.format(url_query)
+            raise CommandError(msg)
 
         # prepared to get the queryset
         return changelist.get_queryset(request)
-
-    def filter_queryset(self, queryset, options):
-        return queryset
 
     def get_form_data(self, session_cls, options):
         form_cls = session_cls.FORM
@@ -123,10 +177,10 @@ class Command(BaseCommand):
                 msg = 'Invalid form-data: {}\n'.format(form_data)
                 for field, error in form.errors.items():
                     msg += '{}: {}'.format(field, error[0])
-                raise InvalidFormData(msg)
+                raise CommandError(msg)
             except Exception as error:
                 msg = 'Invalid form-data: {}\n{}'.format(form_data, error)
-                raise InvalidFormData(msg)
+                raise CommandError(msg)
 
         # otherwise prompt for it
         else:
@@ -146,91 +200,38 @@ class Command(BaseCommand):
         # got valid form-data now
         return form.cleaned_data
 
-    def get_user(self, options):
-        # TODO: add options
-        username = options.get('username', None)
-        password = options.get('password', None)
-        if username:
-            user = authenticate(unsername=username, password=password)
-        else:
-            # FIXME: Need a config for this!
-            # use admin as default-user
-            try:
-                user = User.objects.get(username='admin')
-            except User.DoesNotExist:
-                user = None
-        return user
-
     def handle(self, *args, **options):
-        session = options['session']
-        model = options['model']
-
-        # No session is given nor are we asked to list sessions.
-        if not options['list'] and not session:
-            self.usage()
-            return
-
-        # Do we have a user?
-        user = self.get_user(options)
-        if not user:
-            # TODO: More detailed error-msg
-            self.usage('Invalid user.')
-            return
-
-        # List available session-classes
-        if options['list']:
+        if options['list_sessions']:
             for session_cls in registry:
                 print session_cls.__name__
             return
 
-        # Do we have a valid session-class?
-        session_cls = next((s for s in registry if s.__name__ == session), None)
-        if not session_cls:
-            self.usage('Unknown session: {}'.format(session))
-            return
-
-        # Do we have a valid model?
-        if model:
-            model_cls = next((m for m in session_cls.models if m.__name__ == model), None)
-            if not model_cls:
-                msg = 'Invalid model for {}: {}'.format(session_cls, model)
-                self.usage(msg)
-                return
-        elif len(session_cls.models) > 1:
-            msg = 'No model specified, but {} could be run with different models: {}'.format(
-                session_cls,
-                session_cls.models)
-            self.usage(msg)
-            return
-        else:
-            model_cls = session_cls.models[0]
-
-        # get form-data if needed
         try:
-            form_data = self.get_form_data(session_cls, options)
-        except InvalidFormData as error:
-            self.usage(str(error))
-            return
+            user = self.get_user(options)
+        except CommandError as err:
+            self.print_usage_and_quit(err)
 
-        # get queryset
+        try:
+            session_cls = self.get_session_cls(options)
+        except CommandError as err:
+            self.print_usage_and_quit(err)
+
+        try:
+            model_cls = self.get_model_cls(session_cls, options)
+        except CommandError as err:
+            self.print_usage_and_quit(err)
+
         try:
             queryset = self.get_queryset(model_cls, options)
-        except IncorrectLookupParameters as error:
-            self.usage('Incorrect url-query. {}'.format(error))
-            return
+        except CommandError as err:
+            self.print_usage_and_quit(err)
 
-        # filter queryset
         try:
-            queryset = self.filter_queryset(queryset, options)
-        except FilterArgumentError as error:
-            self.usage(str(error))
-            return
+            form_data = self.get_form_data(session_cls, options)
+        except CommandError as err:
+            self.print_usage_and_quit(err)
 
-        # slicing the queryset
-        offset = options['offset']
-        limit = options['limit']
-        if type(offset) is type(limit) is int: limit = offset + limit
-        queryset = queryset[offset:limit]
-
-        # go for it...
-        process(session_cls, queryset, form_data, user, False)
+        if options['list_players']:
+            for obj in queryset: print obj
+        else:
+            process(session_cls, queryset, form_data, user, False)

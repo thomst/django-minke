@@ -9,6 +9,7 @@ from .sessions import registry
 from .actions import clear_news
 from .models import BaseSession
 from .views import MessageView
+from .utils import item_by_attr
 
 
 class MinkeChangeList(ChangeList):
@@ -18,7 +19,7 @@ class MinkeChangeList(ChangeList):
         sessions = list(sessions.prefetch_related('messages'))
         minke_sessions = list()
         for obj in self.result_list:
-            session = next((s for s in sessions if s.object_id == obj.id), None)
+            session = item_by_attr(sessions, 'object_id', obj.id)
             if session: minke_sessions.append(session)
             else: minke_sessions.append(None)
         self.minke_sessions = minke_sessions
