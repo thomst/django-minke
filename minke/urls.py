@@ -1,4 +1,4 @@
-"""foobar URL Configuration
+"""minke URL Configuration
 
 The `urlpatterns` list routes URLs to views. For more information please see:
     https://docs.djangoproject.com/en/1.11/topics/http/urls/
@@ -14,9 +14,9 @@ Including another URLconf
     2. Add a URL to urlpatterns:  url(r'^blog/', include('blog.urls'))
 """
 from django.conf.urls import url
-from .views import MessageView
+from .views import CurrentSessionAPI
 
 
 urlpatterns = [
-    url(r'^minke/(?P<app>.+)/(?P<model>.+)/$', MessageView.as_view()),
+    url(r'^minkeapi/currentsessions/(?P<model>.+)/', CurrentSessionAPI.as_view()),
 ]

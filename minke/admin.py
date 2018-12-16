@@ -8,7 +8,6 @@ from django.contrib import admin
 from .sessions import registry
 from .actions import clear_news
 from .models import BaseSession
-from .views import MessageView
 from .utils import item_by_attr
 
 

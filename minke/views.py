@@ -13,10 +13,16 @@ from django.contrib.auth.mixins import LoginRequiredMixin
 from django.contrib.contenttypes.models import ContentType
 from django.http import JsonResponse
 
+from rest_framework.generics import ListAPIView
+from rest_framework.permissions import IsAuthenticated
+from rest_framework.exceptions import NotFound
+
 from minke import engine
 from .forms import MinkeForm
 from .forms import InitialPasswordForm
 from .models import BaseSession
+from .serializers import SessionSerializer
+from .exceptions import InvalidURLQuery
 
 
 class SessionView(PermissionRequiredMixin, View):
@@ -107,22 +113,28 @@ class SessionView(PermissionRequiredMixin, View):
         engine.process(session_cls, queryset, session_data, request.user, join, request)
 
 
-class MessageView(LoginRequiredMixin, View):
-    raise_exception = True
+class CurrentSessionAPI(ListAPIView):
+    """
+    API endpoint to retrieve current sessions.
+    """
+    permission_classes = (IsAuthenticated,)
+    serializer_class = SessionSerializer
 
     def get_queryset(self):
         try:
             object_ids = self.request.GET['object_ids'].split(',')
+            object_ids = [int(id) for id in object_ids]
         except KeyError:
-            raise AttributeError('Missing object-ids.')
+            object_ids = list()
+        except ValueError:
+            msg = 'Object_ids must be a list of integers.'
+            raise InvalidURLQuery(msg)
+
         try:
             model = self.kwargs['model']
-        except KeyError:
-            raise AttributeError('Missing model.')
-        try:
             content_type = ContentType.objects.get(model=model)
         except ContentType.DoesNotExist:
-            raise AttributeError('Invalid model.')
+            raise NotFound("There is no model named '{}'".format(model))
 
         return BaseSession.objects.filter(
             object_id__in=object_ids,
@@ -130,24 +142,3 @@ class MessageView(LoginRequiredMixin, View):
             user=self.request.user,
             current=True
             ).prefetch_related('messages')
-
-    def get_dict(self, queryset):
-        data = dict()
-        for session in queryset:
-            session_dict = dict()
-            session_dict['status'] = session.status
-            session_dict['proc_status'] = session.proc_status
-            session_dict['object_id'] = session.object_id
-            session_dict['messages'] = list()
-            for message in session.messages.all():
-                message_dict = dict()
-                message_dict['level'] = message.level
-                message_dict['html'] = message.html
-                session_dict['messages'].append(message_dict)
-            data[session.object_id] = session_dict
-        return data
-
-    def get(self, request, *args, **kwargs):
-        queryset = self.get_queryset()
-        data = self.get_dict(queryset)
-        return JsonResponse(data)

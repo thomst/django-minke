@@ -2,14 +2,18 @@
 
 var cf = {
     interval : 800,
-    baseurl : window.location.protocol + '//' + window.location.host + '/minke' + window.location.pathname,
+    baseurl : window.location.protocol + '//'
+              + window.location.host
+              + '/minkeapi/currentsessions/'
+              + window.location.pathname.split('/')[2],
     input_selector : 'tr.initialized input.action-select, tr.running input.action-select',
     proc_statuus : 'initialized running',
-    error_msg : 'An error occured while loading session-data.\nPlease try to reload the page.'
+    error_msg : 'minkeapi-error: '
 }
 
-function process_session (id, session) {
-    var tr = $('tr input.action-select[value='+id+']').closest('tr');
+function process_session (i, session) {
+    object_id = session.object_id;
+    var tr = $('tr input.action-select[value='+object_id+']').closest('tr');
     tr.removeClass(cf.proc_statuus).addClass(session.proc_status);
     if (session.status) tr.addClass(session.status);
     if (session.messages.length) process_messages(tr, session);
@@ -30,7 +34,8 @@ function process_messages (tr, session) {
 
 function get_json (url) {
     $.getJSON(url, function(result) {$.each(result, process_session)})
-        .fail(function() {alert(cf.error_msg)})
+        .fail(function(result) {
+            console.log(cf.error_msg + result.responseJSON.detail)})
         .done(process)
 }
 
