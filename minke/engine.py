@@ -19,6 +19,7 @@ from .exceptions import Abortion
 from .exceptions import NetworkError
 from .exceptions import SocketError
 from .exceptions import CommandTimeout
+from .management.commands import Printer
 
 
 def process(session_cls, queryset, session_data, user, join, request=None):
@@ -139,7 +140,8 @@ class QueueProcessor(Thread):
         for message in session.news:
             session.messages.add(message, bulk=False)
 
-        if not self.request: session.prnt()
+        if not self.request:
+            Printer.prnt(session)
 
     def release_lock(self, host):
         Host.objects.filter(id=host.id).release_lock()
