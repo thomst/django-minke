@@ -2,9 +2,10 @@
 from __future__ import unicode_literals
 
 from StringIO import StringIO
+import subprocess
 import sys
 
-from django.test import TestCase
+from django.test import TransactionTestCase
 from django.core.management import call_command
 from django import forms
 
@@ -40,7 +41,7 @@ class InOut(list):
         sys.stdout = self._stdout
 
 
-class MinkeManagerTest(TestCase):
+class MinkeManagerTest(TransactionTestCase):
 
     def setUp(self):
         create_user()
@@ -60,6 +61,10 @@ class MinkeManagerTest(TestCase):
 
     def reset_options(self):
         self.options = self._options
+
+    def subcall(self, *args):
+        cmd = [sys.executable, sys.argv[0], 'minkesession']
+        return subprocess.check_output(cmd + list(args)).splitlines()
 
     def test_01_get_queryset(self):
         # simple queryset - just all elements
@@ -121,26 +126,22 @@ class MinkeManagerTest(TestCase):
 
         # call without model
         with InOut() as out:
-            try: call_command('minkesession', 'DummySession')
-            except SystemExit: pass
+            self.assertRaises(SystemExit, call_command, 'minkesession', 'DummySession')
         self.assertRegex(out[0], '[ERROR].+model.*')
 
         # call with invalid session
         with InOut() as out:
-            try: call_command('minkesession', 'Fake')
-            except SystemExit: pass
+            self.assertRaises(SystemExit, call_command, 'minkesession', 'Fake')
         self.assertRegex(out[0], '[ERROR].+session.*')
 
         # call with invalid model
         with InOut() as out:
-            try: call_command('minkesession', 'DummySession', 'Fake')
-            except SystemExit: pass
+            self.assertRaises(SystemExit, call_command, 'minkesession', 'DummySession', 'Fake')
         self.assertRegex(out[0], '[ERROR].+model.*')
 
         # call with invalid url_query
         with InOut() as out:
-            try: call_command('minkesession', 'DummySession', 'Server', '--url-query=foobar')
-            except SystemExit: pass
+            self.assertRaises(SystemExit, call_command, 'minkesession', 'DummySession', 'Server', '--url-query=foobar')
         self.assertRegex(out[0], '[ERROR].+url-query.*')
 
     def test_04_valid_calls(self):
@@ -177,15 +178,18 @@ class MinkeManagerTest(TestCase):
         self.assertRegex(out[2], 'This field is required')
         self.assertRegex(out[3], 'Enter a whole number')
 
+        # call_command tries to wrap sql-action within BEGIN and COMMIT. But it
+        # does not realize actions that are done by the consumer-thread.
+        # That is probably the reasen why the test-db are destroyed too early.
+        # So for real actions we need to use a subprocess-call.
+
         # valid call
-        # with InOut() as out:
-        #     call_command('minkesession', 'DummySession', 'Server')
-        # self.assertRegex(out[0], 'host_[0-9]{1,2}_label[0-9]{3}')
-        # self.assertEqual(len(out), 20)
-        #
+        out = self.subcall('DummySession', 'Server')
+        self.assertRegex(out[0], 'host_[0-9]{1,2}_label[0-9]{3}')
+        self.assertEqual(len(out), 20)
+
         # # valid call without model
         # # works if session where registered with only one model
-        # with InOut() as out:
-        #     call_command('minkesession', 'SingleModelDummySession')
-        # self.assertRegex(out[0], 'host_[0-9]{1,2}_label[0-9]{3}')
-        # self.assertEqual(len(out), 20)
+        out = self.subcall('SingleModelDummySession')
+        self.assertRegex(out[0], 'host_[0-9]{1,2}_label[0-9]{3}')
+        self.assertEqual(len(out), 20)
