@@ -99,6 +99,7 @@ class Session(ProxyMixin, BaseSession):
     def __init__(self, *args, **kwargs):
         super(Session, self).__init__(*args, **kwargs)
         self.news = list()
+        self.session_name = self.__class__.__name__
 
     # DEPRICATED
     def set_status(self, status):

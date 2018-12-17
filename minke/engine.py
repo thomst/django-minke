@@ -45,7 +45,6 @@ def process(session_cls, queryset, session_data, user, join, request=None):
             continue
 
         session = session_cls()
-        session.session_name = session_cls.__name__
         session.user = user
         session.player = player
         session.session_data = session_data
