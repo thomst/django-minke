@@ -117,7 +117,7 @@ class Command(BaseCommand):
 
         # FIXME: OFFSET- and LIMIT-statements does not work in subqueries,
         # which we use to get the host-query. Therefor we need a workaround:
-        if offset or limit:
+        if type(offset) is int or type(limit) is int:
             ids = list(queryset.values_list('id', flat=True))
             queryset = model_cls.objects.filter(id__in=ids)
 
