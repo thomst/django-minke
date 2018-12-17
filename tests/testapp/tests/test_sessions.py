@@ -45,7 +45,7 @@ class SessionTest(TestCase):
         MethodTestSession.models = tuple()
         sessions.registry = self._registry[:]
 
-    def init_session(self, player, data):
+    def init_session(self, player, data=None):
         user = User.objects.get(username='admin')
         return MethodTestSession(user=user, player=player, session_data=data)
 
@@ -56,23 +56,19 @@ class SessionTest(TestCase):
 
         # wrong session-class
         args = [Foobar]
-        regex = 'must subclass Session'
-        self.assertRaisesRegex(InvalidMinkeSetup, regex, register, *args)
+        self.assertRaises(InvalidMinkeSetup, register, *args)
         self.reset_registry()
 
         # missing minke-models
         args = [MethodTestSession]
-        regex = 'one model must be specified'
-        self.assertRaisesRegex(InvalidMinkeSetup, regex, register, *args)
+        self.assertRaises(InvalidMinkeSetup, register, *args)
         self.reset_registry()
 
         # missing get_host-method
         args = [MethodTestSession, Foobar]
-        regex = 'get_host-method'
-        self.assertRaisesRegex(InvalidMinkeSetup, regex, register, *args)
+        self.assertRaises(InvalidMinkeSetup, register, *args)
         self.reset_registry()
 
-        # FIXME: how to clear the registry!
         # register MethodTestSession
         register(MethodTestSession, Server)
         self.assertTrue(MethodTestSession in sessions.registry)
@@ -176,3 +172,17 @@ class SessionTest(TestCase):
         result = UnicodeResult(attr_str, 'ascii', 'replace')
         self.assertEqual(result, 'h��llo')
         self.assertEqual(result.stderr, 'w��rld')
+
+    def test_05_set_status(self):
+
+        session = self.init_session(self.server)
+
+        session.set_status('error')
+        self.assertTrue(session.status == 'error')
+        session.set_status('WARNING')
+        self.assertTrue(session.status == 'warning')
+        session.set_status(True)
+        self.assertTrue(session.status == 'success')
+        session.set_status(False)
+        self.assertTrue(session.status == 'error')
+        self.assertRaises(InvalidMinkeSetup, session.set_status, 'foobar')
