@@ -96,17 +96,37 @@ class Session(ProxyMixin, BaseSession):
     CONFIRM = False
     JOIN = True
 
+    # admin-action-logic
+    models = tuple()
+    short_description = None
+    permission_required = tuple()
+
+    @classmethod
+    def as_action(cls):
+        def action(modeladmin, request, queryset):
+            session_view = SessionView.as_view()
+            return session_view(request, session_cls=cls, queryset=queryset)
+        action.__name__ = cls.__name__
+        action.short_description = cls.short_description
+        return action
+
     def __init__(self, *args, **kwargs):
         super(Session, self).__init__(*args, **kwargs)
         self.news = list()
         self.session_name = self.__class__.__name__
 
-    # DEPRICATED
     def set_status(self, status):
+        """
+        Set session-status. Pass a valid session-status or a boolean.
+        """
+        statuus = [s[0] for s in self.RESULT_STATES]
         if type(status) == bool:
             self.status = 'success' if status else 'error'
-        else:
+        elif status.lower() in statuus:
             self.status = status.lower()
+        else:
+            msg = 'session-status must be one of {}'.format(statuus)
+            raise InvalidMinkeSetup(msg)
 
     def process(self):
         """
@@ -125,22 +145,6 @@ class Session(ProxyMixin, BaseSession):
         This method is called after fabric's work is done.
         Database-related actions should be done here."""
         pass
-
-
-    # admin-action-logic
-    models = tuple()
-    short_description = None
-    permission_required = tuple()
-
-    @classmethod
-    def as_action(cls):
-        def action(modeladmin, request, queryset):
-            session_view = SessionView.as_view()
-            return session_view(request, session_cls=cls, queryset=queryset)
-        action.__name__ = cls.__name__
-        action.short_description = cls.short_description
-        return action
-
 
     # helper-methods
     def format_cmd(self, cmd):
