@@ -1,6 +1,8 @@
 # -*- coding: utf-8 -*-
 from __future__ import unicode_literals
 
+import sys
+
 from django.core.management.base import BaseCommand
 from django.core.management.base import CommandError
 from django.contrib.admin.options import IncorrectLookupParameters
@@ -56,7 +58,7 @@ class Command(BaseCommand):
             print '\033[1;31m' + '[ERROR] ' + unicode(error) + '\033[0m'
             print
         self.print_help('manage.py', 'minkesessions')
-        quit(1 if error else 0)
+        sys.exit(1 if error else 0)
 
     def get_user(self, options):
         user = settings.MINKE_CLI_USER
