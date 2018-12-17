@@ -1,4 +1,5 @@
 *.pyc
 *~
-test.db
 .coverage
+my.cnf
+*.backup

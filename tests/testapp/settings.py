@@ -77,9 +77,11 @@ WSGI_APPLICATION = 'testapp.wsgi.application'
 
 DATABASES = {
     'default': {
-        'ENGINE': 'django.db.backends.sqlite3',
-        # 'NAME': ':memory:',
-        'NAME': os.path.join(BASE_DIR, 'test.db'),
+        'ENGINE': 'django.db.backends.mysql',
+        'NAME': 'minketestapp',
+        'OPTIONS': {
+            'read_default_file': '/home/thomas/django/minke/tests/my.cnf',
+        },
     }
 }
 

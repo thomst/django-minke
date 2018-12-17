@@ -52,3 +52,33 @@ class TestFormSession(Session):
         two = self.session_data['two']
         msg = '{:d} + {:d} = {:d}'.format(one, two, one + two)
         self.news.append(Message(msg, 'WARNING'))
+
+
+class MethodTestSession(UpdateEntriesSession):
+    def process(self):
+        return getattr(self, 'test_' + self.session_data['test'])()
+
+    def test_execute(self):
+        # execute-calls: valid, valid + stderr, invalid
+        self.execute('echo "hello wörld"')
+        self.execute('echo "hello wörld" 1>&2')
+        self.execute('[ 1 == 2 ]')
+        return self
+
+    def test_update(self):
+        self.update_field('hostname', 'echo "foobär"')
+        return self
+
+    def test_update_regex(self):
+        self.update_field('hostname', 'echo "foobär"', '(foo).+')
+        return self
+
+    def test_update_regex_fails(self):
+        self.update_field('hostname', 'echo "foobär"', 'fails')
+        return self
+
+    def test_unicode_result(self):
+        return self.run('(echo "hällo"; echo "wörld" 1>&2)')
+
+    def test_unicode_result_replace(self):
+        return self.run('(echo "hällo"; echo "wörld" 1>&2)', 'ascii')

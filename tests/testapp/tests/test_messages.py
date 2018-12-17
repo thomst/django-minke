@@ -11,19 +11,7 @@ from minke.messages import ExceptionMessage
 
 
 class MessageTest(TestCase):
-    def test_01_set_level(self):
-        message = Message(str(), 'error')
-        self.assertEqual(message.level, 'error')
-        message = Message(str(), 'ERROR')
-        self.assertEqual(message.level, 'error')
-        message = Message(str(), Message.ERROR)
-        self.assertEqual(message.level, 'error')
-        message = Message(str(), False)
-        self.assertEqual(message.level, 'error')
-        message = Message(str(), True)
-        self.assertEqual(message.level, 'info')
-
-    def test_02_output(self):
+    def test_01_output(self):
         message = Message('foobär')
         self.assertEqual(message.text, 'foobär')
         self.assertEqual(message.html, 'foobär')

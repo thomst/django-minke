@@ -7,6 +7,7 @@ from fabric.operations import _AttributeString
 
 from django.test import TestCase
 from django.contrib.auth.models import Permission
+from django.contrib.auth.models import User
 
 from minke import sessions
 from minke.utils import UnicodeResult
@@ -17,39 +18,11 @@ from minke.exceptions import InvalidMinkeSetup
 from minke.models import Host
 from minke.engine import process
 from ..models import Server
+from ..sessions import MethodTestSession
 from .utils import create_multiple_hosts
 from .utils import create_testapp_player
 from .utils import create_localhost
-
-
-class TestSession(UpdateEntriesSession):
-    def process(self):
-        return getattr(self, 'test_' + self.session_data['test'])()
-
-    def test_execute(self):
-        # execute-calls: valid, valid + stderr, invalid
-        self.execute('echo "hello wörld"')
-        self.execute('echo "hello wörld" 1>&2')
-        self.execute('[ 1 == 2 ]')
-        return self
-
-    def test_update(self):
-        self.update_field('hostname', 'echo "foobär"')
-        return self
-
-    def test_update_regex(self):
-        self.update_field('hostname', 'echo "foobär"', '(foo).+')
-        return self
-
-    def test_update_regex_fails(self):
-        self.update_field('hostname', 'echo "foobär"', 'fails')
-        return self
-
-    def test_unicode_result(self):
-        return self.run('(echo "hällo"; echo "wörld" 1>&2)')
-
-    def test_unicode_result_replace(self):
-        return self.run('(echo "hällo"; echo "wörld" 1>&2)', 'ascii')
+from .utils import create_user
 
 
 def process_session(session, hoststring):
@@ -60,6 +33,7 @@ def process_session(session, hoststring):
 
 class SessionTest(TestCase):
     def setUp(self):
+        create_user()
         create_multiple_hosts()
         create_testapp_player()
         create_localhost()
@@ -68,8 +42,12 @@ class SessionTest(TestCase):
         self._registry = sessions.registry[:]
 
     def reset_registry(self):
-        TestSession.models = tuple()
+        MethodTestSession.models = tuple()
         sessions.registry = self._registry[:]
+
+    def init_session(self, player, data):
+        user = User.objects.get(username='admin')
+        return MethodTestSession(user=user, player=player, session_data=data)
 
     def test_01_register_session(self):
         # a monkey-class
@@ -83,70 +61,54 @@ class SessionTest(TestCase):
         self.reset_registry()
 
         # missing minke-models
-        args = [TestSession]
+        args = [MethodTestSession]
         regex = 'one model must be specified'
         self.assertRaisesRegex(InvalidMinkeSetup, regex, register, *args)
         self.reset_registry()
 
         # missing get_host-method
-        args = [TestSession, Foobar]
+        args = [MethodTestSession, Foobar]
         regex = 'get_host-method'
         self.assertRaisesRegex(InvalidMinkeSetup, regex, register, *args)
         self.reset_registry()
 
         # FIXME: how to clear the registry!
-        # register TestSession
-        register(TestSession, Server)
-        self.assertTrue(TestSession in sessions.registry)
+        # register MethodTestSession
+        register(MethodTestSession, Server)
+        self.assertTrue(MethodTestSession in sessions.registry)
         self.reset_registry()
 
-        # register TestSession with Host-object
-        register(TestSession, Host)
-        self.assertTrue(TestSession in sessions.registry)
+        # register MethodTestSession with Host-object
+        register(MethodTestSession, Host)
+        self.assertTrue(MethodTestSession in sessions.registry)
         self.reset_registry()
 
         # register with create_permission
-        register(TestSession, Server, create_permission=True)
-        self.assertTrue(TestSession in sessions.registry)
-        Permission.objects.get(codename='run_test_session_on_server')
+        register(MethodTestSession, Server, create_permission=True)
+        self.assertTrue(MethodTestSession in sessions.registry)
+        Permission.objects.get(codename='run_method_test_session_on_server')
         self.reset_registry()
 
-    def test_02_set_status(self):
-
-        session = TestSession(self.host, self.server)
-
-        session.set_status('error')
-        self.assertTrue(session.status == 'error')
-        session.set_status(session.ERROR)
-        self.assertTrue(session.status == 'error')
-        session.set_status('ERROR')
-        self.assertTrue(session.status == 'error')
-        session.set_status(True)
-        self.assertTrue(session.status == 'success')
-        session.set_status(False)
-        self.assertTrue(session.status == 'error')
-        self.assertRaises(ValueError, session.set_status, 'foobar')
-
-    def test_03_cmd_format(self):
+    def test_02_cmd_format(self):
 
         # get formatted command-string (using players-attributes and session-data)
         cmd_format = '{hostname} {foo}'
         session_data = dict(foo='foo')
-        session = TestSession(self.host, self.server, **session_data)
+        session = self.init_session(self.server, session_data)
         cmd = session.format_cmd(cmd_format)
         self.assertEqual(cmd, 'localhost foo')
 
         # session-data should be have precedence
         session_data = dict(hostname='foobar', foo='foo')
-        session = TestSession(self.host, self.server, **session_data)
+        session = self.init_session(self.server, session_data)
         cmd = session.format_cmd(cmd_format)
         self.assertEqual(cmd, 'foobar foo')
 
     # TODO: skipIf-decorator if localhost cannot be connected
-    def test_04_processing(self):
+    def test_03_processing(self):
 
         # test message-calls
-        session = TestSession(self.host, self.server, test='execute')
+        session = self.init_session(self.server, dict(test='execute'))
         session = process_session(session, self.host.hoststring)
         news = session.news
         self.assertEqual(news[0].level, 'info')
@@ -157,29 +119,29 @@ class SessionTest(TestCase):
         self.assertRegex(news[2].text, 'code\[1\] +\[ 1 == 2 \]')
 
         # test update_field
-        session = TestSession(self.host, self.server, test='update')
+        session = self.init_session(self.server, dict(test='update'))
         session = process_session(session, self.host.hoststring)
         self.assertEqual(session.player.hostname, 'foobär')
 
         # test update_field with regex
-        session = TestSession(self.host, self.server, test='update_regex')
+        session = self.init_session(self.server, dict(test='update_regex'))
         session = process_session(session, self.host.hoststring)
         self.assertEqual(session.player.hostname, 'foo')
 
         # test update_field with failing regex
-        session = TestSession(self.host, self.server, test='update_regex_fails')
+        session = self.init_session(self.server, dict(test='update_regex_fails'))
         session = process_session(session, self.host.hoststring)
         self.assertEqual(session.news[0].level, 'error')
         self.assertRegex(session.news[0].text, 'code\[0\] +echo "foobär"')
 
         # test update_field-call with invalid field
-        session = TestSession(self.host, self.server, test='update_invalid_field')
+        session = self.init_session(self.server, dict(test='update_invalid_field'))
         self.assertRaises(AttributeError, session.update_field, 'nofield', 'echo')
 
-    def test_05_unicdoe_result(self):
+    def test_04_unicdoe_result(self):
 
         # test with utf-8-encoding
-        session = TestSession(self.host, self.server, test='unicode_result')
+        session = self.init_session(self.server, dict(test='unicode_result'))
         result = process_session(session, self.host.hoststring)
         self.assertEqual(type(result), UnicodeResult)
         self.assertEqual(type(result.stdout), unicode)
@@ -188,7 +150,7 @@ class SessionTest(TestCase):
         self.assertEqual(result.stderr, 'wörld')
 
         # test with ascii-encoding using replace
-        session = TestSession(self.host, self.server, test='unicode_result_replace')
+        session = self.init_session(self.server, dict(test='unicode_result_replace'))
         result = process_session(session, self.host.hoststring)
         self.assertEqual(result, 'h��llo')
         self.assertEqual(result.stderr, 'w��rld')
