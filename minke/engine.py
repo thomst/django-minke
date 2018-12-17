@@ -58,20 +58,21 @@ def process(session_cls, queryset, session_data, user, join, request=None):
     if not host_sessions: return
 
     queue = Queue()
-    queue_processor = QueueProcessor(host_sessions, queue, request)
-    queue_processor.start()
+    consumer = Consumer(host_sessions, queue, bool(request))
+    consumer.start()
 
-    initiator_thread = Thread(target=initiator, args=(host_sessions, queue))
-    initiator_thread.start()
-    if join: initiator_thread.join()
+    worker = Thread(target=run_fabric, args=(host_sessions, queue))
+    worker.start()
+    if join: worker.join()
 
 
-def initiator(host_sessions, queue):
+def run_fabric(host_sessions, queue):
     try:
         session_processor = SessionProcessor(host_sessions, queue)
         execute(session_processor.run, hosts=host_sessions.keys())
     finally:
-        queue.put(('stop', None))
+        queue.put(('stop',))
+        disconnect_all()
 
 
 class SessionProcessor(object):
@@ -109,37 +110,35 @@ class SessionProcessor(object):
         self.queue.put(('release_lock', session.player.get_host()))
 
 
-class QueueProcessor(Thread):
-    def __init__(self, host_sessions, queue, request):
-        super(QueueProcessor, self).__init__()
+class Consumer(Thread):
+    def __init__(self, host_sessions, queue, prnt):
+        super(Consumer, self).__init__()
         self.queue = queue
         self.host_sessions = host_sessions
-        self.request = request
+        self.prnt = prnt
 
     def run(self):
         while True:
-            action, arg = self.queue.get()
-            if action == 'stop':
-                disconnect_all()
-                break
-            else:
-                getattr(self, action)(arg)
+            directives = self.queue.get()
+            action = directives[0]
+            args = directives[1:]
+            if action == 'stop': break
+            else: getattr(self, action)(*args)
 
     def start_session(self, session):
         session.proc_status = 'running'
-        session.save()
+        session.save(update_fields=['proc_status'])
 
     def end_session(self, session):
         session.rework()
         session.proc_status = 'done'
-        if not session.status:
-            session.status = 'success'
-        session.save()
+        session.status = session.status or 'success'
+        session.save(update_fields=['status', 'proc_status'])
 
         for message in session.news:
             session.messages.add(message, bulk=False)
 
-        if not self.request:
+        if not self.prnt:
             Printer.prnt(session)
 
     def release_lock(self, host):
