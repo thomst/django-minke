@@ -54,6 +54,13 @@ class TestFormSession(Session):
         self.news.append(Message(msg, 'WARNING'))
 
 
+@register((Host, Server, AnySystem), 'Leave a message.')
+class LeaveAMessageSession(Session):
+    MSG = '¡ ¢ £ ¤ ¥ ¦ § ¨ © ª « ¬ ­ ® ¯ ° ± ² ³ ´ µ'
+    def process(self):
+        self.news.append(Message(self.MSG, 'info'))
+
+
 class MethodTestSession(UpdateEntriesSession):
     def process(self):
         return getattr(self, 'test_' + self.session_data['test'])()

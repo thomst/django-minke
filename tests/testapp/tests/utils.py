@@ -14,7 +14,8 @@ def create_users():
         'admin',
         'admin@testapp.org',
         'adminpassword')
-    anyuser = User(username='anyuser', password='anyuserpassword')
+    anyuser = User(username='anyuser')
+    anyuser.set_password('anyuserpassword')
     anyuser.save()
 
 def create_hosts():

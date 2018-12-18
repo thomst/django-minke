@@ -25,20 +25,20 @@ SECRET_KEY = 'oaidys(k2d96kt)9i^oq#rlr+&r8^ajerjv@7i5j_o$46eagt%'
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = True
 
-ALLOWED_HOSTS = []
+ALLOWED_HOSTS = ['localhost', 'testserver']
 
 
 # Application definition
 
 INSTALLED_APPS = [
+    'minke.apps.MinkeConfig',
+    'testapp',
     'django.contrib.admin',
     'django.contrib.auth',
     'django.contrib.contenttypes',
     'django.contrib.sessions',
     'django.contrib.messages',
     'django.contrib.staticfiles',
-    'testapp',
-    'minke.apps.MinkeConfig',
 ]
 
 MIDDLEWARE = [
