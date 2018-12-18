@@ -13,16 +13,14 @@ from minke.exceptions import InvalidMinkeSetup
 from minke.models import Host
 from minke.engine import process
 from ..models import Server
-from .utils import create_multiple_hosts
-from .utils import create_testapp_player
-from .utils import create_localhost
-from .utils import create_user
+from .utils import create_test_data
 
 
 class SessionTest(TestCase):
     def setUp(self):
-        self.client = Client()
-        create_user()
+        pass
+        # create_test_data()
+        # self.client = Client()
 
     def test_01_change_list(self):
         pass

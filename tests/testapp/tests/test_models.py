@@ -6,15 +6,15 @@ from django.test import TestCase
 from minke.models import Host, MinkeModel
 from minke.exceptions import InvalidMinkeSetup
 from ..models import Server, AnySystem
-from .utils import create_multiple_hosts
-from .utils import create_testapp_player
+from .utils import create_hosts
+from .utils import create_players
 
 
 class MinkeModelTest(TestCase):
 
     def setUp(self):
-        create_multiple_hosts()
-        create_testapp_player()
+        create_hosts()
+        create_players()
         self.anysystem = AnySystem.objects.all()[0]
         self.server = self.anysystem.server
         self.host = self.server.host

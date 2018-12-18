@@ -20,12 +20,12 @@ class HostAdmin(MinkeAdmin):
 @admin.register(Server)
 class ServerAdmin(MinkeAdmin):
     list_filter = ('host', 'hostname')
-    search_fields = ('host',)
+    search_fields = ('hostname',)
     ordering = ('host',)
 
 
 @admin.register(AnySystem)
 class AnySystemAdmin(MinkeAdmin):
     list_filter = ('server',)
-    search_fields = ('server',)
+    search_fields = ('server__hostname',)
     ordering = ('server',)

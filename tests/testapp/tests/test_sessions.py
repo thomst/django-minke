@@ -19,10 +19,7 @@ from minke.models import Host
 from minke.engine import process
 from ..models import Server
 from ..sessions import MethodTestSession
-from .utils import create_multiple_hosts
-from .utils import create_testapp_player
-from .utils import create_localhost
-from .utils import create_user
+from .utils import create_test_data
 
 
 def process_session(session, hoststring):
@@ -33,10 +30,7 @@ def process_session(session, hoststring):
 
 class SessionTest(TestCase):
     def setUp(self):
-        create_user()
-        create_multiple_hosts()
-        create_testapp_player()
-        create_localhost()
+        create_test_data()
         self.host = Host.objects.get(host='localhost')
         self.server = Server.objects.get(host=self.host)
         self._registry = sessions.registry[:]
@@ -134,6 +128,7 @@ class SessionTest(TestCase):
         session = self.init_session(self.server, dict(test='update_invalid_field'))
         self.assertRaises(AttributeError, session.update_field, 'nofield', 'echo')
 
+    # TODO: skipIf-decorator if localhost cannot be connected
     def test_04_unicdoe_result(self):
 
         # test with utf-8-encoding

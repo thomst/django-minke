@@ -15,9 +15,7 @@ from minke.management.commands.minkesession import CommandError
 from minke.sessions import Session
 from minke.models import Host
 
-from .utils import create_multiple_hosts
-from .utils import create_testapp_player
-from .utils import create_user
+from .utils import create_test_data
 from ..sessions import TestFormSession
 from ..models import Server
 from ..models import AnySystem
@@ -44,9 +42,7 @@ class InOut(list):
 class MinkeManagerTest(TransactionTestCase):
 
     def setUp(self):
-        create_user()
-        create_multiple_hosts()
-        create_testapp_player()
+        create_test_data()
 
         self.manager = Command()
         self._options = dict(
@@ -165,12 +161,16 @@ class MinkeManagerTest(TransactionTestCase):
                          '--offset=0', '--limit=10', '--list-players')
         self.assertEqual(len(out_0_10), 10)
 
-        # slicing the queryset with offset and limit
         with InOut() as out_10_20:
             call_command('minkesession', 'SingleModelDummySession',
-                         '--offset=10', '--limit=20', '--list-players')
+                         '--offset=10', '--limit=10', '--list-players')
         self.assertEqual(len(out_10_20), 10)
-        self.assertListEqual(sorted(out_0_10 + out_10_20), sorted(out))
+
+        with InOut() as out_0_20:
+            call_command('minkesession', 'SingleModelDummySession',
+                         '--offset=0', '--limit=20', '--list-players')
+        self.assertEqual(len(out_0_20), 20)
+        self.assertListEqual(sorted(out_0_10 + out_10_20), sorted(out_0_20))
 
         # read form-data from stdin
         with InOut('123', '', 'abc', '123') as out:
@@ -183,13 +183,7 @@ class MinkeManagerTest(TransactionTestCase):
         # That is probably the reasen why the test-db are destroyed too early.
         # So for real actions we need to use a subprocess-call.
 
-        # valid call
-        out = self.subcall('DummySession', 'Server')
-        self.assertRegex(out[0], 'host_[0-9]{1,2}_label[0-9]{3}')
-        self.assertEqual(len(out), 20)
-
-        # # valid call without model
-        # # works if session where registered with only one model
-        out = self.subcall('SingleModelDummySession')
-        self.assertRegex(out[0], 'host_[0-9]{1,2}_label[0-9]{3}')
-        self.assertEqual(len(out), 20)
+        # valid call with url-query that really process some players
+        out = self.subcall('DummySession', 'Server', '--url-query=q=222')
+        self.assertRegex(out[0], 'host_[0-9]{1,2}_label222')
+        self.assertEqual(len(out), 5)
