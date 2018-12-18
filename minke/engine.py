@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 from __future__ import unicode_literals
 from multiprocessing import Process
-from multiprocessing import Queue
+from multiprocessing import JoinableQueue
 from threading import Thread
 
 from fabric.api import env, execute
@@ -57,7 +57,7 @@ def process(session_cls, queryset, session_data, user, join, request=None):
     # Stop here if no valid hosts are left...
     if not host_sessions: return
 
-    queue = Queue()
+    queue = JoinableQueue()
     consumer = Consumer(host_sessions, queue, bool(request))
     consumer.start()
 
@@ -71,8 +71,9 @@ def run_fabric(host_sessions, queue):
         session_processor = SessionProcessor(host_sessions, queue)
         execute(session_processor.run, hosts=host_sessions.keys())
     finally:
-        queue.put(('stop',))
         disconnect_all()
+        queue.put(('stop',))
+        queue.join()
 
 
 class SessionProcessor(object):
@@ -122,8 +123,12 @@ class Consumer(Thread):
             directives = self.queue.get()
             action = directives[0]
             args = directives[1:]
-            if action == 'stop': break
-            else: getattr(self, action)(*args)
+            if action == 'stop':
+                self.queue.task_done()
+                break
+            else:
+                getattr(self, action)(*args)
+                self.queue.task_done()
 
     def start_session(self, session):
         session.proc_status = 'running'
