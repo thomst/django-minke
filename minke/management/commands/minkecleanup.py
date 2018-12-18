@@ -31,7 +31,7 @@ class Command(BaseCommand):
             BaseSession.objects.update(current=False)
 
         elif options['clear_sessions']:
-            BaseSession.objects.delete()
+            BaseSession.objects.all().delete()
 
         else:
             self.print_help('manage.py', 'minkecleanup')
