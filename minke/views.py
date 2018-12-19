@@ -37,8 +37,7 @@ class SessionView(PermissionRequiredMixin, View):
 
     def get_permission_required(self):
         session_cls = self.get_session_cls()
-        self.permission_required = session_cls.permission_required
-        return super(SessionView, self).get_permission_required()
+        return session_cls.permission_required
 
     def get_queryset(self):
         queryset = self.kwargs.get('queryset', None)

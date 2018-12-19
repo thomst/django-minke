@@ -37,12 +37,10 @@ class MinkeAdmin(admin.ModelAdmin):
 
         # add sessions depending on the model and the user-perms...
         for session in registry:
-            if not self.model in session.models:
-                continue
-            if not request.user.has_perms(session.permission_required):
-                continue
-            action = session.as_action()
-            actions[action.__name__] = prep_action(action)
+            if (self.model in session.models and
+                request.user.has_perms(session.permission_required)):
+                action = session.as_action()
+                actions[action.__name__] = prep_action(action)
 
         return actions
 
