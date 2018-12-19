@@ -5,6 +5,7 @@ import getpass
 
 from django.contrib.auth.models import User
 from django.contrib.contenttypes.models import ContentType
+from django.contrib.auth.models import Permission
 
 from minke.models import Host
 from ..models import Server, AnySystem
@@ -15,9 +16,12 @@ def create_users():
         'admin',
         'admin@testapp.org',
         'adminpassword')
-    anyuser = User(username='anyuser')
+
+    anyuser = User(username='anyuser', is_staff=True)
     anyuser.set_password('anyuserpassword')
     anyuser.save()
+    change_perm = Permission.objects.get(name='Can change host')
+    anyuser.user_permissions.add(change_perm)
 
 def create_hosts():
     # create a localhost with the current user

@@ -54,7 +54,7 @@ class TestFormSession(Session):
         self.news.append(Message(msg, 'WARNING'))
 
 
-@register((Host, Server, AnySystem), 'Leave a message.')
+@register((Host, Server, AnySystem), 'Leave a message.', create_permission=True)
 class LeaveAMessageSession(Session):
     MSG = '¡ ¢ £ ¤ ¥ ¦ § ¨ © ª « ¬ ­ ® ¯ ° ± ² ³ ´ µ'
     def process(self):
