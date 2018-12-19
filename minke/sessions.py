@@ -6,6 +6,7 @@ import re
 from fabric.api import run
 
 from django.db.utils import OperationalError
+from django.db.utils import ProgrammingError
 from django.core.exceptions import FieldDoesNotExist
 from django.contrib.auth.models import Permission
 from django.contrib.contenttypes.models import ContentType
@@ -64,7 +65,7 @@ def register(session_cls, models=None,
         # Applying minke-migrations tumbles over get_for_model if the
         # migrations for this model aren't applied yet.
         try: content_type = ContentType.objects.get_for_model(model)
-        except OperationalError: return
+        except (OperationalError, ProgrammingError): return
 
         model_name = slugify(model.__name__)
         session_name = session_cls.__name__
