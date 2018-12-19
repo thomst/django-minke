@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 from __future__ import unicode_literals
 
-from django.test import TestCase
+from django.test import TransactionTestCase
 
 from minke.models import Host, MinkeModel
 from minke.exceptions import InvalidMinkeSetup
@@ -10,7 +10,7 @@ from .utils import create_hosts
 from .utils import create_players
 
 
-class MinkeModelTest(TestCase):
+class MinkeModelTest(TransactionTestCase):
 
     def setUp(self):
         create_hosts()

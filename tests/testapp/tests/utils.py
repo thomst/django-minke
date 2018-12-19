@@ -4,6 +4,7 @@ from __future__ import unicode_literals
 import getpass
 
 from django.contrib.auth.models import User
+from django.contrib.contenttypes.models import ContentType
 
 from minke.models import Host
 from ..models import Server, AnySystem

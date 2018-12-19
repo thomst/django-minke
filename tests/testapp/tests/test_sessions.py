@@ -5,7 +5,7 @@ from fabric.api import env, execute
 from fabric.network import disconnect_all
 from fabric.operations import _AttributeString
 
-from django.test import TestCase
+from django.test import TransactionTestCase
 from django.contrib.auth.models import Permission
 from django.contrib.auth.models import User
 
@@ -28,7 +28,7 @@ def process_session(session, hoststring):
     return result[hoststring]
 
 
-class SessionTest(TestCase):
+class SessionTest(TransactionTestCase):
     def setUp(self):
         create_test_data()
         self.host = Host.objects.get(host='localhost')

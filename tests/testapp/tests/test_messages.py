@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 from __future__ import unicode_literals
 
-from django.test import TestCase
+from django.test import SimpleTestCase
 
 from minke.messages import Message
 from minke.messages import PreMessage
@@ -10,7 +10,7 @@ from minke.messages import ExecutionMessage
 from minke.messages import ExceptionMessage
 
 
-class MessageTest(TestCase):
+class MessageTest(SimpleTestCase):
     def test_01_output(self):
         message = Message('foobär')
         self.assertEqual(message.text, 'foobär')
@@ -27,6 +27,7 @@ class MessageTest(TestCase):
             command = 'foobär'
             stdout = 'foobär-out'
             stderr = unicode()
+
         message = ExecutionMessage(dummy_result)
         self.assertRegex(message.text, 'foobär')
         self.assertRegex(message.html, 'foobär')
@@ -38,5 +39,5 @@ class MessageTest(TestCase):
 
         try: raise Exception('foobär'.encode('utf-8'))
         except: message = ExceptionMessage(print_tb=True)
-        self.assertRegex(message.text, 'foobär')
-        self.assertRegex(message.html, 'foobär')
+        self.assertRegex(message.text, 'Traceback')
+        self.assertRegex(message.html, 'Traceback')

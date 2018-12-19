@@ -19,7 +19,6 @@ from .utils import create_test_data
 from ..sessions import TestFormSession
 from ..models import Server
 from ..models import AnySystem
-# from ..sessions import TestFormSession, TestUpdateEntriesSession
 
 
 class InOut(list):
@@ -178,12 +177,8 @@ class MinkeManagerTest(TransactionTestCase):
         self.assertRegex(out[2], 'This field is required')
         self.assertRegex(out[3], 'Enter a whole number')
 
-        # call_command tries to wrap sql-action within BEGIN and COMMIT. But it
-        # does not realize actions that are done by the consumer-thread.
-        # That is probably the reasen why the test-db are destroyed too early.
-        # So for real actions we need to use a subprocess-call.
-
         # valid call with url-query that really process some players
-        out = self.subcall('DummySession', 'Server', '--url-query=q=222')
+        with InOut() as out:
+            call_command('minkesession', 'DummySession', 'Server', '--url-query=q=222')
         self.assertRegex(out[0], 'host_[0-9]{1,2}_label222')
         self.assertEqual(len(out), 5)
