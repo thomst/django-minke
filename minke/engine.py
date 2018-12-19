@@ -13,13 +13,13 @@ from django.contrib import messages
 import minke.sessions
 from .models import Host
 from .models import BaseSession
+from .messages import Printer
 from .messages import Message
 from .messages import ExceptionMessage
 from .exceptions import Abortion
 from .exceptions import NetworkError
 from .exceptions import SocketError
 from .exceptions import CommandTimeout
-from .management.commands import Printer
 
 
 def process(session_cls, queryset, session_data, user, join, request=None):
