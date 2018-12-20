@@ -45,15 +45,17 @@ def register(session_cls, models=None,
         session_cls.short_description = short_description
 
     if not issubclass(session_cls, Session):
-        raise InvalidMinkeSetup('Registered class must subclass Session.')
+        msg = 'Registered class must subclass Session.'
+        raise InvalidMinkeSetup(msg)
 
     if not session_cls.models:
-        raise InvalidMinkeSetup('At least one model must be specified for a session.')
+        msg = 'At least one model must be specified for a session.'
+        raise InvalidMinkeSetup(msg)
 
     for model in session_cls.models:
         if model is not Host and not hasattr(model, 'get_host'):
-            raise InvalidMinkeSetup(
-                'Models used with sessions must define a get_host-method.')
+            msg = 'Models used with sessions must define a get_host-method.'
+            raise InvalidMinkeSetup(msg)
 
     if create_permission:
         # We only create a permission for one model. Otherwise a user would
@@ -196,7 +198,8 @@ class SingleActionSession(Session):
 
     def get_cmd(self):
         if not self.COMMAND:
-            raise InvalidMinkeSetup('Missing COMMAND for SingleActionSession!')
+            msg = 'Missing COMMAND for SingleActionSession!'
+            raise InvalidMinkeSetup(msg)
         else:
             return self.format_cmd(self.COMMAND)
 
