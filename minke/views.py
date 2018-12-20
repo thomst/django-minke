@@ -112,7 +112,7 @@ class SessionView(PermissionRequiredMixin, View):
         engine.process(session_cls, queryset, session_data, request.user, join, request)
 
 
-class CurrentSessionAPI(ListAPIView):
+class SessionAPI(ListAPIView):
     """
     API endpoint to retrieve current sessions.
     """

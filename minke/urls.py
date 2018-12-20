@@ -14,9 +14,9 @@ Including another URLconf
     2. Add a URL to urlpatterns:  url(r'^blog/', include('blog.urls'))
 """
 from django.conf.urls import url
-from .views import CurrentSessionAPI
+from .views import SessionAPI
 
 
 urlpatterns = [
-    url(r'^minkeapi/currentsessions/(?P<model>.+)/', CurrentSessionAPI.as_view()),
+    url(r'^minkeapi/currentsessions/(?P<model>.+)/', SessionAPI.as_view(), name='minke_session_api'),
 ]
