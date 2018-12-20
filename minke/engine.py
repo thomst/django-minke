@@ -3,6 +3,7 @@ from __future__ import unicode_literals
 from multiprocessing import Process
 from multiprocessing import JoinableQueue
 from threading import Thread
+import logging
 
 from fabric.api import env, execute
 from fabric.network import disconnect_all
@@ -11,6 +12,7 @@ from django.utils.html import mark_safe
 from django.contrib import messages
 
 import minke.sessions
+from minke import settings
 from .models import Host
 from .models import BaseSession
 from .messages import Printer
@@ -20,6 +22,9 @@ from .exceptions import Abortion
 from .exceptions import NetworkError
 from .exceptions import SocketError
 from .exceptions import CommandTimeout
+
+
+logger = logging.getLogger(__name__)
 
 
 def process(session_cls, queryset, session_data, user, join, request=None):
@@ -99,12 +104,14 @@ class SessionProcessor(object):
                 session.status = 'error'
                 session.news.append(ExceptionMessage())
             except Exception:
-                # FIXME: Actually this is debugging-stuff and should
-                # not be handled as a minke-news! We could return the
-                # exception instead of the session and raise it in the
-                # main process.
                 session.status = 'error'
-                session.news.append(ExceptionMessage(print_tb=True))
+                exc_msg = ExceptionMessage(print_tb=True)
+                logger.error(exc_msg.text)
+                if settings.MINKE_DEBUG:
+                    session.news.append(exc_msg)
+                else:
+                    msg = 'An error occurred.'
+                    session.news.append(Message(msg))
             finally:
                 self.queue.put(('end_session', session))
 
@@ -135,7 +142,18 @@ class Consumer(Thread):
         session.save(update_fields=['proc_status'])
 
     def end_session(self, session):
-        session.rework()
+        try:
+            session.rework()
+        except Exception as err:
+            session.status = 'error'
+            exc_msg = ExceptionMessage(print_tb=True)
+            logger.error(exc_msg.text)
+            if settings.MINKE_DEBUG:
+                session.news.append(exc_msg)
+            else:
+                msg = 'An error occurred.'
+                session.news.append(Message(msg))
+
         session.proc_status = 'done'
         session.status = session.status or 'success'
         session.save(update_fields=['status', 'proc_status'])
