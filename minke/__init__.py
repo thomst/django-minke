@@ -1,8 +1,10 @@
-from django.conf import settings
+# -*- coding: utf-8 -*-
+from __future__ import unicode_literals
 
 from fabric.api import env
 from fabric.state import output
 
+from minke import settings
 from .decorators import register
 from .exceptions import Abortion
 
@@ -14,10 +16,8 @@ env.key = None
 env.pool_size = 24
 
 # load django-settings for fabric
-if hasattr(settings, 'FABRIC_ENV'):
-    for key, value in settings.FABRIC_ENV.items():
-        if hasattr(env, key):
-            setattr(env, key, value)
+for key, value in settings.FABRIC_ENV.items():
+    setattr(env, key, value)
 
 # These configs are essential for minke to work with fabric
 # in multiprocessing manner and should not be overwritten.
@@ -38,7 +38,3 @@ output.stdout = False
 output.stderr = False
 output.user = False
 output.aborts = False
-
-# default-settings
-if not hasattr(settings, 'MINKE_CLI_USER'):
-    settings.MINKE_CLI_USER = 'admin'

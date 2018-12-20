@@ -9,8 +9,8 @@ from django.contrib.admin.options import IncorrectLookupParameters
 from django.core.exceptions import FieldError
 from django.contrib.auth.models import User
 from django.contrib.auth import authenticate
-from django.conf import settings
 
+from minke import settings
 from ...engine import process
 from ...sessions import registry
 from ...utils import item_by_attr
