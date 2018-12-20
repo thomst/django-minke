@@ -29,6 +29,14 @@ class SingleModelDummySession(Session):
         pass
 
 
+@register((Host, Server, AnySystem), 'Raise an exception.')
+class ExceptionSession(Session):
+    ERR_MSG = '¡ ¢ £ ¤ ¥ ¦ § ¨ © ª « ¬ ­ ® ¯ ° ± ² ³ ´ µ'.encode('utf-8')
+    def process(self):
+        raise Exception(str('process: ') + self.ERR_MSG)
+    def rework(self):
+        raise Exception(str('rework: ') + self.ERR_MSG)
+
 @register(Server, 'Echo unicode-literals.')
 class EchoUnicodeSession(Session):
     def process(self):
