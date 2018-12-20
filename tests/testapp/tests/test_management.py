@@ -57,10 +57,6 @@ class MinkeManagerTest(TransactionTestCase):
     def reset_options(self):
         self.options = self._options
 
-    def subcall(self, *args):
-        cmd = [sys.executable, sys.argv[0], 'minkesession']
-        return subprocess.check_output(cmd + list(args)).splitlines()
-
     def test_01_get_queryset(self):
         # simple queryset - just all elements
         qs = self.manager.get_queryset(Host, self.options)
