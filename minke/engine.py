@@ -111,7 +111,7 @@ class SessionProcessor(object):
                     session.news.append(exc_msg)
                 else:
                     msg = 'An error occurred.'
-                    session.news.append(Message(msg))
+                    session.news.append(Message(msg, 'error'))
             finally:
                 self.queue.put(('end_session', session))
 
@@ -152,7 +152,7 @@ class Consumer(Thread):
                 session.news.append(exc_msg)
             else:
                 msg = 'An error occurred.'
-                session.news.append(Message(msg))
+                session.news.append(Message(msg, 'error'))
 
         session.proc_status = 'done'
         session.status = session.status or 'success'
