@@ -77,13 +77,20 @@ class ViewsTest(TransactionTestCase):
         self.assertNotIn('No action selected', resp.content)
 
         # Exceptions within session-code:
+        old_minke_debug = settings.MINKE_DEBUG
         post_data['action'] = ExceptionSession.__name__
+
+        settings.MINKE_DEBUG = True
         resp = self.client.post(url, post_data, follow=True)
         self.assertEqual(resp.status_code, 200)
-        if settings.MINKE_DEBUG:
-            self.assertIn(ExceptionSession.ERR_MSG, resp.content)
-        else:
-            self.assertIn('An error occurred', resp.content)
+        self.assertIn(ExceptionSession.ERR_MSG, resp.content)
+
+        settings.MINKE_DEBUG = False
+        resp = self.client.post(url, post_data, follow=True)
+        self.assertEqual(resp.status_code, 200)
+        self.assertIn('An error occurred', resp.content)
+
+        settings.MINKE_DEBUG = old_minke_debug
 
 
     def test_02_session_api(self):

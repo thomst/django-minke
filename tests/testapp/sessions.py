@@ -6,6 +6,7 @@ from fabric.api import run
 from minke import register
 from minke.models import Host
 from minke.sessions import Session
+from minke.sessions import SingleActionSession
 from minke.sessions import UpdateEntriesSession
 from minke.messages import Message
 from minke.messages import ExecutionMessage
@@ -36,6 +37,12 @@ class ExceptionSession(Session):
         raise Exception(str('process: ') + self.ERR_MSG)
     def rework(self):
         raise Exception(str('rework: ') + self.ERR_MSG)
+
+
+@register((Host, Server, AnySystem), 'Single-action-session.')
+class SingleActionDummySession(SingleActionSession):
+    COMMAND = None
+
 
 @register(Server, 'Echo unicode-literals.')
 class EchoUnicodeSession(Session):

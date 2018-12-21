@@ -124,3 +124,30 @@ USE_TZ = True
 # https://docs.djangoproject.com/en/1.11/howto/static-files/
 
 STATIC_URL = '/static/'
+
+# MINKE_DEBUG = True
+FABRIC_ENV = dict(pool_size=1)
+
+LOGGING = {
+    'version': 1,
+    'disable_existing_loggers': False,
+    'handlers': {
+        'console': {
+            'level': 'DEBUG',
+            'class': 'logging.StreamHandler',
+            },
+        'null': {
+            'class': 'logging.NullHandler',
+            }
+        },
+    'loggers': {
+        'minke.engine': {
+            'handlers': ['null'],
+            'level': 'INFO',
+        },
+        # 'django.db.backends': {
+        #     'handlers': ['console'],
+        #     'level': 'DEBUG',
+        # },
+    }
+}
