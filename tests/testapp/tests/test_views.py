@@ -2,6 +2,7 @@
 from __future__ import unicode_literals
 
 import json
+import re
 
 from django.contrib.auth.models import User
 from django.contrib.contenttypes.models import ContentType
@@ -19,6 +20,8 @@ from ..sessions import ExceptionSession
 from ..models import Host, Server, AnySystem
 from ..forms import TestForm
 from .utils import create_test_data
+from .utils import create_session
+from .utils import create_message
 
 
 class ViewsTest(TransactionTestCase):
@@ -30,9 +33,9 @@ class ViewsTest(TransactionTestCase):
     def test_01_session_view(self):
         url_pattern = 'admin:{}_{}_changelist'
         player_ids = [1, 2, 3]
-        post_data = dict(
-            action=LeaveAMessageSession.__name__,
-            _selected_action=player_ids)
+        post_data = dict()
+        post_data['action'] = LeaveAMessageSession.__name__
+        post_data['_selected_action'] = player_ids
 
         # work with admin-user
         self.client.force_login(self.admin)
@@ -52,17 +55,22 @@ class ViewsTest(TransactionTestCase):
         else:
             self.client.logout()
 
-        # TODO: Find a way to check 403-response when calling SessionView
-        # without proper session-permissions. Right now we only get a
-        # 'No action selected'-message.
-        # work with unprivileged user
+    def test_02_permissions(self):
         url = reverse('admin:minke_host_changelist')
+        post_data = dict()
+        post_data['action'] = LeaveAMessageSession.__name__
+        post_data['_selected_action'] = [1]
+        # work with unprivileged user
         self.client.force_login(self.anyuser)
+
+        # DummySession should be listed as action.
+        # LeaveAMessageSession needs permissions, so it shouldn't.
         resp = self.client.get(url)
         self.assertEqual(resp.status_code, 200)
         self.assertIn(DummySession.__name__, resp.content)
-        self.assertNotIn('LeaveAMessageSession', resp.content)
+        self.assertNotIn(LeaveAMessageSession.__name__, resp.content)
 
+        # TODO: Find a way to check 403-response when calling SessionView
         # If user lacks permissions to run a session, the session won't be
         # listed as action-option. The response is a changelist with a
         # 'No action selected'-message instead of a 403.
@@ -76,9 +84,15 @@ class ViewsTest(TransactionTestCase):
         self.assertEqual(resp.status_code, 200)
         self.assertNotIn('No action selected', resp.content)
 
-        # Exceptions within session-code:
-        old_minke_debug = settings.MINKE_DEBUG
+        self.client.logout()
+
+    def test_03_session_raises_exception(self):
+        url = reverse('admin:minke_host_changelist')
+        post_data = dict()
         post_data['action'] = ExceptionSession.__name__
+        post_data['_selected_action'] = [1]
+        self.client.force_login(self.admin)
+        old_minke_debug = settings.MINKE_DEBUG
 
         settings.MINKE_DEBUG = True
         resp = self.client.post(url, post_data, follow=True)
@@ -91,8 +105,9 @@ class ViewsTest(TransactionTestCase):
         self.assertIn('An error occurred', resp.content)
 
         settings.MINKE_DEBUG = old_minke_debug
+        self.client.logout()
 
-    def test_02_session_form(self):
+    def test_04_session_form(self):
         url = reverse('admin:testapp_anysystem_changelist')
         post_data = dict()
         post_data['action'] = DummySession.__name__
@@ -118,61 +133,89 @@ class ViewsTest(TransactionTestCase):
         get_test = lambda b: self.assertIn if bool(b) else self.assertNotIn
 
         # calling the form in all possible variations
+        options = list()
         for password in [True, False]:
             for confirm in [True, False]:
                 for testform in [TestForm, None]:
-                    settings.MINKE_PASSWORD_FORM = password
-                    DummySession.CONFIRM = confirm
-                    DummySession.FORM = testform
+                    options.append((password, confirm, testform))
 
-                    # without form-data
-                    if not (password or confirm or testform): continue
-                    resp = self.client.post(url, post_data)
-                    self.assertEqual(resp.status_code, 200)
-                    self.assertIn(indicator_action_form, resp.content)
-                    get_test(password)(indicator_password, resp.content)
-                    get_test(confirm)(indicator_confirm, resp.content)
-                    get_test(testform)(indicator_testform, resp.content)
+        for password, confirm, testform in options:
+            settings.MINKE_PASSWORD_FORM = password
+            DummySession.CONFIRM = confirm
+            DummySession.FORM = testform
 
-                    # with invalid form-data
-                    if not (password or testform): continue
-                    resp = self.client.post(url, invalid_form_data)
-                    self.assertEqual(resp.status_code, 200)
-                    self.assertIn(indicator_action_form, resp.content)
-                    get_test(password)(indicator_password, resp.content)
-                    get_test(confirm)(indicator_confirm, resp.content)
-                    get_test(testform)(indicator_testform, resp.content)
+            # without form-data
+            if not (password or confirm or testform): continue
+            resp = self.client.post(url, post_data)
+            self.assertEqual(resp.status_code, 200)
+            self.assertIn(indicator_action_form, resp.content)
+            get_test(password)(indicator_password, resp.content)
+            get_test(confirm)(indicator_confirm, resp.content)
+            get_test(testform)(indicator_testform, resp.content)
 
-                    # with valid data
-                    resp = self.client.post(url, valid_form_data, follow=True)
-                    self.assertEqual(resp.redirect_chain[0][0], url)
-                    self.assertEqual(resp.status_code, 200)
+            # with invalid form-data
+            if not (password or testform): continue
+            resp = self.client.post(url, invalid_form_data)
+            self.assertEqual(resp.status_code, 200)
+            self.assertIn(indicator_action_form, resp.content)
+            get_test(password)(indicator_password, resp.content)
+            get_test(confirm)(indicator_confirm, resp.content)
+            get_test(testform)(indicator_testform, resp.content)
 
+            # with valid data
+            resp = self.client.post(url, valid_form_data, follow=True)
+            self.assertEqual(resp.redirect_chain[0][0], url)
+            self.assertEqual(resp.status_code, 200)
+
+        self.client.logout()
+        DummySession.CONFIRM = False
+        DummySession.FORM = None
         settings.MINKE_PASSWORD_FORM = old_minke_password_form
 
+    def test_05_minke_filter(self):
+        self.client.force_login(self.admin)
+        baseurl = reverse('admin:minke_host_changelist')
 
-    def test_03_session_api(self):
-        sessions = list()
+        # create 7 sessions, 1 with success-, 2 with warning-, 4 with error-status
+        hosts = Host.objects.all()[:7]
+        for i, host in enumerate(hosts):
+            status = 'success' if i == 0 else 'error' if i > 2 else 'warning'
+            session = create_session(host, status=status)
+            session.save()
+
+        # create a matrix for all variations of filter-params
+        options = list()
+        for success in [True, False]:
+            for warning in [True, False]:
+                for error in [True, None]:
+                    options.append((success, warning, error))
+
+        # get-requests with minkestatus-filter-params
+        for success, warning, error in options:
+            if not (success or warning or error): continue
+            url_query = '?minkestatus='
+            url_query += 'success,' if success else ''
+            url_query += 'warning,' if warning else ''
+            url_query += 'error' if error else ''
+            count = 1 if success else 0
+            count += 2 if warning else 0
+            count += 4 if error else 0
+            url = baseurl + url_query
+            resp = self.client.get(url)
+            self.assertEqual(resp.status_code, 200)
+            matches = re.findall('<tr class="row[12] \w+ done">', resp.content)
+            self.assertEqual(len(matches), count)
+
+        self.client.logout()
+
+    def test_06_session_api(self):
         servers = list(Server.objects.filter(hostname__contains='222'))
         server_ct = ContentType.objects.get_for_model(Server)
         for server in servers:
-            session = BaseSession(
-                object_id=server.id,
-                content_type=server_ct,
-                session_name=DummySession.__name__,
-                user=self.anyuser,
-                current=True,
-                status='success',
-                proc_status='done')
+            session = create_session(server, user='anyuser')
             session.save()
-            message = BaseMessage(
-                session=session,
-                level='info',
-                html='<h1>foobär</h1>',
-                text='foobär')
+            message = create_message(session, 'foobär', '<h1>foobär</h1>')
             message.save()
-            session.messages.add(message)
-            sessions.append(session)
 
         url = reverse('minke_session_api', args=['server'])
         object_ids = [str(s.id) for s in servers]
@@ -194,7 +237,7 @@ class ViewsTest(TransactionTestCase):
 
         self.client.logout()
 
-        # Those sessions should not only be loaded for the associated user
+        # Those sessions should only be loaded for the associated user
         self.client.force_login(self.admin)
         resp = self.client.get(url)
         self.assertEqual(resp.status_code, 200)

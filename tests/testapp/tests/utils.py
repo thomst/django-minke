@@ -8,7 +8,11 @@ from django.contrib.contenttypes.models import ContentType
 from django.contrib.auth.models import Permission
 
 from minke.models import Host
-from ..models import Server, AnySystem
+from minke.models import BaseSession
+from minke.models import BaseMessage
+from ..models import Server
+from ..models import AnySystem
+from ..sessions import DummySession
 
 
 def create_users():
@@ -50,3 +54,23 @@ def create_test_data():
     create_users()
     create_hosts()
     create_players()
+
+def create_session(player, session_cls=DummySession, user='admin',
+    current=True, status='success', proc_status='done'):
+    content_type = ContentType.objects.get_for_model(player.__class__)
+    user = User.objects.get(username=user)
+    return BaseSession(
+        object_id=player.id,
+        content_type=content_type,
+        session_name=session_cls.__name__,
+        user=user,
+        current=current,
+        status=status,
+        proc_status=proc_status)
+
+def create_message(session, text, html=None, level='info'):
+    return BaseMessage(
+        session=session,
+        text=text,
+        html=html or text,
+        level=level)
