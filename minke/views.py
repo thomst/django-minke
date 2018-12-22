@@ -4,7 +4,6 @@ from __future__ import unicode_literals
 import paramiko
 from fabric.api import env
 
-from django.conf import settings
 from django.shortcuts import render
 from django.views.generic import View
 from django.contrib import messages
@@ -17,9 +16,10 @@ from rest_framework.generics import ListAPIView
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.exceptions import NotFound
 
+from minke import settings
 from minke import engine
 from .forms import MinkeForm
-from .forms import InitialPasswordForm
+from .forms import PasswordForm
 from .models import BaseSession
 from .serializers import SessionSerializer
 from .exceptions import InvalidURLQuery
@@ -55,7 +55,7 @@ class SessionView(PermissionRequiredMixin, View):
         join = session_cls.JOIN
 
         # do we have to render a form?
-        password_form = getattr(settings, 'MINKE_INITIAL_PASSWORD_FORM', None)
+        password_form = settings.MINKE_PASSWORD_FORM
         session_form = bool(session_cls.FORM)
         confirm = session_cls.CONFIRM
         session_data = dict()
@@ -65,11 +65,11 @@ class SessionView(PermissionRequiredMixin, View):
 
             if from_form:
                 minke_form = MinkeForm(request.POST)
-                if password_form: password_form = InitialPasswordForm(request.POST)
+                if password_form: password_form = PasswordForm(request.POST)
                 if session_form: session_form = session_cls.FORM(request.POST)
             else:
                 minke_form = MinkeForm(dict(action=session_cls.__name__, join=session_cls.JOIN))
-                if password_form: password_form = InitialPasswordForm()
+                if password_form: password_form = PasswordForm()
                 if session_form: session_form = session_cls.FORM()
 
             valid = minke_form.is_valid()

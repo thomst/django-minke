@@ -14,7 +14,7 @@ class MinkeForm(forms.Form):
         css = {'all': ('minke/css/minke_form.css',)}
 
 
-class InitialPasswordForm(forms.Form):
+class PasswordForm(forms.Form):
     initial_password = forms.CharField(
         label='Pass-Phrase',
         help_text='Pass phrase to decrypt the ssh-private-key.',
