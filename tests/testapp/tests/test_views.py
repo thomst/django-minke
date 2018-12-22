@@ -17,6 +17,7 @@ from ..sessions import LeaveAMessageSession
 from ..sessions import DummySession
 from ..sessions import ExceptionSession
 from ..models import Host, Server, AnySystem
+from ..forms import TestForm
 from .utils import create_test_data
 
 
@@ -27,9 +28,8 @@ class ViewsTest(TransactionTestCase):
         self.anyuser = User.objects.get(username='anyuser')
 
     def test_01_session_view(self):
-        models = [Host, Server, AnySystem]
-        player_ids = [1, 2, 3]
         url_pattern = 'admin:{}_{}_changelist'
+        player_ids = [1, 2, 3]
         post_data = dict(
             action=LeaveAMessageSession.__name__,
             _selected_action=player_ids)
@@ -39,7 +39,7 @@ class ViewsTest(TransactionTestCase):
 
         # valid action-requests for Host, Server and AnySystem
         # also check the current-sessions that were created
-        for model in models:
+        for model in [Host, Server, AnySystem]:
             url = reverse(url_pattern.format(model._meta.app_label, model._meta.model_name))
             resp = self.client.post(url, post_data, follow=True)
             self.assertEqual(resp.redirect_chain[0][0], url)
@@ -92,8 +92,66 @@ class ViewsTest(TransactionTestCase):
 
         settings.MINKE_DEBUG = old_minke_debug
 
+    def test_02_session_form(self):
+        url = reverse('admin:testapp_anysystem_changelist')
+        post_data = dict()
+        post_data['action'] = DummySession.__name__
+        post_data['_selected_action'] = [1]
+        invalid_form_data = post_data.copy()
+        invalid_form_data['minke_form'] = True
+        invalid_form_data['initial_password'] = ''
+        invalid_form_data['one'] = 'abc'
+        invalid_form_data['two'] = 'def'
+        valid_form_data = post_data.copy()
+        valid_form_data['minke_form'] = True
+        valid_form_data['initial_password'] = 'password'
+        valid_form_data['one'] = 1
+        valid_form_data['two'] = 2
 
-    def test_02_session_api(self):
+        self.client.force_login(self.admin)
+        old_minke_password_form = settings.MINKE_PASSWORD_FORM
+        indicator_action_form = '<input type="hidden" name="minke_form" value="True">'
+        indicator_password = '<input type="password" name="initial_password" maxlength="100"'
+        indicator_confirm = 'type="checkbox" name="_selected_action" value="1" checked>'
+        indicator_testform = '<input type="number" name="one"'
+
+        get_test = lambda b: self.assertIn if bool(b) else self.assertNotIn
+
+        # calling the form in all possible variations
+        for password in [True, False]:
+            for confirm in [True, False]:
+                for testform in [TestForm, None]:
+                    settings.MINKE_PASSWORD_FORM = password
+                    DummySession.CONFIRM = confirm
+                    DummySession.FORM = testform
+
+                    # without form-data
+                    if not (password or confirm or testform): continue
+                    resp = self.client.post(url, post_data)
+                    self.assertEqual(resp.status_code, 200)
+                    self.assertIn(indicator_action_form, resp.content)
+                    get_test(password)(indicator_password, resp.content)
+                    get_test(confirm)(indicator_confirm, resp.content)
+                    get_test(testform)(indicator_testform, resp.content)
+
+                    # with invalid form-data
+                    if not (password or testform): continue
+                    resp = self.client.post(url, invalid_form_data)
+                    self.assertEqual(resp.status_code, 200)
+                    self.assertIn(indicator_action_form, resp.content)
+                    get_test(password)(indicator_password, resp.content)
+                    get_test(confirm)(indicator_confirm, resp.content)
+                    get_test(testform)(indicator_testform, resp.content)
+
+                    # with valid data
+                    resp = self.client.post(url, valid_form_data, follow=True)
+                    self.assertEqual(resp.redirect_chain[0][0], url)
+                    self.assertEqual(resp.status_code, 200)
+
+        settings.MINKE_PASSWORD_FORM = old_minke_password_form
+
+
+    def test_03_session_api(self):
         sessions = list()
         servers = list(Server.objects.filter(hostname__contains='222'))
         server_ct = ContentType.objects.get_for_model(Server)

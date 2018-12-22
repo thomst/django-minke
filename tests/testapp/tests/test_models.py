@@ -23,6 +23,7 @@ class MinkeModelTest(TransactionTestCase):
         host = self.host.get_host()
         server_host = self.server.get_host()
         system_host = self.anysystem.get_host()
+        self.assertTrue(type(host) == Host)
         self.assertTrue(type(server_host) == Host)
         self.assertTrue(type(system_host) == Host)
 
