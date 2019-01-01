@@ -62,13 +62,20 @@ def process(session_cls, queryset, session_data, user, join, request=None):
     # Stop here if no valid hosts are left...
     if not host_sessions: return
 
+    # Using env.parallel means we have a multiprocessing-szenario with fabric.
+    # Forking processes from within django is not recommended, but works as
+    # long as we take care of database-actions. To beware problems we
+    # incapsulate all db-actions within a seperate thread.
+    # See also: https://code.djangoproject.com/ticket/20562
     queue = JoinableQueue()
-    consumer = Consumer(host_sessions, queue, bool(request))
-    consumer.start()
+    db_worker = DBWorker(host_sessions, queue, bool(request))
+    db_worker.start()
 
-    worker = Thread(target=run_fabric, args=(host_sessions, queue))
-    worker.start()
-    if join: worker.join()
+    # Fabric's execution will also be started in its own thread that we don't
+    # have to wait for it.
+    fabric_worker = Thread(target=run_fabric, args=(host_sessions, queue))
+    fabric_worker.start()
+    if join: fabric_worker.join()
 
 
 def run_fabric(host_sessions, queue):
@@ -118,9 +125,9 @@ class SessionProcessor(object):
         self.queue.put(('release_lock', session.player.get_host()))
 
 
-class Consumer(Thread):
+class DBWorker(Thread):
     def __init__(self, host_sessions, queue, prnt):
-        super(Consumer, self).__init__()
+        super(DBWorker, self).__init__()
         self.queue = queue
         self.host_sessions = host_sessions
         self.prnt = prnt
