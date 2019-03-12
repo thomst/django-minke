@@ -74,18 +74,12 @@ class BaseMessage(models.Model):
 
 
 class HostQuerySet(models.QuerySet):
-    def release_lock(self):
-        return self.update(locked=None)
-
     def get_lock(self):
         # The most atomic way to get a lock is a update-query.
         # We use a timestamp to be able to identify the updated objects.
         timestamp = repr(time())
         self.filter(locked=None).update(locked=timestamp)
         return timestamp
-
-    def get_actives(self, lock):
-        return self.filter(disabled=False).filter(locked=lock)
 
     def get_hosts(self):
         return self

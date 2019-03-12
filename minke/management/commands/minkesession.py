@@ -236,4 +236,4 @@ class Command(BaseCommand):
         if options['list_players']:
             for obj in queryset: print obj
         else:
-            process(session_cls, queryset, form_data, user, True)
+            process(session_cls, queryset, form_data, user, True, True)

@@ -5,49 +5,32 @@ from multiprocessing import JoinableQueue
 from threading import Thread
 import logging
 
-from fabric.api import env, execute
-from fabric.network import disconnect_all
-
-from django.utils.html import mark_safe
 from django.contrib import messages
 
 import minke.sessions
 from minke import settings
-from .models import Host
-from .models import BaseSession
-from .messages import Printer
 from .messages import Message
-from .messages import ExceptionMessage
-from .exceptions import Abortion
-from .exceptions import NetworkError
-from .exceptions import SocketError
-from .exceptions import CommandTimeout
+from .messages import Printer
+from .models import BaseSession
+from .tasks import process_sessions
 
 
 logger = logging.getLogger(__name__)
 
 
-def process(session_cls, queryset, session_data, user, join, request=None):
+def process(session_cls, queryset, session_data, user, join, console=False):
     """Initiate fabric's session-processing."""
 
     hosts = queryset.get_hosts()
     lock = hosts.get_lock()
-    active_hosts = hosts.get_actives(lock)
-    active_players = queryset.host_filter(active_hosts)
-    BaseSession.objects.clear_currents(user, active_players)
+    valid_hosts = hosts.filter(disabled=False).filter(locked=lock)
+    valid_players = queryset.host_filter(valid_hosts)
+    BaseSession.objects.clear_currents(user, valid_players)
 
-    # validate hosts and prepare sessions
-    host_sessions = dict()
+    # group sessions by hosts
+    session_groups = dict()
     for player in queryset.all():
         host = player.get_host()
-
-        # Skip disabled or locked hosts...
-        if host.disabled or host.locked and host.locked != lock:
-            msg = 'disabled' if host.disabled else 'locked'
-            msg = '{}: Host is {}.'.format(player, msg)
-            if request: messages.warning(request, msg)
-            else: print msg
-            continue
 
         session = session_cls()
         session.user = user
@@ -55,124 +38,45 @@ def process(session_cls, queryset, session_data, user, join, request=None):
         session.session_data = session_data
         session.save()
 
-        if not host_sessions.has_key(host.hoststring):
-            host_sessions[host.hoststring] = list()
-        host_sessions[host.hoststring].append(session)
+        # Skip disabled or locked hosts...
+        if host.disabled or host.locked and host.locked != lock:
+            msg = 'disabled' if host.disabled else 'locked'
+            msg = '{}: Host is {}.'.format(player, msg)
+            session.messages.add(Message(msg, 'error'), bulk=False)
+            session.status = 'error'
+            session.proc_status = 'done'
+            session.save(update_fields=['status', 'proc_status'])
+            if console: Printer.prnt(session)
+            continue
+
+        if not session_groups.has_key(host):
+            session_groups[host] = list()
+        session_groups[host].append(session)
 
     # Stop here if no valid hosts are left...
-    if not host_sessions: return
+    if not session_groups: return
 
-    # Using env.parallel means we have a multiprocessing-szenario with fabric.
-    # Forking processes from within django is not recommended, but works as
-    # long as we take care of database-actions. To beware problems we
-    # incapsulate all db-actions within a seperate thread.
-    # See also: https://code.djangoproject.com/ticket/20562
-    queue = JoinableQueue()
-    db_worker = DBWorker(host_sessions, queue, bool(request))
-    db_worker.start()
-
-    # Fabric's execution will also be started in its own thread that we don't
-    # have to wait for it.
-    fabric_worker = Thread(target=run_fabric, args=(host_sessions, queue))
-    fabric_worker.start()
-    if join: fabric_worker.join()
-
-
-def run_fabric(host_sessions, queue):
-    try:
-        session_processor = SessionProcessor(host_sessions, queue)
-        execute(session_processor.run, hosts=host_sessions.keys())
-    finally:
-        disconnect_all()
-        queue.put(('stop',))
-        queue.join()
-
-
-class SessionProcessor(object):
-    """
-    Wrapper-class for session-processing with fabric.
-
-    The run-method will be executed in a parallized multiprocessing
-    context that is orchestrated by fabric. Itself processes sessions
-    grouped by the associated host. This way we beware the parallel
-    execution of two sessions on one host.
-    """
-    def __init__(self, host_sessions, queue):
-        self.host_sessions = host_sessions
-        self.queue = queue
-
-    def run(self):
-        sessions = self.host_sessions[env.host_string]
-        for session in sessions:
-            self.queue.put(('start_session', session))
-            try:
-                session.process()
-            except (Abortion, NetworkError, CommandTimeout, SocketError):
-                session.status = 'error'
-                session.news.append(ExceptionMessage())
-            except Exception:
-                session.status = 'error'
-                exc_msg = ExceptionMessage(print_tb=True)
-                logger.error(exc_msg.text)
-                if settings.MINKE_DEBUG:
-                    session.news.append(exc_msg)
-                else:
-                    msg = 'An error occurred.'
-                    session.news.append(Message(msg, 'error'))
-            finally:
-                self.queue.put(('end_session', session))
-
-        self.queue.put(('release_lock', session.player.get_host()))
-
-
-class DBWorker(Thread):
-    def __init__(self, host_sessions, queue, prnt):
-        super(DBWorker, self).__init__()
-        self.queue = queue
-        self.host_sessions = host_sessions
-        self.prnt = prnt
-
-    def run(self):
-        while True:
-            directives = self.queue.get()
-            action = directives[0]
-            args = directives[1:]
-            if action == 'stop':
-                self.queue.task_done()
-                break
-            else:
-                getattr(self, action)(*args)
-                self.queue.task_done()
-
-    def start_session(self, session):
-        session.proc_status = 'running'
-        session.save(update_fields=['proc_status'])
-
-    def end_session(self, session):
+    # start celery-worker
+    results = list()
+    for host, sessions in session_groups.items():
         try:
-            session.rework()
-        except Exception as err:
-            session.status = 'error'
-            exc_msg = ExceptionMessage(print_tb=True)
-            logger.error(exc_msg.text)
-            if settings.MINKE_DEBUG:
-                session.news.append(exc_msg)
-            else:
-                msg = 'An error occurred.'
-                session.news.append(Message(msg, 'error'))
+            results.append(process_sessions.delay(host, sessions))
+        except process_sessions.OperationalError as exc:
+            # TODO: What to do here?
+            pass
 
-        session.proc_status = 'done'
-        session.status = session.status or 'success'
-        session.save(update_fields=['status', 'proc_status'])
+    # print sessions in cli-mode
+    while console and results:
+        for result in results:
+            if not result.ready(): continue
+            sessions = result.get()
+            for session in sessions:
+                Printer.prnt(session)
+            results.remove(result)
+            break
 
-        for message in session.news:
-            session.messages.add(message, bulk=False)
-
-        if not self.prnt:
-            Printer.prnt(session)
-
-    def release_lock(self, host):
-        Host.objects.filter(id=host.id).release_lock()
-
-    def save_message(self, message):
-        message.save()
+    # wait and forget...
+    for result in results:
+        if join: result.wait()
+        try: result.forget()
+        except NotImplementedError: pass

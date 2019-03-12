@@ -109,7 +109,7 @@ class SessionView(PermissionRequiredMixin, View):
             return
 
         # hopefully we are prepared...
-        engine.process(session_cls, queryset, session_data, request.user, join, request)
+        engine.process(session_cls, queryset, session_data, request.user, join)
 
 
 class SessionAPI(ListAPIView):

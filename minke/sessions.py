@@ -94,6 +94,8 @@ class ProxyMixin(object):
         proxy = True
 
 
+# FIXME: No need for rework and news. Database actions as storing messages
+# can be done within process!
 class Session(ProxyMixin, BaseSession):
     FORM = None
     CONFIRM = False
@@ -115,8 +117,15 @@ class Session(ProxyMixin, BaseSession):
 
     def __init__(self, *args, **kwargs):
         super(Session, self).__init__(*args, **kwargs)
+        # TODO: using news is deprecated
         self.news = list()
+        self.con = None
         self.session_name = self.__class__.__name__
+
+    def initialize(self, con):
+        self.con = con
+        self.proc_status = 'running'
+        self.save(update_fields=['proc_status'])
 
     def set_status(self, status):
         """
@@ -130,6 +139,9 @@ class Session(ProxyMixin, BaseSession):
         else:
             msg = 'session-status must be one of {}'.format(statuus)
             raise InvalidMinkeSetup(msg)
+
+    def add_msg(self, msg):
+        self.messages.add(msg, bulk=False)
 
     def process(self):
         """
@@ -171,11 +183,9 @@ class Session(ProxyMixin, BaseSession):
         else:
             return result.return_code == 0
 
-    def run(self, cmd, encoding='utf-8'):
-        # TODO: encoding is host-specific
-        # There should be a get_encoding-method for minke-models that returns
-        # a host-attribute holding the codec.
-        return UnicodeResult(run(cmd), encoding, 'replace')
+    def run(self, cmd):
+        # TODO: check encodings
+        return self.con.run(cmd)
 
     def execute(self, cmd, **kwargs):
         """
@@ -186,9 +196,9 @@ class Session(ProxyMixin, BaseSession):
 
         if not valid or result.stderr:
             level = 'WARNING' if valid else 'ERROR'
-            self.news.append(ExecutionMessage(result, level))
+            self.add_msg(ExecutionMessage(result, level))
         elif result:
-            self.news.append(PreMessage(result, 'INFO'))
+            self.add_msg(PreMessage(result, 'INFO'))
 
         return valid
 
@@ -234,13 +244,13 @@ class UpdateEntriesSession(Session):
 
         # call were valid but no stdout? Leave a warning.
         elif valid and not result.stdout:
-            self.news.append(ExecutionMessage(result, 'WARNING'))
+            self.add_msg(ExecutionMessage(result, 'WARNING'))
             value = None
 
         # call failed.
         else:
             value = None
-            self.news.append(ExecutionMessage(result, 'ERROR'))
+            self.add_msg(ExecutionMessage(result, 'ERROR'))
 
         setattr(self.player, field, value)
         return bool(value)
