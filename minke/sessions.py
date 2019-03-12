@@ -178,13 +178,12 @@ class Session(ProxyMixin, BaseSession):
         Return True if rtn-code is 0.
         If regex is given it must also match stdout.
         """
-        if regex and result.return_code == 0:
+        if regex and result.ok:
             return bool(re.match(regex, result.stdout))
         else:
-            return result.return_code == 0
+            return result.ok
 
     def run(self, cmd):
-        # TODO: check encodings
         return self.con.run(cmd)
 
     def execute(self, cmd, **kwargs):
@@ -192,15 +191,15 @@ class Session(ProxyMixin, BaseSession):
         Just run cmd and leave a message.
         """
         result = self.run(cmd, **kwargs)
-        valid = self.valid(result)
 
-        if not valid or result.stderr:
-            level = 'WARNING' if valid else 'ERROR'
-            self.add_msg(ExecutionMessage(result, level))
-        elif result:
-            self.add_msg(PreMessage(result, 'INFO'))
+        if result.failed:
+            self.add_msg(ExecutionMessage(result, 'ERROR'))
+        elif result.stderr:
+            self.add_msg(ExecutionMessage(result, 'WARNING'))
+        elif result.stdout:
+            self.add_msg(PreMessage(result.stdout, 'INFO'))
 
-        return valid
+        return result.ok
 
 
 class SingleActionSession(Session):
@@ -249,8 +248,8 @@ class UpdateEntriesSession(Session):
 
         # call failed.
         else:
-            value = None
             self.add_msg(ExecutionMessage(result, 'ERROR'))
+            value = None
 
         setattr(self.player, field, value)
         return bool(value)

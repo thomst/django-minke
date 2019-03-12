@@ -8,7 +8,6 @@ import logging
 from django.contrib import messages
 
 import minke.sessions
-from minke import settings
 from .messages import Message
 from .messages import Printer
 from .models import BaseSession
@@ -21,11 +20,9 @@ logger = logging.getLogger(__name__)
 def process(session_cls, queryset, session_data, user, join, console=False):
     """Initiate fabric's session-processing."""
 
+    BaseSession.objects.clear_currents(user, queryset)
     hosts = queryset.get_hosts()
-    lock = hosts.get_lock()
-    valid_hosts = hosts.filter(disabled=False).filter(locked=lock)
-    valid_players = queryset.host_filter(valid_hosts)
-    BaseSession.objects.clear_currents(user, valid_players)
+    lock = hosts.filter(disabled=False).get_lock()
 
     # group sessions by hosts
     session_groups = dict()

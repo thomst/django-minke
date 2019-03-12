@@ -4,6 +4,7 @@ import logging
 
 from celery import shared_task
 from fabric2 import Connection
+from minke import settings
 
 from .models import Host
 from .models import BaseSession

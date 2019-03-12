@@ -126,7 +126,6 @@ class TableMessage(Message):
         return table
 
 
-# FIXME: Encoding should be done here
 class ExecutionMessage(Message):
     TEMPLATE = """
         <table>
