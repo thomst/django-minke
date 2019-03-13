@@ -18,7 +18,6 @@ from .models import BaseSession
 from .messages import ExecutionMessage
 from .messages import PreMessage
 from .exceptions import InvalidMinkeSetup
-from .utils import UnicodeResult
 
 
 registry = list()
