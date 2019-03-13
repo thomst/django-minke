@@ -44,36 +44,43 @@ def process(session_cls, queryset, session_data, user, join, console=False):
             session.proc_status = 'done'
             session.save(update_fields=['status', 'proc_status'])
             if console: Printer.prnt(session)
-            continue
 
-        if not session_groups.has_key(host):
-            session_groups[host] = list()
-        session_groups[host].append(session)
+        # otherwise group sessions by hosts...
+        else:
+            if not session_groups.has_key(host):
+                session_groups[host] = list()
+            session_groups[host].append(session)
 
     # Stop here if no valid hosts are left...
     if not session_groups: return
 
-    # start celery-worker
+    # run celery-tasks to process the sessions...
     results = list()
     for host, sessions in session_groups.items():
         try:
-            results.append(process_sessions.delay(host, sessions))
+            result = process_sessions.delay(host, sessions)
+            results.append((result, [s.id for s in sessions]))
         except process_sessions.OperationalError as exc:
             # TODO: What to do here?
             pass
 
-    # print sessions in cli-mode
-    while console and results:
-        for result in results:
-            if not result.ready(): continue
-            sessions = result.get()
-            for session in sessions:
-                Printer.prnt(session)
-            results.remove(result)
-            break
+    # print sessions in cli-mode as soon as they are ready...
+    if console:
+        print_results = results[:]
+        while print_results:
+            try: result, ids = next((r for r in print_results if r[0].ready()))
+            except StopIteration: continue
+            sessions = session_cls.objects.filter(id__in=ids)
+            for session in sessions: Printer.prnt(session)
+            print_results.remove((result, ids))
 
-    # wait and forget...
-    for result in results:
-        if join: result.wait()
+    # wait for joined sessions...
+    elif join:
+        for result, session_ids in results:
+            result.wait()
+
+    # At least call forget on every result - in case a result-backend is in use
+    # that eats up ressources to store result-data...
+    for result, session_ids in results:
         try: result.forget()
         except NotImplementedError: pass

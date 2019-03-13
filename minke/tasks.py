@@ -78,6 +78,3 @@ def process_sessions(host, sessions):
     # release the lock
     host.locked = None
     host.save(update_fields=['locked'])
-
-    # fabric-stuff cannot be pickled. So we just return the BaseSession-instance.
-    return [BaseSession.objects.get(pk=s.pk) for s in sessions]
