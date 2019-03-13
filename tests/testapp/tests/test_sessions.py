@@ -1,16 +1,13 @@
 # -*- coding: utf-8 -*-
 from __future__ import unicode_literals
 
-from fabric.api import env, execute
-from fabric.network import disconnect_all
-from fabric.operations import _AttributeString
+from fabric2 import Connection
 
 from django.test import TransactionTestCase
 from django.contrib.auth.models import Permission
 from django.contrib.auth.models import User
 
 from minke import sessions
-from minke.utils import UnicodeResult
 from minke.sessions import register
 from minke.sessions import Session
 from minke.sessions import UpdateEntriesSession
@@ -23,10 +20,10 @@ from ..sessions import SingleActionDummySession
 from .utils import create_test_data
 
 
-def process_session(session, hoststring):
-    try: result = execute(session.process, hosts=[hoststring])
-    finally: disconnect_all()
-    return result[hoststring]
+def process_session(session, host):
+    con = Connection(user=host.user, host=host.hostname)
+    session.initialize(con)
+    return session.process()
 
 
 class SessionTest(TransactionTestCase):
@@ -42,7 +39,13 @@ class SessionTest(TransactionTestCase):
         sessions.registry = self._registry[:]
 
     def init_session(self, session_cls, data=None):
-        return session_cls(user=self.user, player=self.server, session_data=data)
+        session = session_cls()
+        session.user = self.user
+        session.server = self.server
+        session.player = self.server
+        session.session_data = data or dict()
+        session.save()
+        return session
 
     def test_01_register_session(self):
         # a monkey-class
@@ -126,30 +129,31 @@ class SessionTest(TransactionTestCase):
 
         # test message-calls
         session = self.init_session(MethodTestSession, dict(test='execute'))
-        session = process_session(session, self.host.hoststring)
-        news = session.news
+        session = process_session(session, self.host)
+        news = session.messages.all()
         self.assertEqual(news[0].level, 'info')
         self.assertEqual(news[1].level, 'warning')
         self.assertEqual(news[2].level, 'error')
-        self.assertEqual(news[0].text, 'hello wörld')
-        self.assertRegex(news[1].text, 'code\[0\] +echo "hello wörld" 1>&2')
+        self.assertEqual(news[0].text, 'hello wörld\n')
+        self.assertRegex(news[1].text, 'code\[0\] +echo "hello wörld" 1>&2\n')
         self.assertRegex(news[2].text, 'code\[1\] +\[ 1 == 2 \]')
 
         # test update_field
         session = self.init_session(MethodTestSession, dict(test='update'))
-        session = process_session(session, self.host.hoststring)
-        self.assertEqual(session.player.hostname, 'foobär')
+        session = process_session(session, self.host)
+        self.assertEqual(session.player.hostname, 'foobär\n')
 
         # test update_field with regex
         session = self.init_session(MethodTestSession, dict(test='update_regex'))
-        session = process_session(session, self.host.hoststring)
+        session = process_session(session, self.host)
         self.assertEqual(session.player.hostname, 'foo')
 
         # test update_field with failing regex
         session = self.init_session(MethodTestSession, dict(test='update_regex_fails'))
-        session = process_session(session, self.host.hoststring)
-        self.assertEqual(session.news[0].level, 'error')
-        self.assertRegex(session.news[0].text, 'code\[0\] +echo "foobär"')
+        session = process_session(session, self.host)
+        news = session.messages.all()
+        self.assertEqual(news[0].level, 'error')
+        self.assertRegex(news[0].text, 'code\[0\] +echo "foobär"\n')
 
         # test update_field-call with invalid field
         session = self.init_session(MethodTestSession, dict(test='update_invalid_field'))
@@ -160,37 +164,8 @@ class SessionTest(TransactionTestCase):
 
         # test with utf-8-encoding
         session = self.init_session(MethodTestSession, dict(test='unicode_result'))
-        result = process_session(session, self.host.hoststring)
-        self.assertEqual(type(result), UnicodeResult)
+        result = process_session(session, self.host)
         self.assertEqual(type(result.stdout), unicode)
         self.assertEqual(type(result.stderr), unicode)
-        self.assertEqual(result, 'hällo')
-        self.assertEqual(result.stderr, 'wörld')
-
-        # test with ascii-encoding using replace
-        session = self.init_session(MethodTestSession, dict(test='unicode_result_replace'))
-        result = process_session(session, self.host.hoststring)
-        self.assertEqual(result, 'h��llo')
-        self.assertEqual(result.stderr, 'w��rld')
-
-        # test UnicodeResult directly
-        attr_str = _AttributeString('hällo'.encode('utf-8'))
-        attr_str.command = 'any command ø'
-        attr_str.real_command = 'any real-command ø'
-        attr_str.stderr = 'wörld'.encode('utf-8')
-        attr_str.return_code = 0
-        attr_str.succeeded = True
-        attr_str.failed = False
-
-        result = UnicodeResult(attr_str, 'utf-8', 'replace')
-        self.assertEqual(type(result), UnicodeResult)
-        self.assertEqual(type(result.stdout), unicode)
-        self.assertEqual(type(result.stderr), unicode)
-        self.assertEqual(result, 'hällo')
-        self.assertEqual(result.stdout, 'hällo')
-        self.assertEqual(result.stderr, 'wörld')
-
-        # test with ascii-encoding using replace
-        result = UnicodeResult(attr_str, 'ascii', 'replace')
-        self.assertEqual(result, 'h��llo')
-        self.assertEqual(result.stderr, 'w��rld')
+        self.assertEqual(result.stdout, 'hällo\n')
+        self.assertEqual(result.stderr, 'wörld\n')

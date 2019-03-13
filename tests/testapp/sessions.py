@@ -49,7 +49,7 @@ class EchoUnicodeSession(Session):
     def process(self):
         cmd = 'echo "¡ ¢ £ ¤ ¥ ¦ § ¨ © ª « ¬ ­ ® ¯ ° ± ² ³ ´ µ"'
         result = self.run(self.format_cmd(cmd))
-        self.news.append(ExecutionMessage(result))
+        self.add_msg(ExecutionMessage(result))
 
 
 @register(Server, 'Update hostname.')
@@ -66,14 +66,14 @@ class TestFormSession(Session):
         one = self.session_data['one']
         two = self.session_data['two']
         msg = '{:d} + {:d} = {:d}'.format(one, two, one + two)
-        self.news.append(Message(msg, 'WARNING'))
+        self.add_msg(Message(msg, 'WARNING'))
 
 
 @register((Host, Server, AnySystem), 'Leave a message.', create_permission=True)
 class LeaveAMessageSession(Session):
     MSG = '¡ ¢ £ ¤ ¥ ¦ § ¨ © ª « ¬ ­ ® ¯ ° ± ² ³ ´ µ'
     def process(self):
-        self.news.append(Message(self.MSG, 'info'))
+        self.add_msg(Message(self.MSG, 'info'))
 
 
 class MethodTestSession(UpdateEntriesSession):
@@ -101,6 +101,3 @@ class MethodTestSession(UpdateEntriesSession):
 
     def test_unicode_result(self):
         return self.run('(echo "hällo"; echo "wörld" 1>&2)')
-
-    def test_unicode_result_replace(self):
-        return self.run('(echo "hällo"; echo "wörld" 1>&2)', 'ascii')

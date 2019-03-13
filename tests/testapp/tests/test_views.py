@@ -8,6 +8,7 @@ from django.contrib.auth.models import User
 from django.contrib.contenttypes.models import ContentType
 from django.test import TransactionTestCase
 from django.test import Client
+from django.test import override_settings
 from django.urls import reverse
 
 from minke import sessions
@@ -24,12 +25,18 @@ from .utils import create_session
 from .utils import create_message
 
 
+CELERY_TEST_SETTINGS = dict(
+    CELERY_ALWAYS_EAGER=True,
+    CELERY_EAGER_PROPAGATES_EXCEPTIONS=True,
+    BROKER_BACKEND='memory')
+
 class ViewsTest(TransactionTestCase):
     def setUp(self):
         create_test_data()
         self.admin = User.objects.get(username='admin')
         self.anyuser = User.objects.get(username='anyuser')
 
+    # @override_settings(**CELERY_TEST_SETTINGS)
     def test_01_session_view(self):
         url_pattern = 'admin:{}_{}_changelist'
         player_ids = [1, 2, 3]
