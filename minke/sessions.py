@@ -184,7 +184,7 @@ class Session(ProxyMixin, BaseSession):
             return result.ok
 
     def run(self, cmd):
-        return self.con.run(cmd)
+        return self.con.run(cmd, warn=True)
 
     def execute(self, cmd, **kwargs):
         """
