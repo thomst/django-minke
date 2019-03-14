@@ -15,6 +15,7 @@ from minke import sessions
 from minke import settings
 from minke.models import BaseSession
 from minke.models import BaseMessage
+from ..settings import CELERY_TEST_SETTINGS
 from ..sessions import LeaveAMessageSession
 from ..sessions import DummySession
 from ..sessions import ExceptionSession
@@ -25,18 +26,13 @@ from .utils import create_session
 from .utils import create_message
 
 
-CELERY_TEST_SETTINGS = dict(
-    CELERY_ALWAYS_EAGER=True,
-    CELERY_EAGER_PROPAGATES_EXCEPTIONS=True,
-    BROKER_BACKEND='memory')
-
 class ViewsTest(TransactionTestCase):
     def setUp(self):
         create_test_data()
         self.admin = User.objects.get(username='admin')
         self.anyuser = User.objects.get(username='anyuser')
 
-    # @override_settings(**CELERY_TEST_SETTINGS)
+    @override_settings(**CELERY_TEST_SETTINGS)
     def test_01_session_view(self):
         url_pattern = 'admin:{}_{}_changelist'
         player_ids = [1, 2, 3]
@@ -62,6 +58,7 @@ class ViewsTest(TransactionTestCase):
         else:
             self.client.logout()
 
+    @override_settings(**CELERY_TEST_SETTINGS)
     def test_02_permissions(self):
         url = reverse('admin:minke_host_changelist')
         post_data = dict()
@@ -93,6 +90,7 @@ class ViewsTest(TransactionTestCase):
 
         self.client.logout()
 
+    @override_settings(**CELERY_TEST_SETTINGS)
     def test_03_session_raises_exception(self):
         url = reverse('admin:minke_host_changelist')
         post_data = dict()
@@ -114,6 +112,7 @@ class ViewsTest(TransactionTestCase):
         settings.MINKE_DEBUG = old_minke_debug
         self.client.logout()
 
+    @override_settings(**CELERY_TEST_SETTINGS)
     def test_04_session_form(self):
         url = reverse('admin:testapp_anysystem_changelist')
         post_data = dict()
@@ -126,14 +125,14 @@ class ViewsTest(TransactionTestCase):
         invalid_form_data['two'] = 'def'
         valid_form_data = post_data.copy()
         valid_form_data['minke_form'] = True
-        valid_form_data['initial_password'] = 'password'
+        valid_form_data['connect_kwargs_passphrase'] = 'password'
         valid_form_data['one'] = 1
         valid_form_data['two'] = 2
 
         self.client.force_login(self.admin)
-        old_minke_password_form = settings.MINKE_PASSWORD_FORM
+        old_minke_password_form = settings.MINKE_FABRIC_FORM
         indicator_action_form = '<input type="hidden" name="minke_form" value="True">'
-        indicator_password = '<input type="password" name="initial_password" maxlength="100"'
+        indicator_password = '<input type="password" name="connect_kwargs_passphrase"'
         indicator_confirm = 'type="checkbox" name="_selected_action" value="1" checked>'
         indicator_testform = '<input type="number" name="one"'
 
@@ -141,31 +140,31 @@ class ViewsTest(TransactionTestCase):
 
         # calling the form in all possible variations
         options = list()
-        for password in [True, False]:
+        for passform in ['minke.forms.PassphraseForm', False]:
             for confirm in [True, False]:
                 for testform in [TestForm, None]:
-                    options.append((password, confirm, testform))
+                    options.append((passform, confirm, testform))
 
-        for password, confirm, testform in options:
-            settings.MINKE_PASSWORD_FORM = password
+        for passform, confirm, testform in options:
+            settings.MINKE_FABRIC_FORM = passform
             DummySession.CONFIRM = confirm
             DummySession.FORM = testform
 
             # without form-data
-            if not (password or confirm or testform): continue
+            if not (passform or confirm or testform): continue
             resp = self.client.post(url, post_data)
             self.assertEqual(resp.status_code, 200)
             self.assertIn(indicator_action_form, resp.content)
-            get_test(password)(indicator_password, resp.content)
+            get_test(passform)(indicator_password, resp.content)
             get_test(confirm)(indicator_confirm, resp.content)
             get_test(testform)(indicator_testform, resp.content)
 
             # with invalid form-data
-            if not (password or testform): continue
+            if not (passform or testform): continue
             resp = self.client.post(url, invalid_form_data)
             self.assertEqual(resp.status_code, 200)
             self.assertIn(indicator_action_form, resp.content)
-            get_test(password)(indicator_password, resp.content)
+            get_test(passform)(indicator_password, resp.content)
             get_test(confirm)(indicator_confirm, resp.content)
             get_test(testform)(indicator_testform, resp.content)
 
@@ -177,8 +176,9 @@ class ViewsTest(TransactionTestCase):
         self.client.logout()
         DummySession.CONFIRM = False
         DummySession.FORM = None
-        settings.MINKE_PASSWORD_FORM = old_minke_password_form
+        settings.MINKE_FABRIC_FORM = old_minke_password_form
 
+    @override_settings(**CELERY_TEST_SETTINGS)
     def test_05_minke_filter(self):
         self.client.force_login(self.admin)
         baseurl = reverse('admin:minke_host_changelist')
@@ -215,6 +215,7 @@ class ViewsTest(TransactionTestCase):
 
         self.client.logout()
 
+    @override_settings(**CELERY_TEST_SETTINGS)
     def test_06_session_api(self):
         servers = list(Server.objects.filter(hostname__contains='222'))
         server_ct = ContentType.objects.get_for_model(Server)

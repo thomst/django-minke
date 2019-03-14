@@ -6,6 +6,7 @@ import subprocess
 import sys
 
 from django.test import TransactionTestCase
+from django.test import override_settings
 from django.core.management import call_command
 from django import forms
 
@@ -16,6 +17,7 @@ from minke.sessions import Session
 from minke.models import Host
 
 from .utils import create_test_data
+from ..settings import CELERY_TEST_SETTINGS
 from ..sessions import TestFormSession
 from ..models import Server
 from ..models import AnySystem
@@ -135,6 +137,7 @@ class MinkeManagerTest(TransactionTestCase):
             self.assertRaises(SystemExit, call_command, 'minkesession', 'DummySession', 'Server', '--url-query=foobar')
         self.assertRegex(out[0], '[ERROR].+url-query.*')
 
+    @override_settings(**CELERY_TEST_SETTINGS)
     def test_04_valid_calls(self):
         # list sessions
         with InOut() as out:

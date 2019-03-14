@@ -14,13 +14,13 @@ class MinkeForm(forms.Form):
         css = {'all': ('minke/css/minke_form.css',)}
 
 
-class PasswordForm(forms.Form):
-    initial_password = forms.CharField(
-        label='Pass-Phrase',
-        help_text='Pass phrase to decrypt the ssh-private-key.',
+class PassphraseForm(forms.Form):
+    connect_kwargs_passphrase = forms.CharField(
+        label='Passphrase',
+        help_text='Passphrase to decrypt an ssh-private-key.',
         max_length=100,
         widget=forms.PasswordInput(attrs={
-            'placeholder': 'Pass-Phrase',
+            'placeholder': 'Passphrase',
             'autofocus': '',
             'required': ''})
         )

@@ -1,39 +1,52 @@
 # -*- coding: utf-8 -*-
 from __future__ import absolute_import, unicode_literals
-import logging
+import logging, os
 
+from socket import error as SocketError
+from socket import gaierror as GaiError
+from paramiko.ssh_exception import SSHException
+from invoke.exceptions import Failure
+from invoke.exceptions import ThreadException
+from invoke.exceptions import UnexpectedExit
 from celery import shared_task
 from fabric2 import Connection
-from minke import settings
 
+from minke import settings
 from .models import Host
 from .models import BaseSession
 from .messages import Message
 from .messages import ExceptionMessage
-from socket import error as SocketError
-from socket import gaierror as GaiError
+from .settings import MINKE_FABRIC_CONFIG
 
 
 logger = logging.getLogger(__name__)
 
 
 @shared_task
-def process_sessions(host, sessions):
+def process_sessions(host, sessions, fabric_config=None):
 
-    # TODO: use a default-port on model-basis
-    # FIXME: Is there a timeout-option?
-    con = Connection(user=host.user, host=host.hostname, port=host.port or 22)
+    # prepare the config and create a connection...
+    config = MINKE_FABRIC_CONFIG.clone()
+    config.load_snakeconfig(fabric_config or dict())
+    con = Connection(
+        host.hostname or host.host,
+        user=host.user,
+        port=host.port,
+        config=config)
 
+    # process the sessions...
     for session in sessions:
         session.initialize(con)
 
-        try:
-            session.process()
+        try: session.process()
 
-        # connection-related exceptions
-        # FIXME: Exceptions could be invoke-, fabric-, paramiko-, socket-
-        # or session-related. Research is needed...
-        except (GaiError, SocketError):
+        # paramiko- and socket-related exceptions (ssh-layer)
+        except (SSHException, GaiError, SocketError):
+            session.status = 'error'
+            session.add_msg(ExceptionMessage())
+
+        # invoke-related exceptions (shell-layer)
+        except (Failure, ThreadException, UnexpectedExit):
             session.status = 'error'
             session.add_msg(ExceptionMessage())
 
@@ -49,7 +62,6 @@ def process_sessions(host, sessions):
                 session.add_msg(Message(msg, 'error'))
 
         finally:
-
             # FIXME: with celery it should be possible accessing the database
             # within the process-method. rework should be superfluseous.
             # session's rework
@@ -74,6 +86,9 @@ def process_sessions(host, sessions):
             # Messages should be stored with add_msg().
             for message in session.news:
                 session.add_msg(message)
+
+    # to be explicit - close connection...
+    con.close()
 
     # release the lock
     host.locked = None

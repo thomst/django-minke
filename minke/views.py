@@ -1,8 +1,7 @@
 # -*- coding: utf-8 -*-
 from __future__ import unicode_literals
 
-import paramiko
-from fabric.api import env
+from pydoc import locate
 
 from django.shortcuts import render
 from django.views.generic import View
@@ -19,10 +18,10 @@ from rest_framework.exceptions import NotFound
 from minke import settings
 from minke import engine
 from .forms import MinkeForm
-from .forms import PasswordForm
 from .models import BaseSession
 from .serializers import SessionSerializer
 from .exceptions import InvalidURLQuery
+from .exceptions import InvalidMinkeSetup
 
 
 class SessionView(PermissionRequiredMixin, View):
@@ -53,63 +52,70 @@ class SessionView(PermissionRequiredMixin, View):
         session_cls = self.get_session_cls()
         queryset = self.get_queryset()
         join = session_cls.JOIN
-
-        # do we have to render a form?
-        password_form = settings.MINKE_PASSWORD_FORM
-        session_form = bool(session_cls.FORM)
-        confirm = session_cls.CONFIRM
+        fabric_config = None
         session_data = dict()
+        confirm = session_cls.CONFIRM
+        session_form_cls = session_cls.FORM
+        fabric_form_cls = None
+        render_params = dict()
 
-        if password_form or session_form or confirm:
+        # import fabric-form if needed...
+        if settings.MINKE_FABRIC_FORM:
+            fabric_form_cls = locate(settings.MINKE_FABRIC_FORM)
+            if not fabric_form_cls:
+                msg = '{} could not be loaded'.format(settings.MINKE_FABRIC_FORM)
+                raise InvalidMinkeSetup(msg)
+
+        # do we have to work with a form?
+        if confirm or fabric_form_cls or session_form_cls:
+
+            # first time or validation?
             from_form = request.POST.get('minke_form', False)
-
             if from_form:
                 minke_form = MinkeForm(request.POST)
-                if password_form: password_form = PasswordForm(request.POST)
-                if session_form: session_form = session_cls.FORM(request.POST)
+                valid = minke_form.is_valid()
+                form_data = [request.POST]
             else:
-                minke_form = MinkeForm(dict(action=session_cls.__name__, join=session_cls.JOIN))
-                if password_form: password_form = PasswordForm()
-                if session_form: session_form = session_cls.FORM()
+                minke_form = MinkeForm(dict(
+                    action=session_cls.__name__,
+                    join=session_cls.JOIN))
+                valid = False
+                form_data = list()
 
-            valid = minke_form.is_valid()
-            if password_form: valid &= password_form.is_valid()
-            if session_form: valid &= session_form.is_valid()
+            # initiate fabric-form
+            if fabric_form_cls:
+                fabric_form = fabric_form_cls(*form_data)
+                render_params['fabric_form'] = fabric_form
+                valid &= fabric_form.is_valid()
 
-            params = dict(
-                title=session_cls.short_description,
-                minke_form=minke_form,
-                password_form=password_form,
-                session_form=session_form,
-                objects=queryset,
-                object_list=confirm
-            )
+            # initiate session-form
+            if session_form_cls:
+                session_form = session_cls.FORM(*form_data)
+                render_params['session_form'] = session_form
+                valid &= session_form.is_valid()
 
-            if not valid or not from_form:
-                return render(request, 'minke/minke_form.html', params)
-            else:
-                join = minke_form.cleaned_data['join']
+            # render minke-form the first time or if form-data where not valid...
+            if not valid:
+                render_params['title'] = session_cls.short_description,
+                render_params['minke_form'] = minke_form
+                render_params['objects'] = queryset
+                render_params['object_list'] = confirm
+                return render(request, 'minke/minke_form.html', render_params)
 
-            if password_form:
-                env.password = password_form.cleaned_data['initial_password']
+            # get fabric-config from fabric-form...
+            if fabric_form_cls:
+                fabric_config = fabric_form.cleaned_data
 
-            if session_form:
+            # get session-data from session-form...
+            if session_form_cls:
                 session_data = session_form.cleaned_data
 
+            # update join-param from minke-form...
+            join = minke_form.cleaned_data['join']
 
-        # do we have a chance to get keys from an ssh-agent?
-        if not env.no_agent:
-            from paramiko.agent import Agent
-            env.no_agent = not bool(Agent().get_keys())
-
-        # do we have any option to get a key at all?
-        if env.no_agent and not env.key and not env.key_filename:
-            msg = 'Got no keys from the agent nor have a key-file!'
-            messages.add_message(request, messages.ERROR, msg)
-            return
-
-        # hopefully we are prepared...
-        engine.process(session_cls, queryset, session_data, request.user, join)
+        # lets rock...
+        engine.process(session_cls, queryset, session_data, request.user,
+                       fabric_config=fabric_config, join=join)
 
 
 class SessionAPI(ListAPIView):

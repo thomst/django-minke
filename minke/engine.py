@@ -17,7 +17,8 @@ from .tasks import process_sessions
 logger = logging.getLogger(__name__)
 
 
-def process(session_cls, queryset, session_data, user, join, console=False):
+def process(session_cls, queryset, session_data, user,
+            fabric_config=None, join=False, console=False):
     """Initiate fabric's session-processing."""
 
     BaseSession.objects.clear_currents(user, queryset)
@@ -58,7 +59,7 @@ def process(session_cls, queryset, session_data, user, join, console=False):
     results = list()
     for host, sessions in session_groups.items():
         try:
-            result = process_sessions.delay(host, sessions)
+            result = process_sessions.delay(host, sessions, fabric_config)
             results.append((result, [s.id for s in sessions]))
         except process_sessions.OperationalError as exc:
             # TODO: What to do here?

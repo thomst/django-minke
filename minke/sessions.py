@@ -116,7 +116,7 @@ class Session(ProxyMixin, BaseSession):
 
     def __init__(self, *args, **kwargs):
         super(Session, self).__init__(*args, **kwargs)
-        # TODO: using news is deprecated
+        # FIXME: using news is deprecated
         self.news = list()
         self.con = None
         self.session_name = self.__class__.__name__
