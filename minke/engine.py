@@ -58,12 +58,10 @@ def process(session_cls, queryset, session_data, user,
     # run celery-tasks to process the sessions...
     results = list()
     for host, sessions in session_groups.items():
-        try:
-            result = process_sessions.delay(host, sessions, fabric_config)
-            results.append((result, [s.id for s in sessions]))
-        except process_sessions.OperationalError as exc:
-            # TODO: What to do here?
-            pass
+        # FIXME: celery-4.2.1 fails to raise an exception if rabbitmq is
+        # down or no celery-worker is running at all... hope for 4.3.x
+        result = process_sessions.delay(host, sessions, fabric_config)
+        results.append((result, [s.id for s in sessions]))
 
     # print sessions in cli-mode as soon as they are ready...
     if console:
