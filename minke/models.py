@@ -49,16 +49,21 @@ class BaseSession(models.Model):
         ('initialized', 'initialized'),
         ('running', 'running'),
         ('done', 'done'),
+        ('aborted', 'aborted'),
     )
+    session_name = models.CharField(max_length=128)
+    session_verbose_name = models.CharField(max_length=128)
+    session_data = PickledObjectField(blank=True)
     user = models.ForeignKey(User, on_delete=models.CASCADE)
     content_type = models.ForeignKey(ContentType, on_delete=models.CASCADE)
     object_id = models.PositiveIntegerField()
     player = GenericForeignKey('content_type', 'object_id')
-    session_name = models.CharField(max_length=128)
-    session_data = PickledObjectField(blank=True)
     current = models.BooleanField(default=True)
     status = models.CharField(max_length=128, choices=RESULT_STATES)
-    proc_status = models.CharField(max_length=128, choices=PROC_STATES, default='initialized')
+    proc_status = models.CharField(max_length=128, choices=PROC_STATES)
+    start_time = models.DateTimeField(blank=True, null=True)
+    end_time = models.DateTimeField(blank=True, null=True)
+    run_time = models.DurationField(blank=True, null=True)
 
 
 class BaseMessage(models.Model):

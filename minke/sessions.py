@@ -2,6 +2,7 @@
 from __future__ import unicode_literals
 
 import re
+import datetime
 
 from fabric.api import run
 
@@ -93,8 +94,6 @@ class ProxyMixin(object):
         proxy = True
 
 
-# FIXME: No need for rework and news. Database actions as storing messages
-# can be done within process!
 class Session(ProxyMixin, BaseSession):
     FORM = None
     CONFIRM = False
@@ -120,11 +119,51 @@ class Session(ProxyMixin, BaseSession):
         self.news = list()
         self.con = None
         self.session_name = self.__class__.__name__
+        self.session_verbose_name = self.short_description
 
-    def initialize(self, con):
-        self.con = con
+    def init(self, user, player, session_data):
+        self.proc_status = 'initialized'
+        self.user = user
+        self.player = player
+        self.session_data = session_data
+        self.save()
+
+    def start(self, con):
         self.proc_status = 'running'
-        self.save(update_fields=['proc_status'])
+        self.con = con
+        self.start_time = datetime.datetime.now()
+        self.save(update_fields=['proc_status', 'start_time'])
+
+    def end(self):
+        if self.proc_status == 'initialized':
+            self.proc_status = 'aborted'
+            self.status = 'error'
+            self.save(update_fields=['proc_status', 'status'])
+        else:
+            self.proc_status = 'done'
+            self.status = self.status or 'success'
+            self.end_time = datetime.datetime.now()
+            self.run_time = self.end_time - self.start_time
+            self.save(update_fields=['proc_status', 'status', 'end_time', 'run_time'])
+            # FIXME: Using news is deprecated.
+            # Messages should be stored with add_msg().
+            for message in self.news: self.add_msg(message)
+
+    def process(self):
+        """
+        Real work is done here...
+        """
+        raise NotImplementedError('Your session must define a process-method!')
+
+    # FIXME: using rework is deprecated
+    def rework(self):
+        """
+        This method is deprecated.
+        """
+        pass
+
+    def add_msg(self, msg):
+        self.messages.add(msg, bulk=False)
 
     def set_status(self, status):
         """
@@ -138,27 +177,6 @@ class Session(ProxyMixin, BaseSession):
         else:
             msg = 'session-status must be one of {}'.format(statuus)
             raise InvalidMinkeSetup(msg)
-
-    def add_msg(self, msg):
-        self.messages.add(msg, bulk=False)
-
-    def process(self):
-        """
-        Real work is done here...
-
-        This is the part of a session which is executed within fabric's
-        multiprocessing-szenario. It's the right place for all
-        fabric-operations. But keep it clean of database-related stuff.
-        Database-connections are multiplied with spawend processes and
-        then are not reliable anymore.
-        """
-        raise NotImplementedError('Your session must define a process-method!')
-
-    def rework(self):
-        """
-        This method is called after fabric's work is done.
-        Database-related actions should be done here."""
-        pass
 
     # helper-methods
     def format_cmd(self, cmd):

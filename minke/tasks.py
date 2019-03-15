@@ -36,23 +36,22 @@ def process_sessions(host, sessions, fabric_config=None):
 
     # process the sessions...
     for session in sessions:
-        session.initialize(con)
-
+        session.start(con)
         try: session.process()
 
         # paramiko- and socket-related exceptions (ssh-layer)
         except (SSHException, GaiError, SocketError):
-            session.status = 'error'
+            session.set_status('error')
             session.add_msg(ExceptionMessage())
 
         # invoke-related exceptions (shell-layer)
         except (Failure, ThreadException, UnexpectedExit):
-            session.status = 'error'
+            session.set_status('error')
             session.add_msg(ExceptionMessage())
 
         # other exceptions
         except Exception:
-            session.status = 'error'
+            session.set_status('error')
             exc_msg = ExceptionMessage(print_tb=True)
             logger.error(exc_msg.text)
             if settings.MINKE_DEBUG:
@@ -68,7 +67,7 @@ def process_sessions(host, sessions, fabric_config=None):
             try:
                 session.rework()
             except Exception as err:
-                session.status = 'error'
+                session.set_status('error')
                 exc_msg = ExceptionMessage(print_tb=True)
                 logger.error(exc_msg.text)
                 if settings.MINKE_DEBUG:
@@ -77,15 +76,7 @@ def process_sessions(host, sessions, fabric_config=None):
                     msg = 'An error occurred.'
                     session.add_msg(Message(msg, 'error'))
 
-            # update session-data
-            session.proc_status = 'done'
-            session.status = session.status or 'success'
-            session.save(update_fields=['status', 'proc_status'])
-
-            # TODO: the news-attr should not be used to store messages anymore.
-            # Messages should be stored with add_msg().
-            for message in session.news:
-                session.add_msg(message)
+            session.end()
 
     # to be explicit - close connection...
     con.close()

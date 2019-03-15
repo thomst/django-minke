@@ -31,19 +31,14 @@ def process(session_cls, queryset, session_data, user,
         host = player.get_host()
 
         session = session_cls()
-        session.user = user
-        session.player = player
-        session.session_data = session_data
-        session.save()
+        session.init(user, player, session_data)
 
         # Skip disabled or locked hosts...
         if host.disabled or host.locked and host.locked != lock:
             msg = 'disabled' if host.disabled else 'locked'
             msg = '{}: Host is {}.'.format(player, msg)
-            session.messages.add(Message(msg, 'error'), bulk=False)
-            session.status = 'error'
-            session.proc_status = 'done'
-            session.save(update_fields=['status', 'proc_status'])
+            session.add_msg(Message(msg, 'error'))
+            session.end()
             if console: Printer.prnt(session)
 
         # otherwise group sessions by hosts...
