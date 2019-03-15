@@ -57,20 +57,9 @@ def create_test_data():
 
 def create_session(player, session_cls=DummySession, user='admin',
     current=True, status='success', proc_status='done'):
-    content_type = ContentType.objects.get_for_model(player.__class__)
-    user = User.objects.get(username=user)
-    return BaseSession(
-        object_id=player.id,
-        content_type=content_type,
-        session_name=session_cls.__name__,
-        user=user,
-        current=current,
-        status=status,
-        proc_status=proc_status)
-
-def create_message(session, text, html=None, level='info'):
-    return BaseMessage(
-        session=session,
-        text=text,
-        html=html or text,
-        level=level)
+    session = session_cls()
+    session.set_status(status)
+    session.init(User.objects.get(username=user), player, dict())
+    session.start(None)
+    session.end()
+    return session

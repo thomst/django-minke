@@ -22,7 +22,7 @@ from .utils import create_test_data
 
 def process_session(session, host):
     con = Connection(user=host.user, host=host.hostname)
-    session.initialize(con)
+    session.start(con)
     return session.process()
 
 
@@ -40,11 +40,7 @@ class SessionTest(TransactionTestCase):
 
     def init_session(self, session_cls, data=None):
         session = session_cls()
-        session.user = self.user
-        session.server = self.server
-        session.player = self.server
-        session.session_data = data or dict()
-        session.save()
+        session.init(self.user, self.server, data or dict())
         return session
 
     def test_01_register_session(self):

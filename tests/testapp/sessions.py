@@ -76,6 +76,7 @@ class LeaveAMessageSession(Session):
         self.add_msg(Message(self.MSG, 'info'))
 
 
+@register((Host, Server, AnySystem), 'Test session-methods', create_permission=True)
 class MethodTestSession(UpdateEntriesSession):
     def process(self):
         return getattr(self, 'test_' + self.session_data['test'])()

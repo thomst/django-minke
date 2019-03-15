@@ -14,7 +14,7 @@ from django.urls import reverse
 from minke import sessions
 from minke import settings
 from minke.models import BaseSession
-from minke.models import BaseMessage
+from minke.messages import PreMessage
 from ..settings import CELERY_TEST_SETTINGS
 from ..sessions import LeaveAMessageSession
 from ..sessions import DummySession
@@ -23,7 +23,6 @@ from ..models import Host, Server, AnySystem
 from ..forms import TestForm
 from .utils import create_test_data
 from .utils import create_session
-from .utils import create_message
 
 
 class ViewsTest(TransactionTestCase):
@@ -188,7 +187,6 @@ class ViewsTest(TransactionTestCase):
         for i, host in enumerate(hosts):
             status = 'success' if i == 0 else 'error' if i > 2 else 'warning'
             session = create_session(host, status=status)
-            session.save()
 
         # create a matrix for all variations of filter-params
         options = list()
@@ -221,9 +219,7 @@ class ViewsTest(TransactionTestCase):
         server_ct = ContentType.objects.get_for_model(Server)
         for server in servers:
             session = create_session(server, user='anyuser')
-            session.save()
-            message = create_message(session, 'foobär', '<h1>foobär</h1>')
-            message.save()
+            session.add_msg(PreMessage('foobär'))
 
         url = reverse('minke_session_api', args=['server'])
         object_ids = [str(s.id) for s in servers]
@@ -239,9 +235,9 @@ class ViewsTest(TransactionTestCase):
             self.assertIn(str(session['object_id']), object_ids)
             self.assertEqual(session['status'], 'success')
             self.assertEqual(session['proc_status'], 'done')
-            self.assertEqual(session['session_name'], DummySession.__name__)
-            self.assertEqual(session['messages'][0]['level'], 'info')
-            self.assertEqual(session['messages'][0]['html'], '<h1>foobär</h1>')
+            self.assertIn(DummySession.short_description, session['get_html'])
+            self.assertIn('foobär', session['get_html'])
+            self.assertTrue(session['ready'])
 
         self.client.logout()
 
