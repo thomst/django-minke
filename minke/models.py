@@ -13,6 +13,7 @@ from django.contrib.contenttypes.models import ContentType
 from django.contrib.contenttypes.fields import GenericRelation
 from django.contrib.contenttypes.models import ContentType
 from django.core.exceptions import FieldError
+from django.utils.safestring import mark_safe
 
 from .exceptions import InvalidMinkeSetup
 
@@ -64,6 +65,30 @@ class BaseSession(models.Model):
     start_time = models.DateTimeField(blank=True, null=True)
     end_time = models.DateTimeField(blank=True, null=True)
     run_time = models.DurationField(blank=True, null=True)
+
+    def ready(self):
+        return self.proc_status in ('done', 'aborted')
+
+    def get_html(self):
+        if self.proc_status in ['initialized', 'running']: return ''
+
+        name = self.session_verbose_name
+        if self.proc_status == 'done':
+            run_time = "%.1f" % self.run_time.total_seconds()
+            info = '<p>Run "{}" in {} seconds.</p>'.format(name, run_time)
+        elif self.proc_status == 'aborted':
+            info = '<p>Could not run "{}".</p>'.format(name)
+
+        msgs = ''
+        if self.messages.all():
+            msgs += '<ul class="messagelist">'
+            for msg in self.messages.all():
+                msgs += '<li class="{}">{}</li>'.format(msg.level, msg.html)
+            msgs += '</ul>'
+
+        html = '<tr class="minke_news {}"><td colspan="100">'.format(self.status)
+        html += info + msgs + '</td></tr>'
+        return mark_safe(html)
 
 
 class BaseMessage(models.Model):

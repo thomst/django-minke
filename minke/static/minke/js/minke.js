@@ -7,29 +7,23 @@ var cf = {
               + '/minkeapi/currentsessions/'
               + window.location.pathname.split('/')[2],
     input_selector : 'tr.initialized input.action-select, tr.running input.action-select',
-    proc_statuus : 'initialized running',
     error_msg : 'minkeapi-error: '
 }
 
 function process_session (i, session) {
     object_id = session.object_id;
     var tr = $('tr input.action-select[value='+object_id+']').closest('tr');
-    tr.removeClass(cf.proc_statuus).addClass(session.proc_status);
-    if (session.status) tr.addClass(session.status);
-    if (session.messages.length) process_messages(tr, session);
+    tr.removeClass('initialized running').addClass(session.proc_status);
+    if (session.ready) add_session_info(tr, session);
 }
 
-function process_messages (tr, session) {
-    var msgtr = $('<tr></tr>').addClass('minke_news')
-        .addClass(session.status).hide();
-    var td = $('<td></td>').attr('colspan', 20);
-    var ul = $('<ul></ul>').addClass('messagelist').hide();
-    tr.after(msgtr.append(td.append(ul)));
-    $.each(session.messages, function(i, msg) {
-        ul.append($('<li></li>').addClass(msg.level).append(msg.html));
-    });
-    msgtr.show(500);
-    ul.slideDown('fast');
+function add_session_info (tr, session) {
+    tr.addClass(session.status);
+    var session_tr = $(session.get_html).hide();
+    var msgs_ul = session_tr.find('ul').hide();
+    tr.after(session_tr);
+    session_tr.show(500);
+    msgs_ul.slideDown('fast');
 }
 
 function get_json (url) {

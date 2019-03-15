@@ -1,7 +1,3 @@
-#result_list ul.messagelist {
-    margin-left: 25px;
-}
-
 #result_list ul.messagelist li {
     padding-left: 45px;
     margin-bottom: 8px;
@@ -11,7 +7,8 @@
 
 #result_list tr.minke_news td {
     border: 0;
-    padding: 8px 8px 0 8px;
+    padding: 8px 8px 0 33px;
+    color: #666;
 }
 
 #result_list ul.messagelist pre {
