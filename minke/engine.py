@@ -34,7 +34,7 @@ def process(session_cls, queryset, session_data, user,
         session.init(user, player, session_data)
 
         # Skip disabled or locked hosts...
-        if host.disabled or host.locked and host.locked != lock:
+        if host.disabled or host.lock and host.lock != lock:
             msg = 'disabled' if host.disabled else 'locked'
             msg = '{}: Host is {}.'.format(player, msg)
             session.add_msg(Message(msg, 'error'))

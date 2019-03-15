@@ -108,7 +108,7 @@ class HostQuerySet(models.QuerySet):
         # The most atomic way to get a lock is a update-query.
         # We use a timestamp to be able to identify the updated objects.
         timestamp = repr(time())
-        self.filter(locked=None).update(locked=timestamp)
+        self.filter(lock=None).update(lock=timestamp)
         return timestamp
 
     def get_hosts(self):
@@ -126,7 +126,7 @@ class Host(models.Model):
     hoststring = models.CharField(max_length=255, unique=True)
 
     disabled = models.BooleanField(default=False)
-    locked = models.CharField(max_length=20, blank=True, null=True)
+    lock = models.CharField(max_length=20, blank=True, null=True)
 
     unique_together = (("user", "hostname"),)
     objects = HostQuerySet.as_manager()

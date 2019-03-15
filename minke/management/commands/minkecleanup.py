@@ -25,7 +25,7 @@ class Command(BaseCommand):
 
     def handle(self, *args, **options):
         if options['release_locks']:
-            Host.objects.update(locked=None)
+            Host.objects.update(lock=None)
 
         elif options['clear_current_sessions']:
             BaseSession.objects.update(current=False)

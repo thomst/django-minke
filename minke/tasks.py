@@ -82,5 +82,5 @@ def process_sessions(host, sessions, fabric_config=None):
     con.close()
 
     # release the lock
-    host.locked = None
-    host.save(update_fields=['locked'])
+    host.lock = None
+    host.save(update_fields=['lock'])
