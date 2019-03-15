@@ -6,6 +6,7 @@ from threading import Thread
 import logging
 
 from django.contrib import messages
+from django.contrib.contenttypes.models import ContentType
 
 import minke.sessions
 from .messages import Message
@@ -53,11 +54,14 @@ def process(session_cls, queryset, session_data, user,
 
     # run celery-tasks to process the sessions...
     results = list()
+    ct = ContentType.objects.get_for_model(session_cls, for_concrete_model=False)
     for host, sessions in session_groups.items():
         try:
             # FIXME: celery-4.2.1 fails to raise an exception if rabbitmq is
             # down or no celery-worker is running at all... hope for 4.3.x
-            result = process_sessions.delay(host, sessions, fabric_config)
+            session_ids = [s.id for s in sessions]
+            args = (host.id, ct.id, session_ids, fabric_config)
+            result = process_sessions.delay(*args)
             results.append((result, [s.id for s in sessions]))
         except process_sessions.OperationalError:
             host.lock = None
