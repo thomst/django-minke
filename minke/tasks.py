@@ -61,21 +61,6 @@ def process_sessions(host, sessions, fabric_config=None):
                 session.add_msg(Message(msg, 'error'))
 
         finally:
-            # FIXME: with celery it should be possible accessing the database
-            # within the process-method. rework should be superfluseous.
-            # session's rework
-            try:
-                session.rework()
-            except Exception as err:
-                session.set_status('error')
-                exc_msg = ExceptionMessage(print_tb=True)
-                logger.error(exc_msg.text)
-                if settings.MINKE_DEBUG:
-                    session.add_msg(exc_msg)
-                else:
-                    msg = 'An error occurred.'
-                    session.add_msg(Message(msg, 'error'))
-
             session.end()
 
     # to be explicit - close connection...

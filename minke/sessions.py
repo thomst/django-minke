@@ -3,6 +3,7 @@ from __future__ import unicode_literals
 
 import re
 import datetime
+import inspect
 
 from fabric.api import run
 
@@ -22,69 +23,61 @@ from .exceptions import InvalidMinkeSetup
 
 
 registry = list()
-def register(session_cls, models=None,
-             short_description=None,
-             permission_required=None,
-             create_permission=False):
+def register(session_cls=None, create_permission=False):
     """
     Register session-classes.
-    They will be provided as admin-actions for the specified models
+    This works also as a decorator for session-classes.
     """
 
-    if models:
-        if not type(models) == tuple:
-            models = (models,)
-        session_cls.models = models
+    # If we got no session_cls we assume register were used as a decorator...
+    if not session_cls:
+        def wrapper(session_cls):
+            register(session_cls, create_permission)
+            return session_cls
+        return wrapper
 
-    if permission_required:
-        if not type(permission_required) == tuple:
-            permission_required = (permission_required,)
-        session_cls.permission_required = permission_required
-
-    if short_description:
-        session_cls.short_description = short_description
-
-    if not issubclass(session_cls, Session):
-        msg = 'Registered class must subclass Session.'
+    try:
+        assert(issubclass(session_cls, Session))
+    except (TypeError, AssertionError):
+        msg = 'Invalid session-class: {}'.format(session_cls)
         raise InvalidMinkeSetup(msg)
 
-    if not session_cls.models:
-        msg = 'At least one model must be specified for a session.'
+    if not session_cls.WORK_ON:
+        msg = 'At least one minke-model must be specified for a session.'
         raise InvalidMinkeSetup(msg)
 
-    for model in session_cls.models:
-        if model is not Host and not hasattr(model, 'get_host'):
-            msg = 'Models used with sessions must define a get_host-method.'
+    for model in session_cls.WORK_ON:
+        try:
+            assert(issubclass(session_cls, Session))
+        except (TypeError, AssertionError):
+            msg = '{} is no minke-model.'.format(model)
             raise InvalidMinkeSetup(msg)
 
     if create_permission:
-        # We only create a permission for one model. Otherwise a user would
-        # must have all permissions for all session-models and not as expected
-        # only the permission for the model she wants to run the session with.
-        # FIXME: Better solution here?
-        model = session_cls.models[0]
-
         # Applying minke-migrations tumbles over get_for_model if the
         # migrations for this model aren't applied yet.
-        try: content_type = ContentType.objects.get_for_model(model)
+        try: content_type = ContentType.objects.get_for_model(session_cls)
         except (OperationalError, ProgrammingError): return
 
-        model_name = slugify(model.__name__)
+        # We create one permission to run the session with all registered models.
+        models = '_and_'.join([slugify(m.__name__) for m in session_cls.WORK_ON])
         session_name = session_cls.__name__
         session_codename = camel_case_to_spaces(session_name).replace(' ', '_')
-        codename = 'run_{}_on_{}'.format(session_codename, model_name)
+        codename = 'can_run_{}_on_{}'.format(session_codename, models)
         permission_name = '{}.{}'.format(model._meta.app_label, codename)
-
-        # create permission...
         permission = Permission.objects.get_or_create(
-            name='Can run {}'.format(session_name),
+            name=codename.replace('_', ' '),
             codename=codename,
             content_type=content_type)
 
         # add permission to permission_required...
-        session_cls.permission_required += (permission_name,)
+        session_cls.PERMISSIONS += (permission_name,)
 
+    # register session-class
     registry.append(session_cls)
+
+    # in case register were used as a decorator (without arguments)...
+    return session_cls
 
 
 # We declare the Meta-class whithin a mixin.
@@ -95,14 +88,12 @@ class ProxyMixin(object):
 
 
 class Session(ProxyMixin, BaseSession):
+    VERBOSE_NAME = None
+    WORK_ON = tuple()
+    PERMISSIONS = tuple()
     FORM = None
     CONFIRM = False
-    JOIN = True
-
-    # admin-action-logic
-    models = tuple()
-    short_description = None
-    permission_required = tuple()
+    WAIT = False
 
     @classmethod
     def as_action(cls):
@@ -110,16 +101,14 @@ class Session(ProxyMixin, BaseSession):
             session_view = SessionView.as_view()
             return session_view(request, session_cls=cls, queryset=queryset)
         action.__name__ = cls.__name__
-        action.short_description = cls.short_description
+        action.short_description = cls.VERBOSE_NAME
         return action
 
     def __init__(self, *args, **kwargs):
         super(Session, self).__init__(*args, **kwargs)
-        # FIXME: using news is deprecated
-        self.news = list()
         self.con = None
         self.session_name = self.__class__.__name__
-        self.session_verbose_name = self.short_description
+        self.session_verbose_name = self.VERBOSE_NAME or self.session_name
 
     def init(self, user, player, session_data):
         self.proc_status = 'initialized'
@@ -145,22 +134,12 @@ class Session(ProxyMixin, BaseSession):
             self.end_time = datetime.datetime.now()
             self.run_time = self.end_time - self.start_time
             self.save(update_fields=['proc_status', 'status', 'end_time', 'run_time'])
-            # FIXME: Using news is deprecated.
-            # Messages should be stored with add_msg().
-            for message in self.news: self.add_msg(message)
 
     def process(self):
         """
         Real work is done here...
         """
         raise NotImplementedError('Your session must define a process-method!')
-
-    # FIXME: using rework is deprecated
-    def rework(self):
-        """
-        This method is deprecated.
-        """
-        pass
 
     def add_msg(self, msg):
         self.messages.add(msg, bulk=False)

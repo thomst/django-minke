@@ -6,7 +6,7 @@ from django import forms
 
 class MinkeForm(forms.Form):
     action = forms.CharField(required=True, widget=forms.HiddenInput())
-    join = forms.BooleanField(
+    wait = forms.BooleanField(
         label='Wait till all sessions are processed.',
         required=False)
 

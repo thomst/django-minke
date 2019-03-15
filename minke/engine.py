@@ -19,7 +19,7 @@ logger = logging.getLogger(__name__)
 
 
 def process(session_cls, queryset, session_data, user,
-            fabric_config=None, join=False, console=False):
+            fabric_config=None, wait=False, console=False):
     """Initiate fabric's session-processing."""
 
     BaseSession.objects.clear_currents(user, queryset)
@@ -79,8 +79,8 @@ def process(session_cls, queryset, session_data, user,
             for session in sessions: Printer.prnt(session)
             print_results.remove((result, ids))
 
-    # wait for joined sessions...
-    elif join:
+    # evt. wait till all tasks finished...
+    elif wait:
         for result, session_ids in results:
             result.wait()
 

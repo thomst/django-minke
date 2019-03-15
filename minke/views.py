@@ -36,7 +36,7 @@ class SessionView(PermissionRequiredMixin, View):
 
     def get_permission_required(self):
         session_cls = self.get_session_cls()
-        return session_cls.permission_required
+        return session_cls.PERMISSIONS
 
     def get_queryset(self):
         queryset = self.kwargs.get('queryset', None)
@@ -51,7 +51,7 @@ class SessionView(PermissionRequiredMixin, View):
     def post(self, request, *args, **kwargs):
         session_cls = self.get_session_cls()
         queryset = self.get_queryset()
-        join = session_cls.JOIN
+        wait = session_cls.WAIT
         fabric_config = None
         session_data = dict()
         confirm = session_cls.CONFIRM
@@ -78,7 +78,7 @@ class SessionView(PermissionRequiredMixin, View):
             else:
                 minke_form = MinkeForm(dict(
                     action=session_cls.__name__,
-                    join=session_cls.JOIN))
+                    wait=session_cls.WAIT))
                 valid = False
                 form_data = list()
 
@@ -96,7 +96,7 @@ class SessionView(PermissionRequiredMixin, View):
 
             # render minke-form the first time or if form-data where not valid...
             if not valid:
-                render_params['title'] = session_cls.short_description,
+                render_params['title'] = session_cls.VERBOSE_NAME,
                 render_params['minke_form'] = minke_form
                 render_params['objects'] = queryset
                 render_params['object_list'] = confirm
@@ -110,12 +110,12 @@ class SessionView(PermissionRequiredMixin, View):
             if session_form_cls:
                 session_data = session_form.cleaned_data
 
-            # update join-param from minke-form...
-            join = minke_form.cleaned_data['join']
+            # update wait-param from minke-form...
+            wait = minke_form.cleaned_data['wait']
 
         # lets rock...
         engine.process(session_cls, queryset, session_data, request.user,
-                       fabric_config=fabric_config, join=join)
+                       fabric_config=fabric_config, wait=wait)
 
 
 class SessionAPI(ListAPIView):
