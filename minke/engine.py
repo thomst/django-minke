@@ -9,6 +9,7 @@ from django.contrib import messages
 
 import minke.sessions
 from .messages import Message
+from .messages import ExceptionMessage
 from .messages import Printer
 from .models import BaseSession
 from .tasks import process_sessions
@@ -53,10 +54,20 @@ def process(session_cls, queryset, session_data, user,
     # run celery-tasks to process the sessions...
     results = list()
     for host, sessions in session_groups.items():
-        # FIXME: celery-4.2.1 fails to raise an exception if rabbitmq is
-        # down or no celery-worker is running at all... hope for 4.3.x
-        result = process_sessions.delay(host, sessions, fabric_config)
-        results.append((result, [s.id for s in sessions]))
+        try:
+            # FIXME: celery-4.2.1 fails to raise an exception if rabbitmq is
+            # down or no celery-worker is running at all... hope for 4.3.x
+            result = process_sessions.delay(host, sessions, fabric_config)
+            results.append((result, [s.id for s in sessions]))
+        except process_sessions.OperationalError:
+            host.lock = None
+            host.save(update_fields=['lock'])
+            for session in sessions:
+                msg = 'Could not process session.'
+                session.add_msg(ExceptionMessage())
+                session.end()
+                if console: Printer.prnt(session)
+
 
     # print sessions in cli-mode as soon as they are ready...
     if console:
