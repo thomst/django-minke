@@ -125,7 +125,6 @@ STATIC_URL = '/static/'
 # Celery settings
 CELERY_BROKER_URL = 'amqp://guest:guest@localhost//'
 CELERY_RESULT_BACKEND = 'rpc://'
-CELERY_RESULT_PERSISTENT = False
 CELERY_ACCEPT_CONTENT = ['json']
 
 # celery 4.2.1 fails to respect this setting!
