@@ -16,6 +16,7 @@ from django.utils.text import slugify
 
 from .views import SessionView
 from .models import Host
+from .models import MinkeModel
 from .models import BaseSession
 from .messages import ExecutionMessage
 from .messages import PreMessage
@@ -48,7 +49,7 @@ def register(session_cls=None, create_permission=False):
 
     for model in session_cls.WORK_ON:
         try:
-            assert(issubclass(session_cls, Session))
+            assert(model == Host or issubclass(model, MinkeModel))
         except (TypeError, AssertionError):
             msg = '{} is no minke-model.'.format(model)
             raise InvalidMinkeSetup(msg)

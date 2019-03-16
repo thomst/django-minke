@@ -1,9 +1,7 @@
 # -*- coding: utf-8 -*-
 from __future__ import unicode_literals
 
-from fabric.api import run
-
-from minke import register
+from minke.sessions import register
 from minke.models import Host
 from minke.sessions import Session
 from minke.sessions import SingleActionSession
@@ -18,48 +16,65 @@ from .models import AnySystem
 from .forms import TestForm
 
 
-@register((Host, Server, AnySystem), 'Do nothing.')
+@register
 class DummySession(Session):
+    VERBOSE_NAME = 'Do nothing'
+    WORK_ON = (Host, Server, AnySystem)
+
     def process(self):
         pass
 
 
-@register(Server, 'Do nothing (one-model-session).')
+@register
 class SingleModelDummySession(Session):
+    VERBOSE_NAME = 'Do nothing (one-model-session).'
+    WORK_ON = (Server,)
+
     def process(self):
         pass
 
 
-@register((Host, Server, AnySystem), 'Raise an exception.')
+@register
 class ExceptionSession(Session):
+    VERBOSE_NAME = 'Raise an exception.'
+    WORK_ON = (Host, Server, AnySystem)
+
     ERR_MSG = '¡ ¢ £ ¤ ¥ ¦ § ¨ © ª « ¬ ­ ® ¯ ° ± ² ³ ´ µ'.encode('utf-8')
     def process(self):
         raise Exception(str('process: ') + self.ERR_MSG)
-    def rework(self):
-        raise Exception(str('rework: ') + self.ERR_MSG)
 
 
-@register((Host, Server, AnySystem), 'Single-action-session.')
+@register
 class SingleActionDummySession(SingleActionSession):
+    VERBOSE_NAME = 'Single-action-session.'
+    WORK_ON = (Host, Server, AnySystem)
     COMMAND = None
 
 
-@register(Server, 'Echo unicode-literals.')
+@register
 class EchoUnicodeSession(Session):
+    VERBOSE_NAME = 'Echo unicode-literals.'
+    WORK_ON = (Server,)
+
     def process(self):
         cmd = 'echo "¡ ¢ £ ¤ ¥ ¦ § ¨ © ª « ¬ ­ ® ¯ ° ± ² ³ ´ µ"'
         result = self.run(self.format_cmd(cmd))
         self.add_msg(ExecutionMessage(result))
 
 
-@register(Server, 'Update hostname.')
+@register
 class TestUpdateEntriesSession(UpdateEntriesSession):
+    VERBOSE_NAME = 'Update hostname.'
+    WORK_ON = (Server,)
+
     def process(self):
         self.update_field('hostname', 'hostname', '^[a-z0-9._-]+$')
 
 
-@register((Host, Server, AnySystem), 'Test the session form.')
+@register
 class TestFormSession(Session):
+    VERBOSE_NAME = 'Test the session form.'
+    WORK_ON = (Host, Server, AnySystem)
     FORM = TestForm
 
     def process(self):
@@ -69,15 +84,21 @@ class TestFormSession(Session):
         self.add_msg(Message(msg, 'WARNING'))
 
 
-@register((Host, Server, AnySystem), 'Leave a message.', create_permission=True)
+@register(create_permission=True)
 class LeaveAMessageSession(Session):
+    VERBOSE_NAME = 'Leave a message.'
+    WORK_ON = (Host, Server, AnySystem)
+
     MSG = '¡ ¢ £ ¤ ¥ ¦ § ¨ © ª « ¬ ­ ® ¯ ° ± ² ³ ´ µ'
     def process(self):
         self.add_msg(Message(self.MSG, 'info'))
 
 
-@register((Host, Server, AnySystem), 'Test session-methods', create_permission=True)
+@register(create_permission=True)
 class MethodTestSession(UpdateEntriesSession):
+    VERBOSE_NAME = 'Test session-methods'
+    WORK_ON = (Host, Server, AnySystem)
+
     def process(self):
         return getattr(self, 'test_' + self.session_data['test'])()
 
