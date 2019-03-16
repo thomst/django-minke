@@ -18,7 +18,7 @@ from ...exceptions import InvalidMinkeSetup
 
 
 class Command(BaseCommand):
-    help = 'Run minke-sessions.'
+    help = 'Run minke-tasks.'
 
     def add_arguments(self, parser):
         parser.add_argument(
@@ -31,24 +31,25 @@ class Command(BaseCommand):
             help='Model to work with. (Only neccessary if a session '
                  'could be used on multiple models)')
         parser.add_argument(
-            '--url-query',
+            '-u', '--url-query',
             help='Filter objects by url-query.')
         parser.add_argument(
-            '--form-data',
+            '-f', '--form-data',
             help='Key-value-pairs used for the session-form.')
         parser.add_argument(
-            '--offset',
+            '-o', '--offset',
             type=int,
             help='Offset')
         parser.add_argument(
-            '--limit',
+            '-l', '--limit',
             type=int,
             help='Limit')
         parser.add_argument(
-            '--list-sessions',
+            '-s', '--list-sessions',
             action='store_true',
             help='List sessions. But do nothing.')
         parser.add_argument(
+            '-p',
             '--list-players',
             action='store_true',
             help='List players. But do nothing.')
@@ -86,15 +87,15 @@ class Command(BaseCommand):
         model = options['model']
 
         if model:
-            model_cls = item_by_attr(session_cls.models, '__name__', model)
+            model_cls = item_by_attr(session_cls.WORK_ON, '__name__', model)
             if not model_cls:
                 msg = 'Invalid model for {}: {}'.format(session_cls.__name__, model)
                 raise CommandError(msg)
-        elif len(session_cls.models) == 1:
-            model_cls = session_cls.models[0]
+        elif len(session_cls.WORK_ON) == 1:
+            model_cls = session_cls.WORK_ON[0]
         else:
             msg = 'You need to specify a model to run {} with.'
-            msg = msg.format(session_cls, session_cls.models)
+            msg = msg.format(session_cls, session_cls.WORK_ON)
             raise CommandError(msg)
 
         return model_cls
