@@ -12,7 +12,7 @@ from django.db.utils import ProgrammingError
 from django.core.exceptions import FieldDoesNotExist
 from django.contrib.auth.models import Permission
 from django.contrib.contenttypes.models import ContentType
-from django.utils.text import camel_case_to_spaces, slugify
+from django.utils.text import slugify
 
 from .views import SessionView
 from .models import Host
@@ -60,10 +60,11 @@ def register(session_cls=None, create_permission=False):
         except (OperationalError, ProgrammingError): return
 
         # We create one permission to run the session with all registered models.
+        # codename looks like: run_thistask_on_thismodel_and_thatmodel
         models = '_and_'.join([slugify(m.__name__) for m in session_cls.WORK_ON])
         session_name = session_cls.__name__
-        session_codename = camel_case_to_spaces(session_name).replace(' ', '_')
-        codename = 'can_run_{}_on_{}'.format(session_codename, models)
+        session_codename = slugify(session_name)
+        codename = 'run_{}_on_{}'.format(session_codename, models)
         permission_name = '{}.{}'.format(model._meta.app_label, codename)
         permission = Permission.objects.get_or_create(
             name=codename.replace('_', ' '),
