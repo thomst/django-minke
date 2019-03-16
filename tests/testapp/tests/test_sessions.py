@@ -35,7 +35,7 @@ class SessionTest(TransactionTestCase):
         self._registry = sessions.registry[:]
 
     def reset_registry(self):
-        MethodTestSession.models = tuple()
+        MethodTestSession.WORK_ON = tuple()
         sessions.registry = self._registry[:]
 
     def init_session(self, session_cls, data=None):
@@ -58,25 +58,29 @@ class SessionTest(TransactionTestCase):
         self.assertRaises(InvalidMinkeSetup, register, *args)
         self.reset_registry()
 
-        # missing get_host-method
-        args = [MethodTestSession, Foobar]
+        # invalid minke-model
+        MethodTestSession.WORK_ON = (Foobar,)
+        args = [MethodTestSession]
         self.assertRaises(InvalidMinkeSetup, register, *args)
         self.reset_registry()
 
         # register MethodTestSession
-        register(MethodTestSession, Server)
+        MethodTestSession.WORK_ON = (Server,)
+        register(MethodTestSession)
         self.assertTrue(MethodTestSession in sessions.registry)
         self.reset_registry()
 
         # register MethodTestSession with Host-object
-        register(MethodTestSession, Host)
+        MethodTestSession.WORK_ON = (Host,)
+        register(MethodTestSession)
         self.assertTrue(MethodTestSession in sessions.registry)
         self.reset_registry()
 
         # register with create_permission
-        register(MethodTestSession, Server, create_permission=True)
+        MethodTestSession.WORK_ON = (Host, Server)
+        register(MethodTestSession, create_permission=True)
         self.assertTrue(MethodTestSession in sessions.registry)
-        Permission.objects.get(codename='run_method_test_session_on_server')
+        Permission.objects.get(codename='run_methodtestsession_on_host_and_server')
         self.reset_registry()
 
     def test_02_cmd_format(self):

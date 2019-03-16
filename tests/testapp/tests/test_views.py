@@ -235,7 +235,7 @@ class ViewsTest(TransactionTestCase):
             self.assertIn(str(session['object_id']), object_ids)
             self.assertEqual(session['status'], 'success')
             self.assertEqual(session['proc_status'], 'done')
-            self.assertIn(DummySession.short_description, session['get_html'])
+            self.assertIn(DummySession.VERBOSE_NAME, session['get_html'])
             self.assertIn('foobär', session['get_html'])
             self.assertTrue(session['ready'])
 

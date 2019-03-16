@@ -10,9 +10,9 @@ from django.test import override_settings
 from django.core.management import call_command
 from django import forms
 
-from minke.management.commands import minkesession
-from minke.management.commands.minkesession import Command
-from minke.management.commands.minkesession import CommandError
+from minke.management.commands import minkerun
+from minke.management.commands.minkerun import Command
+from minke.management.commands.minkerun import CommandError
 from minke.sessions import Session
 from minke.models import Host
 
@@ -28,14 +28,14 @@ class InOut(list):
         self.inputs = iter(inputs)
 
     def __enter__(self):
-        minkesession.raw_input = lambda x: self.inputs.next()
+        minkerun.raw_input = lambda x: self.inputs.next()
         self._stdin = sys.stdin
         self._stdout = sys.stdout
         sys.stdout = self._out = StringIO()
         return self
 
     def __exit__(self, *args):
-        minkesession.raw_input = raw_input
+        minkerun.raw_input = raw_input
         self.extend(self._out.getvalue().splitlines())
         sys.stdout = self._stdout
 
@@ -119,65 +119,65 @@ class MinkeManagerTest(TransactionTestCase):
 
         # call without model
         with InOut() as out:
-            self.assertRaises(SystemExit, call_command, 'minkesession', 'DummySession')
+            self.assertRaises(SystemExit, call_command, 'minkerun', 'DummySession')
         self.assertRegex(out[0], '[ERROR].+model.*')
 
         # call with invalid session
         with InOut() as out:
-            self.assertRaises(SystemExit, call_command, 'minkesession', 'Fake')
+            self.assertRaises(SystemExit, call_command, 'minkerun', 'Fake')
         self.assertRegex(out[0], '[ERROR].+session.*')
 
         # call with invalid model
         with InOut() as out:
-            self.assertRaises(SystemExit, call_command, 'minkesession', 'DummySession', 'Fake')
+            self.assertRaises(SystemExit, call_command, 'minkerun', 'DummySession', 'Fake')
         self.assertRegex(out[0], '[ERROR].+model.*')
 
         # call with invalid url_query
         with InOut() as out:
-            self.assertRaises(SystemExit, call_command, 'minkesession', 'DummySession', 'Server', '--url-query=foobar')
+            self.assertRaises(SystemExit, call_command, 'minkerun', 'DummySession', 'Server', '--url-query=foobar')
         self.assertRegex(out[0], '[ERROR].+url-query.*')
 
     @override_settings(**CELERY_TEST_SETTINGS)
     def test_04_valid_calls(self):
         # list sessions
         with InOut() as out:
-            call_command('minkesession', '--list-sessions')
+            call_command('minkerun', '--list-sessions')
         self.assertIn('DummySession', out)
         self.assertIn('TestFormSession', out)
         self.assertIn('TestUpdateEntriesSession', out)
 
         # list sessions
         with InOut() as out:
-            call_command('minkesession', 'DummySession', 'Server', '--list-players')
+            call_command('minkerun', 'DummySession', 'Server', '--list-players')
         self.assertIn('host_0_label000', out)
         self.assertIn('host_1_label111', out)
         self.assertIn('host_2_label222', out)
 
         # slicing the queryset with offset and limit
         with InOut() as out_0_10:
-            call_command('minkesession', 'SingleModelDummySession',
+            call_command('minkerun', 'SingleModelDummySession',
                          '--offset=0', '--limit=10', '--list-players')
         self.assertEqual(len(out_0_10), 10)
 
         with InOut() as out_10_20:
-            call_command('minkesession', 'SingleModelDummySession',
+            call_command('minkerun', 'SingleModelDummySession',
                          '--offset=10', '--limit=10', '--list-players')
         self.assertEqual(len(out_10_20), 10)
 
         with InOut() as out_0_20:
-            call_command('minkesession', 'SingleModelDummySession',
+            call_command('minkerun', 'SingleModelDummySession',
                          '--offset=0', '--limit=20', '--list-players')
         self.assertEqual(len(out_0_20), 20)
         self.assertListEqual(sorted(out_0_10 + out_10_20), sorted(out_0_20))
 
         # read form-data from stdin
         with InOut('123', '', 'abc', '123') as out:
-            call_command('minkesession', 'TestFormSession', 'Server', '--limit=0')
+            call_command('minkerun', 'TestFormSession', 'Server', '--limit=0')
         self.assertRegex(out[2], 'This field is required')
         self.assertRegex(out[3], 'Enter a whole number')
 
         # valid call with url-query that really process some players
         with InOut() as out:
-            call_command('minkesession', 'DummySession', 'Server', '--url-query=q=222')
+            call_command('minkerun', 'DummySession', 'Server', '--url-query=q=222')
         self.assertRegex(out[0], 'host_[0-9]{1,2}_label222')
         self.assertEqual(len(out), 5)
