@@ -12,7 +12,7 @@ import minke.sessions
 from .messages import Message
 from .messages import ExceptionMessage
 from .messages import Printer
-from .models import BaseSession
+from .models import SessionData
 from .tasks import process_sessions
 
 
@@ -23,23 +23,27 @@ def process(session_cls, queryset, session_data, user,
             fabric_config=None, wait=False, console=False):
     """Initiate fabric's session-processing."""
 
-    BaseSession.objects.clear_currents(user, queryset)
+    SessionData.objects.clear_currents(user, queryset)
     hosts = queryset.get_hosts()
     lock = hosts.filter(disabled=False).get_lock()
 
     # group sessions by hosts
     session_groups = dict()
-    for player in queryset.all():
-        host = player.get_host()
+    for minkeobj in queryset.all():
+        host = minkeobj.get_host()
 
-        session = session_cls()
-        session.init(user, player, session_data)
+        session = SessionData()
+        session.init(user, minkeobj, session_cls, session_data)
 
         # Skip disabled or locked hosts...
         if host.disabled or host.lock and host.lock != lock:
-            msg = 'disabled' if host.disabled else 'locked'
-            msg = '{}: Host is {}.'.format(player, msg)
-            session.add_msg(Message(msg, 'error'))
+            msg = '{}: Host is disabled.'.format(minkeobj)
+            session.messages.add(Message(msg, 'error'), bulk=False)
+            session.end()
+            if console: Printer.prnt(session)
+        elif host.lock and host.lock != lock:
+            msg = '{}: Host is locked.'.format(minkeobj)
+            session.messages.add(Message(msg, 'error'), bulk=False)
             session.end()
             if console: Printer.prnt(session)
 
@@ -52,16 +56,18 @@ def process(session_cls, queryset, session_data, user,
     # Stop here if no valid hosts are left...
     if not session_groups: return
 
+    # merge fabric-config and invoke-config
+    config = session_cls.INVOKE_CONFIG.copy()
+    config.update(fabric_config or dict())
+
     # run celery-tasks to process the sessions...
     results = list()
-    ct = ContentType.objects.get_for_model(session_cls, for_concrete_model=False)
     for host, sessions in session_groups.items():
         try:
             # FIXME: celery-4.2.1 fails to raise an exception if rabbitmq is
             # down or no celery-worker is running at all... hope for 4.3.x
             session_ids = [s.id for s in sessions]
-            args = (host.id, ct.id, session_ids, fabric_config)
-            result = process_sessions.delay(*args)
+            result = process_sessions.delay(host.id, session_ids, config)
             results.append((result, [s.id for s in sessions]))
         except process_sessions.OperationalError:
             host.lock = None
@@ -77,19 +83,22 @@ def process(session_cls, queryset, session_data, user,
     if console:
         print_results = results[:]
         while print_results:
-            try: result, ids = next((r for r in print_results if r[0].ready()))
+            # try to find a ready result...
+            try: result, session_ids = next((r for r in print_results if r[0].ready()))
             except StopIteration: continue
-            sessions = session_cls.objects.filter(id__in=ids)
+            # reload session-objects
+            sessions = SessionData.objects.filter(id__in=session_ids)
+            # print and remove list-item
             for session in sessions: Printer.prnt(session)
-            print_results.remove((result, ids))
+            print_results.remove((result, session_ids))
 
     # evt. wait till all tasks finished...
     elif wait:
-        for result, session_ids in results:
+        for result, sessions in results:
             result.wait()
 
     # At least call forget on every result - in case a result-backend is in use
     # that eats up ressources to store result-data...
-    for result, session_ids in results:
+    for result, sessions in results:
         try: result.forget()
         except NotImplementedError: pass

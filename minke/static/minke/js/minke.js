@@ -11,14 +11,14 @@ var cf = {
 }
 
 function process_session (i, session) {
-    object_id = session.object_id;
+    object_id = session.minkeobj_id;
     var tr = $('tr input.action-select[value='+object_id+']').closest('tr');
     tr.removeClass('initialized running').addClass(session.proc_status);
     if (session.ready) add_session_info(tr, session);
 }
 
 function add_session_info (tr, session) {
-    tr.addClass(session.status);
+    tr.addClass(session.session_status);
     var session_tr = $(session.get_html).hide();
     var msgs_ul = session_tr.find('ul').hide();
     tr.after(session_tr);

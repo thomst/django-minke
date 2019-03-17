@@ -76,8 +76,9 @@ class Command(BaseCommand):
             msg = 'Missing session-argument'
             raise CommandError(msg)
 
-        session_cls = item_by_attr(registry, '__name__', session)
-        if not session_cls:
+        try:
+            session_cls = registry[session]
+        except KeyError:
             msg = 'Unknown session: {}'.format(session)
             raise CommandError(msg)
 
@@ -205,7 +206,7 @@ class Command(BaseCommand):
 
     def handle(self, *args, **options):
         if options['list_sessions']:
-            for session_cls in registry:
+            for session_cls in registry.values():
                 print session_cls.__name__
             return
 

@@ -4,7 +4,7 @@ from __future__ import unicode_literals
 from django.contrib import admin
 from django.utils.translation import gettext_lazy as _
 
-from .models import BaseSession
+from .models import SessionData
 
 
 class StatusFilter(admin.SimpleListFilter):
@@ -14,7 +14,7 @@ class StatusFilter(admin.SimpleListFilter):
     def __init__(self, request, params, model, model_admin):
         super(StatusFilter, self).__init__(request, params, model, model_admin)
         self.states = ('success', 'warning', 'error')
-        self.sessions = BaseSession.objects.get_currents_by_model(request.user, model)
+        self.sessions = SessionData.objects.get_currents_by_model(request.user, model)
 
     def has_output(self):
         return bool(self.sessions)
@@ -28,8 +28,8 @@ class StatusFilter(admin.SimpleListFilter):
         ids = list()
         for status in self.values():
             for session in self.sessions.all():
-                if not session.status == status: continue
-                ids.append(session.player.id)
+                if not session.session_status == status: continue
+                ids.append(session.minkeobj.id)
         return queryset.filter(id__in=ids)
 
     def choices(self, changelist):

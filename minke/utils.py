@@ -11,8 +11,11 @@ def item_by_attr(list, attr, value, default=None):
 class FabricConfig(Config):
     def load_snakeconfig(self, configdict):
         for param, value in configdict.items():
+            # prevent overriding existing settings with None...
+            if value == None: return
+
+            # param must start with one of the existing config-keys
             try:
-                # param must start with one of the existing config-keys
                 key = next((k for k in self.keys() if param.startswith(k)))
             except StopIteration:
                 msg = 'Invalid fabric-config-parameter: {}'.format(param)

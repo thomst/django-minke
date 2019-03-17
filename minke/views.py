@@ -18,7 +18,7 @@ from rest_framework.exceptions import NotFound
 from minke import settings
 from minke import engine
 from .forms import MinkeForm
-from .models import BaseSession
+from .models import SessionData
 from .serializers import SessionSerializer
 from .exceptions import InvalidURLQuery
 from .exceptions import InvalidMinkeSetup
@@ -141,9 +141,9 @@ class SessionAPI(ListAPIView):
         except ContentType.DoesNotExist:
             raise NotFound("There is no model named '{}'".format(model))
 
-        return BaseSession.objects.filter(
-            object_id__in=object_ids,
-            content_type=content_type,
+        return SessionData.objects.filter(
+            minkeobj_id__in=object_ids,
+            minkeobj_type=content_type,
             user=self.request.user,
             current=True
             ).prefetch_related('messages')

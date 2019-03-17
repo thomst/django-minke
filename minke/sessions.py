@@ -2,8 +2,7 @@
 from __future__ import unicode_literals
 
 import re
-import datetime
-import inspect
+from collections import OrderedDict
 
 from fabric.api import run
 
@@ -17,13 +16,13 @@ from django.utils.text import slugify
 from .views import SessionView
 from .models import Host
 from .models import MinkeModel
-from .models import BaseSession
+from .models import SessionData
 from .messages import ExecutionMessage
 from .messages import PreMessage
 from .exceptions import InvalidMinkeSetup
 
 
-registry = list()
+registry = OrderedDict()
 def register(session_cls=None, create_permission=False):
     """
     Register session-classes.
@@ -55,9 +54,9 @@ def register(session_cls=None, create_permission=False):
             raise InvalidMinkeSetup(msg)
 
     if create_permission:
-        # Applying minke-migrations tumbles over get_for_model if the
-        # migrations for this model aren't applied yet.
-        try: content_type = ContentType.objects.get_for_model(session_cls)
+        # Applying migrations tumbles over get_for_model if the
+        # migrations for content-types aren't applied yet.
+        try: content_type = ContentType.objects.get_for_model(SessionData)
         except (OperationalError, ProgrammingError): return
 
         # We create one permission to run the session with all registered models.
@@ -76,26 +75,20 @@ def register(session_cls=None, create_permission=False):
         session_cls.PERMISSIONS += (permission_name,)
 
     # register session-class
-    registry.append(session_cls)
+    registry[session_cls.__name__] = session_cls
 
     # in case register were used as a decorator (without arguments)...
     return session_cls
 
 
-# We declare the Meta-class whithin a mixin.
-# Otherwise the proxy-attribute won't be inherited by child-classes of Session.
-class ProxyMixin(object):
-    class Meta:
-        proxy = True
-
-
-class Session(ProxyMixin, BaseSession):
+class Session(object):
     VERBOSE_NAME = None
     WORK_ON = tuple()
     PERMISSIONS = tuple()
     FORM = None
     CONFIRM = False
     WAIT = False
+    INVOKE_CONFIG = dict()
 
     @classmethod
     def as_action(cls):
@@ -106,36 +99,12 @@ class Session(ProxyMixin, BaseSession):
         action.short_description = cls.VERBOSE_NAME
         return action
 
-    def __init__(self, *args, **kwargs):
-        super(Session, self).__init__(*args, **kwargs)
-        self.con = None
-        self.session_name = self.__class__.__name__
-        self.session_verbose_name = self.VERBOSE_NAME or self.session_name
-
-    def init(self, user, player, session_data):
-        self.proc_status = 'initialized'
-        self.user = user
-        self.player = player
+    def __init__(self, connection, minkeobj, session_data):
+        self.connection = connection
+        self.minkeobj = minkeobj
         self.session_data = session_data
-        self.save()
-
-    def start(self, con):
-        self.proc_status = 'running'
-        self.con = con
-        self.start_time = datetime.datetime.now()
-        self.save(update_fields=['proc_status', 'start_time'])
-
-    def end(self):
-        if self.proc_status == 'initialized':
-            self.proc_status = 'aborted'
-            self.status = 'error'
-            self.save(update_fields=['proc_status', 'status'])
-        else:
-            self.proc_status = 'done'
-            self.status = self.status or 'success'
-            self.end_time = datetime.datetime.now()
-            self.run_time = self.end_time - self.start_time
-            self.save(update_fields=['proc_status', 'status', 'end_time', 'run_time'])
+        self.status = None
+        self.messages = list()
 
     def process(self):
         """
@@ -144,13 +113,13 @@ class Session(ProxyMixin, BaseSession):
         raise NotImplementedError('Your session must define a process-method!')
 
     def add_msg(self, msg):
-        self.messages.add(msg, bulk=False)
+        self.messages.append(msg)
 
     def set_status(self, status):
         """
         Set session-status. Pass a valid session-status or a boolean.
         """
-        statuus = [s[0] for s in self.RESULT_STATES]
+        statuus = [s[0] for s in SessionData.RESULT_STATES]
         if type(status) == bool:
             self.status = 'success' if status else 'error'
         elif status.lower() in statuus:
@@ -162,10 +131,10 @@ class Session(ProxyMixin, BaseSession):
     # helper-methods
     def format_cmd(self, cmd):
         """
-        Will format a given command-string using the player's attributes
+        Will format a given command-string using the minkeobj's attributes
         and the session_data while the session_data has precedence.
         """
-        params = vars(self.player)
+        params = vars(self.minkeobj)
         params.update(self.session_data)
         return cmd.format(**params)
 
@@ -182,7 +151,7 @@ class Session(ProxyMixin, BaseSession):
             return result.ok
 
     def run(self, cmd):
-        return self.con.run(cmd, warn=True)
+        return self.connection.run(cmd, warn=True)
 
     def execute(self, cmd, **kwargs):
         """
@@ -222,8 +191,8 @@ class UpdateEntriesSession(Session):
         Update a field using either the stdout or the first matching-group
         from regex.
         """
-        # is field a player-attribute?
-        try: getattr(self.player, field)
+        # is field a minkeobj-attribute?
+        try: getattr(self.minkeobj, field)
         except AttributeError as e: raise e
 
         # run cmd
@@ -249,9 +218,9 @@ class UpdateEntriesSession(Session):
             self.add_msg(ExecutionMessage(result, 'ERROR'))
             value = None
 
-        setattr(self.player, field, value)
+        setattr(self.minkeobj, field, value)
         return bool(value)
 
     def rework(self):
         # TODO: catch exceptions that may be raised because of invalid values.
-        self.player.save()
+        self.minkeobj.save()

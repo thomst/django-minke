@@ -6,7 +6,7 @@ import traceback
 
 from django.utils.html import escape
 
-from .models import BaseMessage
+from .models import MessageData
 
 
 class Printer:
@@ -33,11 +33,11 @@ class Printer:
 
     @classmethod
     def prnt(cls, session):
-        player = unicode(session.player).ljust(cls.WIDTH)
-        status = session.status.upper().ljust(cls.PREFIX_WIDTH)
-        color = cls.STATUS_COLORS[session.status]
+        minkeobj = unicode(session.minkeobj).ljust(cls.WIDTH)
+        status = session.session_status.upper().ljust(cls.PREFIX_WIDTH)
+        color = cls.STATUS_COLORS[session.session_status]
         delimiter = cls.DELIMITER
-        print color + status + cls.DELIMITER + player + cls.CLEAR
+        print color + status + cls.DELIMITER + minkeobj + cls.CLEAR
 
         msgs = list(session.messages.all())
         msg_count = len(msgs)
@@ -67,7 +67,7 @@ class ProxyMixin(object):
         proxy = True
 
 
-class Message(ProxyMixin, BaseMessage):
+class Message(ProxyMixin, MessageData):
 
     def __init__(self, data, level='info'):
         super(Message, self).__init__()

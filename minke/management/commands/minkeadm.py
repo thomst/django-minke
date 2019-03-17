@@ -7,7 +7,7 @@ from django.core.management.base import BaseCommand
 from django.core.management.base import CommandError
 
 from ...models import Host
-from ...models import BaseSession
+from ...models import SessionData
 
 
 class Command(BaseCommand):
@@ -29,11 +29,8 @@ class Command(BaseCommand):
 
     def handle(self, *args, **options):
         if options['release_locks']:
-            Host.objects.update(lock=None)
-            return
-        elif options['clear_current_sessions']:
-            BaseSession.objects.update(current=False)
-            return
-        elif options['clear_sessions']:
-            BaseSession.objects.all().delete()
-            return
+            print Host.objects.update(lock=None)
+        if options['clear_current_sessions']:
+            print SessionData.objects.update(current=False)
+        if options['clear_sessions']:
+            print SessionData.objects.all().delete()

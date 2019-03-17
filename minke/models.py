@@ -2,6 +2,7 @@
 from __future__ import unicode_literals
 
 import re
+import datetime
 from time import time
 
 from picklefield.fields import PickledObjectField
@@ -18,28 +19,29 @@ from django.utils.safestring import mark_safe
 from .exceptions import InvalidMinkeSetup
 
 
-class BaseSessionQuerySet(models.QuerySet):
-    def get_currents(self, user, players):
-        content_type = ContentType.objects.get_for_model(players.model)
+class SessionDataQuerySet(models.QuerySet):
+    def get_currents(self, user, minkeobjs):
+        minkeobj_type = ContentType.objects.get_for_model(minkeobjs.model)
+        minkeobj_ids = list(minkeobjs.all().values_list('id', flat=True))
         return self.filter(
             user=user,
-            content_type=content_type,
-            object_id__in=list(players.all().values_list('id', flat=True)),
+            minkeobj_type=minkeobj_type,
+            minkeobj_id__in=minkeobj_ids,
             current=True)
 
     def get_currents_by_model(self, user, model):
-        content_type = ContentType.objects.get_for_model(model)
+        minkeobj_type = ContentType.objects.get_for_model(model)
         return self.filter(
             user=user,
-            content_type=content_type,
+            minkeobj_type=minkeobj_type,
             current=True)
 
-    def clear_currents(self, user, players):
-        return self.get_currents(user, players).update(current=False)
+    def clear_currents(self, user, minkeobjs):
+        return self.get_currents(user, minkeobjs).update(current=False)
 
 
-class BaseSession(models.Model):
-    objects = BaseSessionQuerySet.as_manager()
+class SessionData(models.Model):
+    objects = SessionDataQuerySet.as_manager()
 
     RESULT_STATES = (
         ('success', 'success'),
@@ -52,19 +54,66 @@ class BaseSession(models.Model):
         ('done', 'done'),
         ('aborted', 'aborted'),
     )
+
+    # those fields will be derived from the session-class
     session_name = models.CharField(max_length=128)
     session_verbose_name = models.CharField(max_length=128)
-    session_data = PickledObjectField(blank=True)
+    session_description = models.TextField(blank=True, null=True)
+    session_status = models.CharField(max_length=128, choices=RESULT_STATES)
+    session_data = PickledObjectField(blank=True, null=True)
+
+    # the minkeobj to work on
+    minkeobj_type = models.ForeignKey(ContentType, on_delete=models.CASCADE)
+    minkeobj_id = models.PositiveIntegerField()
+    minkeobj = GenericForeignKey('minkeobj_type', 'minkeobj_id')
+
+    # execution-data of the session
     user = models.ForeignKey(User, on_delete=models.CASCADE)
-    content_type = models.ForeignKey(ContentType, on_delete=models.CASCADE)
-    object_id = models.PositiveIntegerField()
-    player = GenericForeignKey('content_type', 'object_id')
     current = models.BooleanField(default=True)
-    status = models.CharField(max_length=128, choices=RESULT_STATES)
     proc_status = models.CharField(max_length=128, choices=PROC_STATES)
     start_time = models.DateTimeField(blank=True, null=True)
     end_time = models.DateTimeField(blank=True, null=True)
     run_time = models.DurationField(blank=True, null=True)
+
+    def __init__(self, *args, **kwargs):
+        super(SessionData, self).__init__(*args, **kwargs)
+        self.proxy = None
+
+    def get_proxy(self, con):
+        from .sessions import registry
+        proxy_cls = registry[self.session_name]
+        return proxy_cls(con, self.minkeobj, self.session_data)
+
+    def init(self, user, minkeobj, session_cls, session_data):
+        self.proc_status = 'initialized'
+        self.user = user
+        self.minkeobj = minkeobj
+        self.session_name = session_cls.__name__
+        self.session_verbose_name = session_cls.VERBOSE_NAME
+        self.session_description = session_cls.__doc__
+        self.session_data = session_data
+        self.save()
+
+    def start(self, con):
+        self.proxy = self.get_proxy(con)
+        self.proc_status = 'running'
+        self.start_time = datetime.datetime.now()
+        self.save(update_fields=['proc_status', 'start_time'])
+
+    def end(self):
+        if self.proc_status == 'initialized':
+            self.proc_status = 'aborted'
+            self.session_status = 'error'
+            self.save(update_fields=['proc_status', 'session_status'])
+        else:
+            self.proc_status = 'done'
+            self.session_status = self.proxy.status or 'success'
+            self.end_time = datetime.datetime.now()
+            self.run_time = self.end_time - self.start_time
+            update_fields = ['proc_status', 'session_status', 'end_time', 'run_time']
+            self.save(update_fields=update_fields)
+            for msg in self.proxy.messages:
+                self.messages.add(msg, bulk=False)
 
     def ready(self):
         return self.proc_status in ('done', 'aborted')
@@ -72,12 +121,17 @@ class BaseSession(models.Model):
     def get_html(self):
         if self.proc_status in ['initialized', 'running']: return ''
 
-        name = self.session_verbose_name
+        if self.session_description:
+            args = (self.session_description, self.session_verbose_name)
+            session = '<span title="{}">{}</span>'.format(*args)
+        else:
+            session = self.session_verbose_name
+
         if self.proc_status == 'done':
             run_time = "%.1f" % self.run_time.total_seconds()
-            info = '<p>Run "{}" in {} seconds.</p>'.format(name, run_time)
+            info = '<p>Run "{}" in {} seconds.</p>'.format(session, run_time)
         elif self.proc_status == 'aborted':
-            info = '<p>Could not run "{}".</p>'.format(name)
+            info = '<p>Could not run "{}".</p>'.format(session)
 
         msgs = ''
         if self.messages.all():
@@ -86,21 +140,32 @@ class BaseSession(models.Model):
                 msgs += '<li class="{}">{}</li>'.format(msg.level, msg.html)
             msgs += '</ul>'
 
-        html = '<tr class="minke_news {}"><td colspan="100">'.format(self.status)
+        html = '<tr class="minke_news {}"><td colspan="100">'.format(self.session_status)
         html += info + msgs + '</td></tr>'
         return mark_safe(html)
 
 
-class BaseMessage(models.Model):
+class MessageData(models.Model):
     LEVELS = (
         ('info', 'info'),
         ('warning', 'warning'),
         ('error', 'error'))
 
-    session = models.ForeignKey(BaseSession, on_delete=models.CASCADE, related_name='messages')
+    session = models.ForeignKey(SessionData, on_delete=models.CASCADE, related_name='messages')
     level = models.CharField(max_length=128, choices=LEVELS)
     text = models.TextField()
     html = models.TextField()
+
+
+class HostGroup(models.Model):
+    name = models.CharField(max_length=255, unique=True)
+    comment = models.TextField(blank=True, null=True)
+
+    class Meta:
+        ordering = ['name']
+
+    def __str__(self):
+        return self.name
 
 
 class HostQuerySet(models.QuerySet):
@@ -119,32 +184,25 @@ class HostQuerySet(models.QuerySet):
 
 
 class Host(models.Model):
-    host = models.SlugField(max_length=128, unique=True)
-    user = models.SlugField(max_length=128)
-    hostname = models.CharField(max_length=128)
-    port = models.SmallIntegerField(blank=True, null=True)
-    hoststring = models.CharField(max_length=255, unique=True)
-
+    name = models.SlugField(max_length=128, unique=True)
+    verbose_name = models.CharField(max_length=255, blank=True, null=True)
+    hostname = models.CharField(max_length=255, blank=True, null=True)
+    username = models.CharField(max_length=255, blank=True, null=True)
+    comment = models.TextField(blank=True, null=True)
+    group = models.ForeignKey(HostGroup, blank=True, null=True)
     disabled = models.BooleanField(default=False)
     lock = models.CharField(max_length=20, blank=True, null=True)
 
-    unique_together = (("user", "hostname"),)
     objects = HostQuerySet.as_manager()
-
-    def save(self, *args, **kwargs):
-        if self.port: format = '{user}@{hostname}:{port}'
-        else: format = '{user}@{hostname}'
-        self.hoststring = format.format(**vars(self))
-        super(Host, self).save(*args, **kwargs)
 
     def get_host(self):
         return self
 
     class Meta:
-        ordering = ['host']
+        ordering = ['name']
 
     def __str__(self):
-        return self.host
+        return self.name
 
 
 class MinkeQuerySet(models.QuerySet):
@@ -182,6 +240,9 @@ class MinkeModel(models.Model):
     HOST_LOOKUP = 'host'
     REVERSE_HOST_LOOKUP = None
 
+    class Meta:
+        abstract = True
+
     @classmethod
     def get_reverse_host_lookup(cls):
         if cls.REVERSE_HOST_LOOKUP:
@@ -202,8 +263,3 @@ class MinkeModel(models.Model):
             raise InvalidMinkeSetup(msg)
         else:
             return host
-
-    # sessions = GenericRelation(BaseSession, related_query_name='players')
-
-    class Meta:
-        abstract = True
