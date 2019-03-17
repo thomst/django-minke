@@ -8,8 +8,8 @@ from django.contrib.contenttypes.models import ContentType
 from django.contrib.auth.models import Permission
 
 from minke.models import Host
-from minke.models import BaseSession
-from minke.models import BaseMessage
+from minke.models import SessionData
+from minke.models import MessageData
 from ..models import Server
 from ..models import AnySystem
 from ..sessions import DummySession
@@ -32,18 +32,18 @@ def create_hosts():
     # this might have a chance to be accessible via ssh
     user = getpass.getuser()
     host = Host.objects.create(
+        name='localhost',
         hostname='localhost',
-        host='localhost',
-        user=user)
+        username=user)
 
     # create some dummy-hosts as well
     for i in range(20):
         label = 'label' + str(i % 4) * 3
         hostname = 'host_{}_{}'.format(str(i), label)
         Host.objects.create(
+            name=hostname,
             hostname=hostname,
-            host=hostname,
-            user='user' + label)
+            username='user' + label)
 
 def create_players():
     for host in Host.objects.all():
@@ -55,11 +55,12 @@ def create_test_data():
     create_hosts()
     create_players()
 
-def create_session(player, session_cls=DummySession, user='admin',
+def create_session(minkeobj, session_cls=DummySession, user='admin',
     current=True, status='success', proc_status='done'):
-    session = session_cls()
-    session.set_status(status)
-    session.init(User.objects.get(username=user), player, dict())
+    user = User.objects.get(username=user)
+    session = SessionData()
+    session.init(user, minkeobj, session_cls, dict())
     session.start(None)
+    session.proxy.status = status
     session.end()
     return session

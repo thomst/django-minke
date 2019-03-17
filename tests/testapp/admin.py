@@ -12,10 +12,9 @@ from .models import Server, AnySystem
 
 @admin.register(Host)
 class HostAdmin(MinkeAdmin):
-    list_filter = ('host', 'hostname')
-    search_fields = ('host',)
-    readonly_fields = ('hoststring',)
-    ordering = ('host',)
+    list_filter = ('name', 'hostname')
+    search_fields = ('name',)
+    ordering = ('name',)
     list_filter = (StatusFilter,)
 
 

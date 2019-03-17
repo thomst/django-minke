@@ -21,27 +21,22 @@ from .utils import create_test_data
 
 
 def process_session(session, host):
-    con = Connection(user=host.user, host=host.hostname)
+    con = Connection(user=host.username, host=host.hostname)
     session.start(con)
-    return session.process()
+    return session.proxy.process()
 
 
 class SessionTest(TransactionTestCase):
     def setUp(self):
         create_test_data()
-        self.host = Host.objects.get(host='localhost')
+        self.host = Host.objects.get(name='localhost')
         self.server = Server.objects.get(host=self.host)
         self.user = User.objects.get(username='admin')
-        self._registry = sessions.registry[:]
+        self._registry = sessions.registry.copy()
 
     def reset_registry(self):
         MethodTestSession.WORK_ON = tuple()
-        sessions.registry = self._registry[:]
-
-    def init_session(self, session_cls, data=None):
-        session = session_cls()
-        session.init(self.user, self.server, data or dict())
-        return session
+        sessions.registry = self._registry.copy()
 
     def test_01_register_session(self):
         # a monkey-class
@@ -67,19 +62,19 @@ class SessionTest(TransactionTestCase):
         # register MethodTestSession
         MethodTestSession.WORK_ON = (Server,)
         register(MethodTestSession)
-        self.assertTrue(MethodTestSession in sessions.registry)
+        self.assertTrue(MethodTestSession in sessions.registry.values())
         self.reset_registry()
 
         # register MethodTestSession with Host-object
         MethodTestSession.WORK_ON = (Host,)
         register(MethodTestSession)
-        self.assertTrue(MethodTestSession in sessions.registry)
+        self.assertTrue(MethodTestSession in sessions.registry.values())
         self.reset_registry()
 
         # register with create_permission
         MethodTestSession.WORK_ON = (Host, Server)
         register(MethodTestSession, create_permission=True)
-        self.assertTrue(MethodTestSession in sessions.registry)
+        self.assertTrue(MethodTestSession in sessions.registry.values())
         Permission.objects.get(codename='run_methodtestsession_on_host_and_server')
         self.reset_registry()
 
@@ -88,32 +83,31 @@ class SessionTest(TransactionTestCase):
         # get formatted command-string (using players-attributes and session-data)
         cmd_format = '{hostname} {foo}'
         session_data = dict(foo='foo')
-        session = self.init_session(MethodTestSession, session_data)
+        session = MethodTestSession(None, self.server, session_data)
         cmd = session.format_cmd(cmd_format)
         self.assertEqual(cmd, 'localhost foo')
 
         # session-data should be have precedence
         session_data = dict(hostname='foobär', foo='foo')
-        session = self.init_session(MethodTestSession, session_data)
+        session = MethodTestSession(None, self.server, session_data)
         cmd = session.format_cmd(cmd_format)
         self.assertEqual(cmd, 'foobär foo')
 
         # test SingleActionSession.get_cmd
         # should raise an exception if COMMAND is not set
         SingleActionDummySession.COMMAND = None
-        session = self.init_session(SingleActionDummySession)
+        session = SingleActionDummySession(None, self.server, dict())
         self.assertRaises(InvalidMinkeSetup, session.get_cmd)
 
         # otherwise a fromatted command
         session_data = dict(hostname='foobär', foo='foo')
         SingleActionDummySession.COMMAND = '{hostname} {foo}'
-        session = self.init_session(SingleActionDummySession, session_data)
+        session = SingleActionDummySession(None, self.server, session_data)
         self.assertEqual(session.get_cmd(), 'foobär foo')
 
     def test_03_set_status(self):
 
-        session = self.init_session(MethodTestSession)
-
+        session = MethodTestSession(None, self.server, dict())
         session.set_status('error')
         self.assertTrue(session.status == 'error')
         session.set_status('WARNING')
@@ -127,44 +121,51 @@ class SessionTest(TransactionTestCase):
     # TODO: skipIf-decorator if localhost cannot be connected
     def test_04_processing(self):
 
+        con = Connection(user=self.host.username, host=self.host.hostname)
+
         # test message-calls
-        session = self.init_session(MethodTestSession, dict(test='execute'))
-        session = process_session(session, self.host)
-        news = session.messages.all()
-        self.assertEqual(news[0].level, 'info')
-        self.assertEqual(news[1].level, 'warning')
-        self.assertEqual(news[2].level, 'error')
-        self.assertEqual(news[0].text, 'hello wörld\n')
-        self.assertRegex(news[1].text, 'code\[0\] +echo "hello wörld" 1>&2\n')
-        self.assertRegex(news[2].text, 'code\[1\] +\[ 1 == 2 \]')
+        data = dict(test='execute')
+        session = session = MethodTestSession(con, self.server, data)
+        session.process()
+        self.assertEqual(session.messages[0].level, 'info')
+        self.assertEqual(session.messages[1].level, 'warning')
+        self.assertEqual(session.messages[2].level, 'error')
+        self.assertEqual(session.messages[0].text, 'hello wörld\n')
+        self.assertRegex(session.messages[1].text, 'code\[0\] +echo "hello wörld" 1>&2\n')
+        self.assertRegex(session.messages[2].text, 'code\[1\] +\[ 1 == 2 \]')
 
         # test update_field
-        session = self.init_session(MethodTestSession, dict(test='update'))
-        session = process_session(session, self.host)
-        self.assertEqual(session.player.hostname, 'foobär\n')
+        data = dict(test='update')
+        session = session = MethodTestSession(con, self.server, data)
+        session.process()
+        self.assertEqual(session.minkeobj.hostname, 'foobär\n')
 
         # test update_field with regex
-        session = self.init_session(MethodTestSession, dict(test='update_regex'))
-        session = process_session(session, self.host)
-        self.assertEqual(session.player.hostname, 'foo')
+        data = dict(test='update_regex')
+        session = session = MethodTestSession(con, self.server, data)
+        session.process()
+        self.assertEqual(session.minkeobj.hostname, 'foo')
 
         # test update_field with failing regex
-        session = self.init_session(MethodTestSession, dict(test='update_regex_fails'))
-        session = process_session(session, self.host)
-        news = session.messages.all()
-        self.assertEqual(news[0].level, 'error')
-        self.assertRegex(news[0].text, 'code\[0\] +echo "foobär"\n')
+        data = dict(test='update_regex_fails')
+        session = session = MethodTestSession(con, self.server, data)
+        session.process()
+        self.assertEqual(session.messages[0].level, 'error')
+        self.assertRegex(session.messages[0].text, 'code\[0\] +echo "foobär"\n')
 
         # test update_field-call with invalid field
-        session = self.init_session(MethodTestSession, dict(test='update_invalid_field'))
+        data = dict(test='update_invalid_field')
+        session = session = MethodTestSession(con, self.server, data)
         self.assertRaises(AttributeError, session.update_field, 'nofield', 'echo')
 
     # TODO: skipIf-decorator if localhost cannot be connected
     def test_05_unicdoe_result(self):
+        con = Connection(user=self.host.username, host=self.host.hostname)
 
         # test with utf-8-encoding
-        session = self.init_session(MethodTestSession, dict(test='unicode_result'))
-        result = process_session(session, self.host)
+        data = dict(test='unicode_result')
+        session = session = MethodTestSession(con, self.server, data)
+        result = session.process()
         self.assertEqual(type(result.stdout), unicode)
         self.assertEqual(type(result.stderr), unicode)
         self.assertEqual(result.stdout, 'hällo\n')

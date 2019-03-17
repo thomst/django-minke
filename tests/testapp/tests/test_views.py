@@ -13,7 +13,7 @@ from django.urls import reverse
 
 from minke import sessions
 from minke import settings
-from minke.models import BaseSession
+from minke.models import SessionData
 from minke.messages import PreMessage
 from ..settings import CELERY_TEST_SETTINGS
 from ..sessions import LeaveAMessageSession
@@ -51,8 +51,8 @@ class ViewsTest(TransactionTestCase):
             self.assertEqual(resp.status_code, 200)
             self.assertIn(LeaveAMessageSession.MSG, resp.content.decode('utf8'))
             user = resp.context['user']
-            current_sessions = BaseSession.objects.get_currents_by_model(user, model)
-            object_ids = list(current_sessions.values_list('object_id', flat=True))
+            current_sessions = SessionData.objects.get_currents_by_model(user, model)
+            object_ids = list(current_sessions.values_list('minkeobj_id', flat=True))
             self.assertEqual(sorted(object_ids), sorted(player_ids))
         else:
             self.client.logout()
@@ -219,7 +219,7 @@ class ViewsTest(TransactionTestCase):
         server_ct = ContentType.objects.get_for_model(Server)
         for server in servers:
             session = create_session(server, user='anyuser')
-            session.add_msg(PreMessage('foobär'))
+            session.messages.add(PreMessage('foobär'), bulk=False)
 
         url = reverse('minke_session_api', args=['server'])
         object_ids = [str(s.id) for s in servers]
@@ -232,8 +232,8 @@ class ViewsTest(TransactionTestCase):
         content = json.loads(resp.content)
         self.assertEqual(len(content), len(servers))
         for session in content:
-            self.assertIn(str(session['object_id']), object_ids)
-            self.assertEqual(session['status'], 'success')
+            self.assertIn(str(session['minkeobj_id']), object_ids)
+            self.assertEqual(session['session_status'], 'success')
             self.assertEqual(session['proc_status'], 'done')
             self.assertIn(DummySession.VERBOSE_NAME, session['get_html'])
             self.assertIn('foobär', session['get_html'])

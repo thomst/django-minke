@@ -68,14 +68,14 @@ class MinkeManagerTest(TransactionTestCase):
         self.options['url_query'] = 'q=label111'
         qs = self.manager.get_queryset(Host, self.options)
         for host in qs:
-            self.assertRegex(host.host, 'label111')
+            self.assertRegex(host.name, 'label111')
 
         # get a more complex changelist-query
-        self.options['url_query'] = 'q=1&user=userlabel222'
+        self.options['url_query'] = 'q=1&username=userlabel222'
         qs = self.manager.get_queryset(Host, self.options)
         for host in qs:
-            self.assertRegex(host.host, '1')
-            self.assertEqual(host.user, 'userlabel222')
+            self.assertRegex(host.name, '1')
+            self.assertEqual(host.username, 'userlabel222')
 
         self.reset_options()
 
