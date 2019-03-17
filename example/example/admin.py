@@ -13,22 +13,31 @@ from .models import AnySystem
 
 @admin.register(Host)
 class HostAdmin(MinkeAdmin):
-    list_filter = ('host', 'hostname')
-    search_fields = ('host',)
-    readonly_fields = ('hoststring',)
-    ordering = ('host',)
+    list_display = ('name', 'verbose_name', 'hostname')
+    search_fields = ('name', 'hostname')
+    ordering = ('name',)
     list_filter = (StatusFilter,)
 
 
 @admin.register(Server)
 class ServerAdmin(MinkeAdmin):
-    list_filter = ('host', 'name')
-    search_fields = ('name',)
-    ordering = ('host',)
+    list_display = ('name', 'host')
+    search_fields = ('name', 'host', 'host__hostname')
+    ordering = ('host', 'name')
+    list_filter = (StatusFilter,)
+
+    def get_queryset(self, request):
+        qs = super(ServerAdmin, self).get_queryset(request)
+        return qs.prefetch_related('host')
 
 
 @admin.register(AnySystem)
 class AnySystemAdmin(MinkeAdmin):
-    list_filter = ('name', 'server',)
+    list_display = ('name', 'server',)
     search_fields = ('name', 'server__name',)
-    ordering = ('name',)
+    ordering = ('server', 'name')
+    list_filter = (StatusFilter,)
+
+    def get_queryset(self, request):
+        qs = super(AnySystemAdmin, self).get_queryset(request)
+        return qs.prefetch_related('server__host')

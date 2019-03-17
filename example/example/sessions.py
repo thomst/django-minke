@@ -38,4 +38,4 @@ class ThisAndThat(Session):
         level = 'info' if self.status == 'success' else self.status
 
         msg = '{}: Waited {} sec.\n\nWhile you were sleeping...'
-        self.add_msg(PreMessage(msg.format(self.player, sec), level))
+        self.add_msg(PreMessage(msg.format(self.minkeobj, sec), level))
