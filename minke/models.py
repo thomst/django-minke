@@ -4,6 +4,7 @@ from __future__ import unicode_literals
 import re
 import datetime
 from time import time
+from collections import OrderedDict
 
 from picklefield.fields import PickledObjectField
 
@@ -54,6 +55,7 @@ class SessionData(models.Model):
         ('done', 'done'),
         ('aborted', 'aborted'),
     )
+    REGISTRY = OrderedDict()
 
     # those fields will be derived from the session-class
     session_name = models.CharField(max_length=128)
@@ -80,8 +82,7 @@ class SessionData(models.Model):
         self.proxy = None
 
     def get_proxy(self, con):
-        from .sessions import registry
-        proxy_cls = registry[self.session_name]
+        proxy_cls = self.REGISTRY[self.session_name]
         return proxy_cls(con, self.minkeobj, self.session_data)
 
     def init(self, user, minkeobj, session_cls, session_data):

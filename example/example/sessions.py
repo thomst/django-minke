@@ -4,7 +4,6 @@ from time import sleep
 from random import randint, choice
 
 from minke.models import Host
-from minke.sessions import register
 from minke.sessions import Session
 from minke.sessions import SingleActionSession
 from minke.sessions import UpdateEntriesSession
@@ -17,7 +16,6 @@ from .models import Server
 from .models import AnySystem
 
 
-@register(create_permission=True)
 class ThisAndThat(Session):
     """
     A session like no other ;-)

@@ -5,7 +5,6 @@ from django.contrib.admin.views.main import ChangeList
 from django.core.urlresolvers import reverse
 from django.contrib import admin
 
-from .sessions import registry
 from .actions import clear_news
 from .models import SessionData
 from .utils import item_by_attr
@@ -36,7 +35,7 @@ class MinkeAdmin(admin.ModelAdmin):
             actions[clear_news.__name__] = prep_action(clear_news)
 
         # add sessions depending on the model and the user-perms...
-        for session in registry.values():
+        for session in SessionData.REGISTRY.values():
             if (self.model in session.WORK_ON and
                 request.user.has_perms(session.PERMISSIONS)):
                 action = session.as_action()

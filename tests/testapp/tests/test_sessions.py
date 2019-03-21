@@ -8,11 +8,12 @@ from django.contrib.auth.models import Permission
 from django.contrib.auth.models import User
 
 from minke import sessions
-from minke.sessions import register
 from minke.sessions import Session
+from minke.sessions import SessionRegistry
 from minke.sessions import UpdateEntriesSession
 from minke.exceptions import InvalidMinkeSetup
 from minke.models import Host
+from minke.models import SessionData
 from minke.engine import process
 from ..models import Server
 from ..sessions import MethodTestSession
@@ -32,51 +33,40 @@ class SessionTest(TransactionTestCase):
         self.host = Host.objects.get(name='localhost')
         self.server = Server.objects.get(host=self.host)
         self.user = User.objects.get(username='admin')
-        self._registry = sessions.registry.copy()
+        self._REGISTRY = SessionData.REGISTRY.copy()
 
-    def reset_registry(self):
-        MethodTestSession.WORK_ON = tuple()
-        sessions.registry = self._registry.copy()
+    def tearDown(self):
+        self.reset_registry()
+
+    def reset_registry(self, session_name='MySession'):
+        SessionData.REGISTRY = self._REGISTRY
+        Permission.objects.filter(codename__startswith='run_').delete()
 
     def test_01_register_session(self):
         # a monkey-class
         class Foobar(object):
             pass
 
-        # wrong session-class
-        args = [Foobar]
-        self.assertRaises(InvalidMinkeSetup, register, *args)
-        self.reset_registry()
+        # invalid minke-model
+        attr = dict(WORK_ON=(Foobar,), __module__='testapp.sessions')
+        args = [str('MySession'), (), attr]
+        self.assertRaises(InvalidMinkeSetup, SessionRegistry, *args)
 
         # missing minke-models
-        args = [MethodTestSession]
-        self.assertRaises(InvalidMinkeSetup, register, *args)
-        self.reset_registry()
+        attr = dict(WORK_ON=(), __module__='testapp.sessions')
+        args = [str('MySession'), (), attr]
+        self.assertRaises(InvalidMinkeSetup, SessionRegistry, *args)
 
-        # invalid minke-model
-        MethodTestSession.WORK_ON = (Foobar,)
-        args = [MethodTestSession]
-        self.assertRaises(InvalidMinkeSetup, register, *args)
-        self.reset_registry()
-
-        # register MethodTestSession
-        MethodTestSession.WORK_ON = (Server,)
-        register(MethodTestSession)
-        self.assertTrue(MethodTestSession in sessions.registry.values())
-        self.reset_registry()
-
-        # register MethodTestSession with Host-object
-        MethodTestSession.WORK_ON = (Host,)
-        register(MethodTestSession)
-        self.assertTrue(MethodTestSession in sessions.registry.values())
-        self.reset_registry()
-
-        # register with create_permission
-        MethodTestSession.WORK_ON = (Host, Server)
-        register(MethodTestSession, create_permission=True)
-        self.assertTrue(MethodTestSession in sessions.registry.values())
-        Permission.objects.get(codename='run_methodtestsession_on_host_and_server')
-        self.reset_registry()
+        # register valid session
+        attr = dict(
+            WORK_ON=(Server,),
+            PERMISSIONS=(),
+            __module__='testapp.sessions')
+        args = [str('MySession'), (), attr]
+        session_cls = SessionRegistry(*args)
+        self.assertIn('MySession', SessionData.REGISTRY.keys())
+        self.assertIn('minke.run_mysession', session_cls.PERMISSIONS)
+        self.assertTrue(Permission.objects.filter(name='Can run my session'))
 
     def test_02_cmd_format(self):
 
@@ -136,7 +126,7 @@ class SessionTest(TransactionTestCase):
 
         # test update_field
         data = dict(test='update')
-        session = session = MethodTestSession(con, self.server, data)
+        session = MethodTestSession(con, self.server, data)
         session.process()
         self.assertEqual(session.minkeobj.hostname, 'foobär\n')
 
@@ -148,14 +138,14 @@ class SessionTest(TransactionTestCase):
 
         # test update_field with failing regex
         data = dict(test='update_regex_fails')
-        session = session = MethodTestSession(con, self.server, data)
+        session = MethodTestSession(con, self.server, data)
         session.process()
         self.assertEqual(session.messages[0].level, 'error')
         self.assertRegex(session.messages[0].text, 'code\[0\] +echo "foobär"\n')
 
         # test update_field-call with invalid field
         data = dict(test='update_invalid_field')
-        session = session = MethodTestSession(con, self.server, data)
+        session = MethodTestSession(con, self.server, data)
         self.assertRaises(AttributeError, session.update_field, 'nofield', 'echo')
 
     # TODO: skipIf-decorator if localhost cannot be connected

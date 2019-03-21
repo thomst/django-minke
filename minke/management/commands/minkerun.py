@@ -12,13 +12,13 @@ from django.contrib.auth import authenticate
 
 from minke import settings
 from ...engine import process
-from ...sessions import registry
+from ...models import SessionData
 from ...utils import item_by_attr
 from ...exceptions import InvalidMinkeSetup
 
 
 class Command(BaseCommand):
-    help = 'Run minke-tasks.'
+    help = 'Run minke-sessions.'
 
     def add_arguments(self, parser):
         parser.add_argument(
@@ -77,7 +77,7 @@ class Command(BaseCommand):
             raise CommandError(msg)
 
         try:
-            session_cls = registry[session]
+            session_cls = SessionData.REGISTRY[session]
         except KeyError:
             msg = 'Unknown session: {}'.format(session)
             raise CommandError(msg)
@@ -206,7 +206,7 @@ class Command(BaseCommand):
 
     def handle(self, *args, **options):
         if options['list_sessions']:
-            for session_cls in registry.values():
+            for session_cls in SessionData.REGISTRY.values():
                 print session_cls.__name__
             return
 

@@ -11,7 +11,7 @@ from django.db.utils import ProgrammingError
 from django.core.exceptions import FieldDoesNotExist
 from django.contrib.auth.models import Permission
 from django.contrib.contenttypes.models import ContentType
-from django.utils.text import slugify
+from django.utils.text import camel_case_to_spaces
 
 from .views import SessionView
 from .models import Host
@@ -22,66 +22,45 @@ from .messages import PreMessage
 from .exceptions import InvalidMinkeSetup
 
 
-registry = OrderedDict()
-def register(session_cls=None, create_permission=False):
-    """
-    Register session-classes.
-    This works also as a decorator for session-classes.
-    """
+class SessionRegistry(type):
+    """metaclass for Sessions that implements session-registration"""
 
-    # If we got no session_cls we assume register were used as a decorator...
-    if not session_cls:
-        def wrapper(session_cls):
-            register(session_cls, create_permission)
-            return session_cls
-        return wrapper
+    def __init__(cls, classname, bases, attr):
+        super(SessionRegistry, cls).__init__(classname, bases, attr)
+        if attr['__module__'] == 'minke.sessions': return
 
-    try:
-        assert(issubclass(session_cls, Session))
-    except (TypeError, AssertionError):
-        msg = 'Invalid session-class: {}'.format(session_cls)
-        raise InvalidMinkeSetup(msg)
-
-    if not session_cls.WORK_ON:
-        msg = 'At least one minke-model must be specified for a session.'
-        raise InvalidMinkeSetup(msg)
-
-    for model in session_cls.WORK_ON:
-        try:
-            assert(model == Host or issubclass(model, MinkeModel))
-        except (TypeError, AssertionError):
-            msg = '{} is no minke-model.'.format(model)
+        if not cls.WORK_ON:
+            msg = 'At least one minke-model must be specified for a session.'
             raise InvalidMinkeSetup(msg)
 
-    if create_permission:
+        for model in cls.WORK_ON:
+            try:
+                assert(model == Host or issubclass(model, MinkeModel))
+            except (TypeError, AssertionError):
+                msg = '{} is no minke-model.'.format(model)
+                raise InvalidMinkeSetup(msg)
+
+        # create session-permission...
         # Applying migrations tumbles over get_for_model if the
         # migrations for content-types aren't applied yet.
         try: content_type = ContentType.objects.get_for_model(SessionData)
         except (OperationalError, ProgrammingError): return
-
-        # We create one permission to run the session with all registered models.
-        # codename looks like: run_thistask_on_thismodel_and_thatmodel
-        models = '_and_'.join([slugify(m.__name__) for m in session_cls.WORK_ON])
-        session_name = session_cls.__name__
-        session_codename = slugify(session_name)
-        codename = 'run_{}_on_{}'.format(session_codename, models)
-        permission_name = '{}.{}'.format(model._meta.app_label, codename)
+        codename = 'run_{}'.format(classname.lower())
+        permname = 'Can run {}'.format(camel_case_to_spaces(classname))
         permission = Permission.objects.get_or_create(
-            name=codename.replace('_', ' '),
             codename=codename,
-            content_type=content_type)
+            content_type=content_type,
+            defaults=dict(name=permname))
+        permission_name = 'minke.{}'.format(codename)
+        cls.PERMISSIONS += (permission_name,)
 
-        # add permission to permission_required...
-        session_cls.PERMISSIONS += (permission_name,)
-
-    # register session-class
-    registry[session_cls.__name__] = session_cls
-
-    # in case register were used as a decorator (without arguments)...
-    return session_cls
+        # register session
+        SessionData.REGISTRY[cls.__name__] = cls
 
 
 class Session(object):
+    __metaclass__ = SessionRegistry
+
     VERBOSE_NAME = None
     WORK_ON = tuple()
     PERMISSIONS = tuple()

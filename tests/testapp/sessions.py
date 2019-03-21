@@ -1,7 +1,6 @@
 # -*- coding: utf-8 -*-
 from __future__ import unicode_literals
 
-from minke.sessions import register
 from minke.models import Host
 from minke.sessions import Session
 from minke.sessions import SingleActionSession
@@ -16,7 +15,6 @@ from .models import AnySystem
 from .forms import TestForm
 
 
-@register
 class DummySession(Session):
     VERBOSE_NAME = 'Do nothing'
     WORK_ON = (Host, Server, AnySystem)
@@ -25,7 +23,6 @@ class DummySession(Session):
         pass
 
 
-@register
 class SingleModelDummySession(Session):
     VERBOSE_NAME = 'Do nothing (one-model-session).'
     WORK_ON = (Server,)
@@ -34,7 +31,6 @@ class SingleModelDummySession(Session):
         pass
 
 
-@register
 class ExceptionSession(Session):
     VERBOSE_NAME = 'Raise an exception.'
     WORK_ON = (Host, Server, AnySystem)
@@ -44,14 +40,12 @@ class ExceptionSession(Session):
         raise Exception(str('process: ') + self.ERR_MSG)
 
 
-@register
 class SingleActionDummySession(SingleActionSession):
     VERBOSE_NAME = 'Single-action-session.'
     WORK_ON = (Host, Server, AnySystem)
     COMMAND = None
 
 
-@register
 class EchoUnicodeSession(Session):
     VERBOSE_NAME = 'Echo unicode-literals.'
     WORK_ON = (Server,)
@@ -62,7 +56,6 @@ class EchoUnicodeSession(Session):
         self.add_msg(ExecutionMessage(result))
 
 
-@register
 class TestUpdateEntriesSession(UpdateEntriesSession):
     VERBOSE_NAME = 'Update hostname.'
     WORK_ON = (Server,)
@@ -71,7 +64,6 @@ class TestUpdateEntriesSession(UpdateEntriesSession):
         self.update_field('hostname', 'hostname', '^[a-z0-9._-]+$')
 
 
-@register
 class TestFormSession(Session):
     VERBOSE_NAME = 'Test the session form.'
     WORK_ON = (Host, Server, AnySystem)
@@ -84,7 +76,6 @@ class TestFormSession(Session):
         self.add_msg(Message(msg, 'WARNING'))
 
 
-@register(create_permission=True)
 class LeaveAMessageSession(Session):
     VERBOSE_NAME = 'Leave a message.'
     WORK_ON = (Host, Server, AnySystem)
@@ -94,7 +85,6 @@ class LeaveAMessageSession(Session):
         self.add_msg(Message(self.MSG, 'info'))
 
 
-@register(create_permission=True)
 class MethodTestSession(UpdateEntriesSession):
     VERBOSE_NAME = 'Test session-methods'
     WORK_ON = (Host, Server, AnySystem)
