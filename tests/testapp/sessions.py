@@ -3,8 +3,10 @@ from __future__ import unicode_literals
 
 from minke.models import Host
 from minke.sessions import Session
-from minke.sessions import SingleActionSession
 from minke.sessions import UpdateEntriesSession
+from minke.sessions import SingleCommandSession
+from minke.sessions import CommandChainSession
+from minke.sessions import SessionChain
 from minke.messages import Message
 from minke.messages import ExecutionMessage
 from minke.messages import PreMessage
@@ -40,7 +42,7 @@ class ExceptionSession(Session):
         raise Exception(str('process: ') + self.ERR_MSG)
 
 
-class SingleActionDummySession(SingleActionSession):
+class SingleActionDummySession(SingleCommandSession):
     VERBOSE_NAME = 'Single-action-session.'
     WORK_ON = (Host, Server, AnySystem)
     COMMAND = None
@@ -80,7 +82,7 @@ class LeaveAMessageSession(Session):
     VERBOSE_NAME = 'Leave a message.'
     WORK_ON = (Host, Server, AnySystem)
 
-    MSG = '¡ ¢ £ ¤ ¥ ¦ § ¨ © ª « ¬ ­ ® ¯ ° ± ² ³ ´ µ'
+    MSG = '¡ ¢ £ ¤ ¥ ¦ § ¨ © ª « ¬ ­ ® ¯ ° ± ² ³ ´ µ'.encode('utf-8')
     def process(self):
         self.add_msg(Message(self.MSG, 'info'))
 
@@ -113,3 +115,31 @@ class MethodTestSession(UpdateEntriesSession):
 
     def test_unicode_result(self):
         return self.run('(echo "hällo"; echo "wörld" 1>&2)')
+
+
+class RunCommands(CommandChainSession):
+    WORK_ON = (Host, Server, AnySystem)
+    COMMANDS = (
+        'echo "hello wörld"',
+        'echo "hello wörld" 1>&2',
+        '[ 1 == 2 ]')
+
+
+class InfoCommand(SingleCommandSession):
+    WORK_ON = (Host, Server, AnySystem)
+    COMMAND = 'echo "hello wörld"'
+
+
+class WarningCommand(SingleCommandSession):
+    WORK_ON = (Host, Server, AnySystem)
+    COMMAND = 'echo "hello wörld" 1>&2'
+
+
+class ErrorCommand(SingleCommandSession):
+    WORK_ON = (Host, Server, AnySystem)
+    COMMAND = '[ 1 == 2 ]'
+
+
+class RunSessions(SessionChain):
+    WORK_ON = (Host, Server, AnySystem)
+    SESSIONS = (InfoCommand, WarningCommand, ErrorCommand)

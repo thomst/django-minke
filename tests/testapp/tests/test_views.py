@@ -49,7 +49,7 @@ class ViewsTest(TransactionTestCase):
             resp = self.client.post(url, post_data, follow=True)
             self.assertEqual(resp.redirect_chain[0][0], url)
             self.assertEqual(resp.status_code, 200)
-            self.assertIn(LeaveAMessageSession.MSG, resp.content.decode('utf8'))
+            self.assertIn(LeaveAMessageSession.MSG, resp.content)
             user = resp.context['user']
             current_sessions = SessionData.objects.get_currents_by_model(user, model)
             object_ids = list(current_sessions.values_list('minkeobj_id', flat=True))
@@ -63,14 +63,12 @@ class ViewsTest(TransactionTestCase):
         post_data = dict()
         post_data['action'] = LeaveAMessageSession.__name__
         post_data['_selected_action'] = [1]
+
         # work with unprivileged user
         self.client.force_login(self.anyuser)
-
-        # DummySession should be listed as action.
         resp = self.client.get(url)
         self.assertEqual(resp.status_code, 200)
         self.assertNotIn(DummySession.__name__, resp.content)
-
         # TODO: Find a way to check 403-response when calling SessionView
         # If user lacks permissions to run a session, the session won't be
         # listed as action-option. The response is a changelist with a
@@ -78,10 +76,17 @@ class ViewsTest(TransactionTestCase):
         resp = self.client.post(url, post_data, follow=True)
         self.assertEqual(resp.status_code, 200)
         self.assertIn('No action selected', resp.content)
-
         self.client.logout()
 
-        # TODO: tests with privileged user
+        # work with unprivileged user
+        self.client.force_login(self.admin)
+        resp = self.client.get(url)
+        self.assertEqual(resp.status_code, 200)
+        self.assertIn(DummySession.__name__, resp.content)
+        resp = self.client.post(url, post_data, follow=True)
+        self.assertEqual(resp.status_code, 200)
+        self.assertIn(LeaveAMessageSession.MSG, resp.content)
+        self.client.logout()
 
     @override_settings(**CELERY_TEST_SETTINGS)
     def test_03_session_raises_exception(self):
@@ -113,7 +118,7 @@ class ViewsTest(TransactionTestCase):
         post_data['_selected_action'] = [1]
         invalid_form_data = post_data.copy()
         invalid_form_data['minke_form'] = True
-        invalid_form_data['initial_password'] = ''
+        invalid_form_data['connect_kwargs_passphrase'] = ''
         invalid_form_data['one'] = 'abc'
         invalid_form_data['two'] = 'def'
         valid_form_data = post_data.copy()

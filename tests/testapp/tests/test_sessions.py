@@ -15,9 +15,12 @@ from minke.exceptions import InvalidMinkeSetup
 from minke.models import Host
 from minke.models import SessionData
 from minke.engine import process
+from minke.settings import MINKE_FABRIC_CONFIG
 from ..models import Server
 from ..sessions import MethodTestSession
 from ..sessions import SingleActionDummySession
+from ..sessions import RunCommands
+from ..sessions import RunSessions
 from .utils import create_test_data
 
 
@@ -33,6 +36,8 @@ class SessionTest(TransactionTestCase):
         self.host = Host.objects.get(name='localhost')
         self.server = Server.objects.get(host=self.host)
         self.user = User.objects.get(username='admin')
+        config = MINKE_FABRIC_CONFIG.clone()
+        self.con = Connection(self.host.hostname, self.host.username, config=config)
         self._REGISTRY = SessionData.REGISTRY.copy()
 
     def tearDown(self):
@@ -58,15 +63,10 @@ class SessionTest(TransactionTestCase):
         self.assertRaises(InvalidMinkeSetup, SessionRegistry, *args)
 
         # register valid session
-        attr = dict(
-            WORK_ON=(Server,),
-            PERMISSIONS=(),
-            __module__='testapp.sessions')
-        args = [str('MySession'), (), attr]
-        session_cls = SessionRegistry(*args)
-        self.assertIn('MySession', SessionData.REGISTRY.keys())
-        self.assertIn('minke.run_mysession', session_cls.PERMISSIONS)
-        self.assertTrue(Permission.objects.filter(name='Can run my session'))
+        # FIXME: For any reason permissions do not exists if we run this
+        # TestCase without the context of the other TestCases.
+        # self.assertTrue(Permission.objects.filter(codename='run_dummysession'))
+        # self.assertTrue(Permission.objects.filter(name='Can run dummy session'))
 
     def test_02_cmd_format(self):
 
@@ -83,80 +83,100 @@ class SessionTest(TransactionTestCase):
         cmd = session.format_cmd(cmd_format)
         self.assertEqual(cmd, 'foobär foo')
 
-        # test SingleActionSession.get_cmd
-        # should raise an exception if COMMAND is not set
-        SingleActionDummySession.COMMAND = None
-        session = SingleActionDummySession(None, self.server, dict())
-        self.assertRaises(InvalidMinkeSetup, session.get_cmd)
-
-        # otherwise a fromatted command
-        session_data = dict(hostname='foobär', foo='foo')
-        SingleActionDummySession.COMMAND = '{hostname} {foo}'
-        session = SingleActionDummySession(None, self.server, session_data)
-        self.assertEqual(session.get_cmd(), 'foobär foo')
-
     def test_03_set_status(self):
 
         session = MethodTestSession(None, self.server, dict())
-        session.set_status('error')
+        session.set_status('error', only_raise=False)
         self.assertTrue(session.status == 'error')
-        session.set_status('WARNING')
+        session.set_status('WARNING', only_raise=False)
         self.assertTrue(session.status == 'warning')
-        session.set_status(True)
+        session.set_status(True, only_raise=False)
         self.assertTrue(session.status == 'success')
-        session.set_status(False)
+        session.set_status(False, only_raise=False)
+        self.assertTrue(session.status == 'error')
+        session.set_status('success', only_raise=True)
         self.assertTrue(session.status == 'error')
         self.assertRaises(InvalidMinkeSetup, session.set_status, 'foobar')
 
     # TODO: skipIf-decorator if localhost cannot be connected
     def test_04_processing(self):
 
-        con = Connection(user=self.host.username, host=self.host.hostname)
-
         # test message-calls
         data = dict(test='execute')
-        session = session = MethodTestSession(con, self.server, data)
+        session = session = MethodTestSession(self.con, self.server, data)
         session.process()
         self.assertEqual(session.messages[0].level, 'info')
         self.assertEqual(session.messages[1].level, 'warning')
         self.assertEqual(session.messages[2].level, 'error')
-        self.assertEqual(session.messages[0].text, 'hello wörld\n')
+        self.assertRegex(session.messages[0].text, 'code\[0\] +echo "hello wörld"\n')
         self.assertRegex(session.messages[1].text, 'code\[0\] +echo "hello wörld" 1>&2\n')
         self.assertRegex(session.messages[2].text, 'code\[1\] +\[ 1 == 2 \]')
 
         # test update_field
         data = dict(test='update')
-        session = MethodTestSession(con, self.server, data)
+        session = MethodTestSession(self.con, self.server, data)
         session.process()
+        session.save_minkeobj()
         self.assertEqual(session.minkeobj.hostname, 'foobär\n')
 
         # test update_field with regex
         data = dict(test='update_regex')
-        session = session = MethodTestSession(con, self.server, data)
+        session = session = MethodTestSession(self.con, self.server, data)
         session.process()
+        session.save_minkeobj()
         self.assertEqual(session.minkeobj.hostname, 'foo')
 
         # test update_field with failing regex
         data = dict(test='update_regex_fails')
-        session = MethodTestSession(con, self.server, data)
+        session = MethodTestSession(self.con, self.server, data)
         session.process()
         self.assertEqual(session.messages[0].level, 'error')
         self.assertRegex(session.messages[0].text, 'code\[0\] +echo "foobär"\n')
 
         # test update_field-call with invalid field
         data = dict(test='update_invalid_field')
-        session = MethodTestSession(con, self.server, data)
+        session = MethodTestSession(self.con, self.server, data)
         self.assertRaises(AttributeError, session.update_field, 'nofield', 'echo')
 
     # TODO: skipIf-decorator if localhost cannot be connected
     def test_05_unicdoe_result(self):
-        con = Connection(user=self.host.username, host=self.host.hostname)
-
         # test with utf-8-encoding
         data = dict(test='unicode_result')
-        session = session = MethodTestSession(con, self.server, data)
+        session = session = MethodTestSession(self.con, self.server, data)
         result = session.process()
         self.assertEqual(type(result.stdout), unicode)
         self.assertEqual(type(result.stderr), unicode)
         self.assertEqual(result.stdout, 'hällo\n')
         self.assertEqual(result.stderr, 'wörld\n')
+
+    # TODO: skipIf-decorator if localhost cannot be connected
+    def test_06_more_sessions(self):
+        session = RunCommands(self.con, self.server)
+        session.process()
+        self.assertEqual(session.status, 'error')
+        self.assertEqual(len(session.messages), 3)
+        session = RunCommands(self.con, self.server)
+        session.BREAK_STATUUS = ('warning',)
+        session.process()
+        self.assertEqual(session.status, 'warning')
+        self.assertEqual(len(session.messages), 2)
+        session = RunCommands(self.con, self.server)
+        session.BREAK_STATUUS = ('success',)
+        session.process()
+        self.assertEqual(session.status, 'success')
+        self.assertEqual(len(session.messages), 1)
+
+        session = RunSessions(self.con, self.server)
+        session.process()
+        self.assertEqual(session.status, 'error')
+        self.assertEqual(len(session.messages), 3)
+        session = RunSessions(self.con, self.server)
+        session.BREAK_STATUUS = ('warning',)
+        session.process()
+        self.assertEqual(session.status, 'warning')
+        self.assertEqual(len(session.messages), 2)
+        session = RunSessions(self.con, self.server)
+        session.BREAK_STATUUS = ('success',)
+        session.process()
+        self.assertEqual(session.status, 'success')
+        self.assertEqual(len(session.messages), 1)

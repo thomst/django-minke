@@ -10,11 +10,11 @@ from django.test import override_settings
 from django.core.management import call_command
 from django import forms
 
+from minke.sessions import Session
+from minke.models import Host
 from minke.management.commands import minkerun
 from minke.management.commands.minkerun import Command
 from minke.management.commands.minkerun import CommandError
-from minke.sessions import Session
-from minke.models import Host
 
 from .utils import create_test_data
 from ..settings import CELERY_TEST_SETTINGS

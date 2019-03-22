@@ -146,6 +146,9 @@ CELERY_RESULT_SERIALIZER = 'pickle'
 # CELERY_TASK_EAGER_PROPAGATES = True
 CELERY_TEST_SETTINGS = dict(CELERY_TASK_ALWAYS_EAGER=True)
 
+FABRIC_RUN_HIDE = True
+
+
 LOGGING = {
     'version': 1,
     'disable_existing_loggers': False,

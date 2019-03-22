@@ -3,7 +3,6 @@ from __future__ import unicode_literals
 
 from django.contrib import admin
 
-import sessions
 from minke.admin import MinkeAdmin
 from minke.models import Host
 from minke.filters import StatusFilter
