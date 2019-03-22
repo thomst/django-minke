@@ -29,6 +29,7 @@ class SessionRegistry(type):
         super(SessionRegistry, cls).__init__(classname, bases, attr)
         if attr['__module__'] == 'minke.sessions': return
 
+        # some sanity-checks
         if not cls.WORK_ON:
             msg = 'At least one minke-model must be specified for a session.'
             raise InvalidMinkeSetup(msg)
@@ -39,6 +40,10 @@ class SessionRegistry(type):
             except (TypeError, AssertionError):
                 msg = '{} is no minke-model.'.format(model)
                 raise InvalidMinkeSetup(msg)
+
+        # set verbose-name if missing
+        if not cls.VERBOSE_NAME:
+            cls.VERBOSE_NAME = camel_case_to_spaces(classname)
 
         # create session-permission...
         # Applying migrations tumbles over get_for_model if the
