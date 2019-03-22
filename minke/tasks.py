@@ -34,9 +34,8 @@ def process_sessions(host_id, session_ids, fabric_config=None):
     # prepare the config and create a connection...
     config = MINKE_FABRIC_CONFIG.clone()
     config.load_snakeconfig(fabric_config or dict())
-    config.connect_kwargs.hostname = host.hostname
-    config.connect_kwargs.username = host.username
-    con = Connection(host.name, config=config)
+    hostname = host.hostname or host.name
+    con = Connection(hostname, host.username, config=config)
 
     # process the sessions...
     for session in sessions:
@@ -45,17 +44,17 @@ def process_sessions(host_id, session_ids, fabric_config=None):
 
         # paramiko- and socket-related exceptions (ssh-layer)
         except (SSHException, GaiError, SocketError):
-            session.session_status = 'error'
+            session.proxy.set_status('error')
             session.messages.add(ExceptionMessage(), bulk=False)
 
         # invoke-related exceptions (shell-layer)
         except (Failure, ThreadException, UnexpectedExit):
-            session.session_status = 'error'
+            session.proxy.set_status('error')
             session.messages.add(ExceptionMessage(), bulk=False)
 
         # other exceptions
         except Exception:
-            session.session_status = 'error'
+            session.proxy.set_status('error')
             exc_msg = ExceptionMessage(print_tb=True)
             logger.error(exc_msg.text)
             if settings.MINKE_DEBUG:

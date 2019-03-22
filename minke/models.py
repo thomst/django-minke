@@ -108,7 +108,7 @@ class SessionData(models.Model):
             self.save(update_fields=['proc_status', 'session_status'])
         else:
             self.proc_status = 'done'
-            self.session_status = self.proxy.status or 'success'
+            self.session_status = self.proxy.status
             self.end_time = datetime.datetime.now()
             self.run_time = self.end_time - self.start_time
             update_fields = ['proc_status', 'session_status', 'end_time', 'run_time']
