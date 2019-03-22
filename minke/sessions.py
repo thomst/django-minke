@@ -83,11 +83,11 @@ class Session(object):
         action.short_description = cls.VERBOSE_NAME
         return action
 
-    def __init__(self, connection, minkeobj, session_data):
+    def __init__(self, connection, minkeobj, session_data=None):
         self.connection = connection
         self.minkeobj = minkeobj
-        self.session_data = session_data
-        self.status = None
+        self.session_data = session_data or dict()
+        self.status = 'success'
         self.messages = list()
 
     def process(self):
@@ -99,18 +99,21 @@ class Session(object):
     def add_msg(self, msg):
         self.messages.append(msg)
 
-    def set_status(self, status):
+    def set_status(self, status, only_raise=True):
         """
         Set session-status. Pass a valid session-status or a boolean.
         """
-        statuus = [s[0] for s in SessionData.RESULT_STATES]
+        statuus = {'success': 0, 'warning': 1, 'error': 2}
         if type(status) == bool:
-            self.status = 'success' if status else 'error'
-        elif status.lower() in statuus:
-            self.status = status.lower()
+            status = 'success' if status else 'error'
+        elif status.lower() in statuus.keys():
+            status = status.lower()
         else:
             msg = 'session-status must be one of {}'.format(statuus)
             raise InvalidMinkeSetup(msg)
+
+        if not only_raise or statuus[self.status] < statuus[status]:
+            self.status = status
 
     # helper-methods
     def format_cmd(self, cmd):
@@ -135,37 +138,27 @@ class Session(object):
             return result.ok
 
     def run(self, cmd):
+        """
+        run a command
+        """
         return self.connection.run(cmd, warn=True)
 
-    def execute(self, cmd, **kwargs):
+    def execute(self, cmd, stderr_warning=True):
         """
-        Just run cmd and leave a message.
+        Run cmd, leave a message and set session-status.
         """
-        result = self.run(cmd, **kwargs)
-
+        result = self.run(cmd)
         if result.failed:
-            self.add_msg(ExecutionMessage(result, 'ERROR'))
-        elif result.stderr:
-            self.add_msg(ExecutionMessage(result, 'WARNING'))
-        elif result.stdout:
-            self.add_msg(PreMessage(result.stdout, 'INFO'))
+            self.add_msg(ExecutionMessage(result, 'error'))
+            self.set_status('error')
+        elif stderr_warning and result.stderr:
+            self.add_msg(ExecutionMessage(result, 'warning'))
+            self.set_status('warning')
+        else:
+            self.add_msg(ExecutionMessage(result, 'info'))
+            self.set_status('success')
 
         return result.ok
-
-
-class SingleActionSession(Session):
-    COMMAND = None
-
-    def get_cmd(self):
-        if not self.COMMAND:
-            msg = 'Missing COMMAND for SingleActionSession!'
-            raise InvalidMinkeSetup(msg)
-        else:
-            return self.format_cmd(self.COMMAND)
-
-    def process(self):
-        valid = self.execute(self.get_cmd())
-        self.set_status(valid)
 
 
 class UpdateEntriesSession(Session):
@@ -183,21 +176,22 @@ class UpdateEntriesSession(Session):
         result = self.run(cmd)
         valid = self.valid(result, regex)
 
-        # A valid call and stdout? Then try to use the first captured
-        # regex-group or just use stdout as value.
-        if valid and result.stdout:
-            try:
-                assert regex
-                value = re.match(regex, result.stdout).groups()[0]
-            except (AssertionError, IndexError):
-                value = result.stdout
+        # do we have a regex? Then use the first captured group if there is one,
+        # stdout otherwise...
+        if valid and regex and result.stdout:
+            groups = re.match(regex, result.stdout).groups()
+            value = groups[0] if groups else result.stdout
 
-        # call were valid but no stdout? Leave a warning.
+        # no regex? just take stdout as it is...
+        elif valid and result.stdout:
+            value = result.stdout
+
+        # valid but no stdout? Leave a warning...
         elif valid and not result.stdout:
             self.add_msg(ExecutionMessage(result, 'WARNING'))
             value = None
 
-        # call failed.
+        # not valid - error-message...
         else:
             self.add_msg(ExecutionMessage(result, 'ERROR'))
             value = None
@@ -205,6 +199,50 @@ class UpdateEntriesSession(Session):
         setattr(self.minkeobj, field, value)
         return bool(value)
 
-    def rework(self):
-        # TODO: catch exceptions that may be raised because of invalid values.
-        self.minkeobj.save()
+    def save_minkeobj(self, raise_exception=False):
+        try:
+            return self.minkeobj.save()
+        except (ValidationError, IntegrityError):
+            self.add_msg(ExceptionMessage())
+            if raise_exception: raise
+            else: return None
+
+
+class SingleCommandSession(Session):
+    COMMAND = None
+
+    def process(self):
+        if not self.COMMAND:
+            msg = 'Missing COMMAND for SingleCommandSession!'
+            raise InvalidMinkeSetup(msg)
+
+        self.execute(self.format_cmd(self.COMMAND))
+
+
+class CommandChainSession(Session):
+    COMMANDS = tuple()
+    BREAK_STATUUS = ('error',)
+
+    def process(self):
+        if not self.COMMANDS:
+            msg = 'Missing COMMANDS for CommandChainSession!'
+            raise InvalidMinkeSetup(msg)
+
+        for cmd in self.COMMANDS:
+            self.execute(self.format_cmd(cmd))
+            if self.status in self.BREAK_STATUUS:
+                break
+
+
+class SessionChain(Session):
+    SESSIONS = tuple()
+    BREAK_STATUUS = ('error',)
+
+    def process(self):
+        for cls in self.SESSIONS:
+            session = cls(self.connection, self.minkeobj, self.session_data)
+            session.process()
+            self.messages += session.messages
+            self.set_status(session.status)
+            if session.status in self.BREAK_STATUUS:
+                break
