@@ -74,11 +74,14 @@ class Message(ProxyMixin, MessageData):
         self.text = self.get_text(data)
         self.html = self.get_html(data)
 
-        # deprecated - for backward-compatibility
+        levels = dict(self.LEVELS).keys()
         if type(level) == bool:
             self.level = 'info' if level else 'error'
-        else:
+        elif level.lower() in levels:
             self.level = level.lower()
+        else:
+            msg = 'message-level must be one of {}'.format(levels)
+            raise InvalidMinkeSetup(msg)
 
     def get_text(self, data):
         return data
@@ -89,75 +92,45 @@ class Message(ProxyMixin, MessageData):
 
 class PreMessage(Message):
     def get_html(self, data):
-        return '<pre>{}</pre>'.format(escape(data))
+        return '<pre>{}</pre>'.format(escape(self.get_text(data)))
 
 
-class TableMessage(Message):
-    def __init__(self, data, level='info', css=None):
-        self.css = css or dict()
-        super(TableMessage, self).__init__(data, level)
-
+class TableMessage(PreMessage):
     def get_text(self, data):
         widths = dict()
-        for row_data in data:
-            for i, col in enumerate(row_data):
-                if widths.get(i, -1) < len(col):
-                    widths[i] = len(col)
         rows = list()
         spacer = '    '
-        for row_data in data:
-            ljust_row = [s.ljust(widths[i]) for i, s in enumerate(row_data)]
+        for row in data:
+            for i, col in enumerate(row):
+                if widths.get(i, -1) < len(col):
+                    widths[i] = len(col)
+        for row in data:
+            ljust_row = [s.ljust(widths[i]) for i, s in enumerate(row)]
             rows.append(spacer.join(ljust_row))
         return '\n'.join(rows)
 
-    def get_html(self, data):
-        css_params = dict(width='680px', color='#666')
-        css_params.update(self.css)
-        style = ['{}:{};'.format(k, v) for k, v in css_params.items()]
-        style = 'style="{}"'.format(' '.join(style))
-        escaped_data = []
-        for row in data:
-            escaped_data.append(list())
-            for column in row:
-                escaped_data[-1].append(escape(column))
-        columns = ['</td><td>'.join(columns) for columns in escaped_data]
-        rows = '</td></tr><tr><td>'.join(columns)
-        table = '<table {}><tr><td>{}</td></tr></table>'.format(style, rows)
-        return table
 
+class ExecutionMessage(PreMessage):
+    def _get_chunk(self, prefix, lines, max_lines):
+        if max_lines:
+            diff = len(lines) - max_lines
+            lines = lines[-max_lines:]
+            if diff > 0:
+                lines.insert(0, '[{}] ... ...'.format(diff))
 
-class ExecutionMessage(Message):
-    TEMPLATE = """
-        <table>
-            <tr><td><code>[{rtn}]</code></td><td><code>{cmd}</code></td></tr>
-            <tr><td>stdout:</td><td><pre>{stdout}</pre></td></tr>
-            <tr><td>stderr:</td><td><pre>{stderr}</pre></td></tr>
-        </table>
-        """
+        new_lines = list()
+        for line in lines:
+            new_lines.append(prefix.ljust(10) + line)
+            prefix = str()
+        return new_lines
 
-    def get_text(self, data):
+    def get_text(self, data, max_lines=10):
         lines = list()
-        rtn, cmd = data.return_code, data.command
-        lines.append('code[{}]'.format(rtn).ljust(10) + cmd)
-        for line in data.stdout.splitlines():
-            lines.append('stdout'.ljust(10) + line)
-        for line in data.stderr.splitlines():
-            lines.append('stderr'.ljust(10) + line)
+        prefix = 'code[{}]'.format(data.return_code)
+        lines += self._get_chunk(prefix, data.command.split('\n'), None)
+        lines += self._get_chunk('stdout:', data.stdout.splitlines(), max_lines)
+        lines += self._get_chunk('stderr:', data.stderr.splitlines(), max_lines)
         return '\n'.join(lines)
-
-    def get_html(self, data):
-        template = """
-            <table>
-                <tr><td><code>[{rtn}]</code></td><td><code>{cmd}</code></td></tr>
-                <tr><td>stdout:</td><td><pre>{stdout}</pre></td></tr>
-                <tr><td>stderr:</td><td><pre>{stderr}</pre></td></tr>
-            </table>
-            """
-        return template.format(
-            cmd=escape(data.command),
-            rtn=data.return_code,
-            stdout=escape(data.stdout),
-            stderr=escape(data.stderr))
 
 
 class ExceptionMessage(PreMessage):
