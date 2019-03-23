@@ -16,9 +16,6 @@ from .models import SessionData
 from .tasks import process_sessions
 
 
-logger = logging.getLogger(__name__)
-
-
 def process(session_cls, queryset, session_data, user,
             fabric_config=None, wait=False, console=False):
     """Initiate fabric's session-processing."""
@@ -36,7 +33,7 @@ def process(session_cls, queryset, session_data, user,
         session.init(user, minkeobj, session_cls, session_data)
 
         # Skip disabled or locked hosts...
-        if host.disabled or host.lock and host.lock != lock:
+        if host.disabled:
             msg = '{}: Host is disabled.'.format(minkeobj)
             session.messages.add(Message(msg, 'error'), bulk=False)
             session.end()
