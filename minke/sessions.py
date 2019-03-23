@@ -99,7 +99,7 @@ class Session(object):
     def add_msg(self, msg):
         self.messages.append(msg)
 
-    def set_status(self, status, only_raise=True):
+    def set_status(self, status, alert=True):
         """
         Set session-status. Pass a valid session-status or a boolean.
         """
@@ -112,7 +112,7 @@ class Session(object):
             msg = 'session-status must be one of {}'.format(statuus)
             raise InvalidMinkeSetup(msg)
 
-        if not only_raise or statuus[self.status] < statuus[status]:
+        if not alert or statuus[self.status] < statuus[status]:
             self.status = status
 
     # helper-methods
@@ -137,11 +137,11 @@ class Session(object):
         else:
             return result.ok
 
-    def run(self, cmd):
+    def run(self, cmd, *args, **kwargs):
         """
         run a command
         """
-        return self.connection.run(cmd, warn=True)
+        return self.connection.run(cmd, *args, **kwargs)
 
     def execute(self, cmd, stderr_warning=True):
         """
