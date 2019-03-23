@@ -11,7 +11,6 @@ from django.contrib.contenttypes.models import ContentType
 import minke.sessions
 from .messages import Message
 from .messages import ExceptionMessage
-from .messages import Printer
 from .models import SessionData
 from .tasks import process_sessions
 
@@ -37,12 +36,12 @@ def process(session_cls, queryset, session_data, user,
             msg = '{}: Host is disabled.'.format(minkeobj)
             session.messages.add(Message(msg, 'error'), bulk=False)
             session.end()
-            if console: Printer.prnt(session)
+            if console: session.prnt()
         elif host.lock and host.lock != lock:
             msg = '{}: Host is locked.'.format(minkeobj)
             session.messages.add(Message(msg, 'error'), bulk=False)
             session.end()
-            if console: Printer.prnt(session)
+            if console: session.prnt()
 
         # otherwise group sessions by hosts...
         else:
@@ -73,7 +72,7 @@ def process(session_cls, queryset, session_data, user,
                 msg = 'Could not process session.'
                 session.add_msg(ExceptionMessage())
                 session.end()
-                if console: Printer.prnt(session)
+                if console: session.prnt(session)
 
 
     # print sessions in cli-mode as soon as they are ready...
@@ -86,7 +85,7 @@ def process(session_cls, queryset, session_data, user,
             # reload session-objects
             sessions = SessionData.objects.filter(id__in=session_ids)
             # print and remove list-item
-            for session in sessions: Printer.prnt(session)
+            for session in sessions: session.prnt()
             print_results.remove((result, session_ids))
 
     # evt. wait till all tasks finished...

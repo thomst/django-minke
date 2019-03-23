@@ -145,6 +145,47 @@ class SessionData(models.Model):
         html += info + msgs + '</td></tr>'
         return mark_safe(html)
 
+    def prnt(self):
+        status_color = dict(
+            success = '\033[1;37;42m',
+            warning = '\033[1;37;43m',
+            error   = '\033[1;37;41m')
+        level_color = dict(
+            info    = '\033[32m',
+            warning = '\033[33m',
+            error   = '\033[31m')
+        level_color_underscore = dict(
+            info    = '\033[4;32m',
+            warning = '\033[4;33m',
+            error   = '\033[4;31m')
+        clear = '\033[0m'
+        clear_fg = '\033[39m'
+        width = 60
+        prefix_width = 7
+        delimiter = ': '
+
+        minkeobj = unicode(self.minkeobj).ljust(width)
+        status = self.session_status.upper().ljust(prefix_width)
+        color = status_color[self.session_status]
+        print color + status + delimiter + minkeobj + clear
+
+        msgs = list(self.messages.all())
+        msg_count = len(msgs)
+        for i, msg in enumerate(msgs, start=1):
+            underscore = i < msg_count
+            color = level_color[msg.level]
+            level = msg.level.ljust(prefix_width)
+            lines = msg.text.splitlines()
+
+            for line in lines[:-1 if underscore else None]:
+                print color + level + clear + delimiter + line
+
+            if underscore:
+                color = level_color_underscore[msg.level]
+                line = lines[-1].ljust(width)
+                print color + level + clear_fg + delimiter + \
+                      line[:width] + clear + line[width:]
+
 
 class MessageData(models.Model):
     LEVELS = (
