@@ -16,6 +16,7 @@ from django.contrib.contenttypes.fields import GenericRelation
 from django.contrib.contenttypes.models import ContentType
 from django.core.exceptions import FieldError
 from django.utils.safestring import mark_safe
+from django.template.loader import render_to_string
 
 from .exceptions import InvalidMinkeSetup
 
@@ -120,71 +121,40 @@ class SessionData(models.Model):
         return self.proc_status in ('done', 'aborted')
 
     def get_html(self):
-        if self.proc_status in ['initialized', 'running']: return ''
-
-        if self.session_description:
-            args = (self.session_description, self.session_verbose_name)
-            session = '<span title="{}">{}</span>'.format(*args)
-        else:
-            session = self.session_verbose_name
-
-        if self.proc_status == 'done':
-            run_time = "%.1f" % self.run_time.total_seconds()
-            info = '<p>Run "{}" in {} seconds.</p>'.format(session, run_time)
-        elif self.proc_status == 'aborted':
-            info = '<p>Could not run "{}".</p>'.format(session)
-
-        msgs = ''
-        if self.messages.all():
-            msgs += '<ul class="messagelist">'
-            for msg in self.messages.all():
-                msgs += '<li class="{}">{}</li>'.format(msg.level, msg.html)
-            msgs += '</ul>'
-
-        html = '<tr class="minke_news {}"><td colspan="100">'.format(self.session_status)
-        html += info + msgs + '</td></tr>'
+        html = render_to_string('minke/session.html', dict(session=self))
         return mark_safe(html)
 
     def prnt(self):
-        status_color = dict(
-            success = '\033[1;37;42m',
-            warning = '\033[1;37;43m',
-            error   = '\033[1;37;41m')
-        level_color = dict(
-            info    = '\033[32m',
-            warning = '\033[33m',
-            error   = '\033[31m')
-        level_color_underscore = dict(
-            info    = '\033[4;32m',
-            warning = '\033[4;33m',
-            error   = '\033[4;31m')
-        clear = '\033[0m'
-        clear_fg = '\033[39m'
         width = 60
-        prefix_width = 7
-        delimiter = ': '
+        pre_width = 7
+        sep = ': '
+        bg = dict(
+            success = '\033[1;37;42m{}\033[0m'.format,
+            warning = '\033[1;37;43m{}\033[0m'.format,
+            error   = '\033[1;37;41m{}\033[0m'.format)
+        fg = dict(
+            info    = '\033[32m{}\033[39m'.format,
+            warning = '\033[33m{}\033[39m'.format,
+            error   = '\033[31m{}\033[39m'.format)
+        ul = '\033[4m{}\033[0m'.format
 
+        # print header
         minkeobj = unicode(self.minkeobj).ljust(width)
-        status = self.session_status.upper().ljust(prefix_width)
-        color = status_color[self.session_status]
-        print color + status + delimiter + minkeobj + clear
+        status = self.session_status.upper().ljust(pre_width)
+        print bg[self.session_status](status + sep + minkeobj)
 
+        # print messages
         msgs = list(self.messages.all())
         msg_count = len(msgs)
         for i, msg in enumerate(msgs, start=1):
-            underscore = i < msg_count
-            color = level_color[msg.level]
-            level = msg.level.ljust(prefix_width)
+            underlined = i < msg_count
+            level = msg.level.ljust(pre_width)
             lines = msg.text.splitlines()
-
-            for line in lines[:-1 if underscore else None]:
-                print color + level + clear + delimiter + line
-
-            if underscore:
-                color = level_color_underscore[msg.level]
+            for line in lines[:-1 if underlined else None]:
+                print fg[msg.level](level) + sep + line
+            if underlined:
                 line = lines[-1].ljust(width)
-                print color + level + clear_fg + delimiter + \
-                      line[:width] + clear + line[width:]
+                print ul(fg[msg.level](level) + sep + line[:width]) + line[width:]
 
 
 class MessageData(models.Model):

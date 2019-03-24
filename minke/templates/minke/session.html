@@ -1,0 +1,16 @@
+<tr class="minke_news {{session.session_status}}"><td colspan="100">
+    {% if session.proc_status == 'done' %}
+        <p>Run "<span title="{{session.session_description}}">{{session.session_verbose_name}}</span>"
+           in {{session.run_time.total_seconds|floatformat}} seconds.</p>
+    {% elif session.proc_status == 'aborted' %}
+        <p>Could not run "<span title="{{session.session_description}}">{{session.verbose_name}}</span>".</p>
+    {% endif %}
+
+    {% if session.messages.all %}
+        <ul class="messagelist">
+        {% for msg in session.messages.all %}
+            <li class="{{msg.level}}">{{msg.html|safe}}</li>
+        {% endfor %}
+        </ul>
+    {% endif %}
+</td></tr>
