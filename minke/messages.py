@@ -60,25 +60,19 @@ class TableMessage(PreMessage):
 
 
 class ExecutionMessage(PreMessage):
-    def _get_chunk(self, prefix, lines, max_lines):
-        if max_lines:
-            diff = len(lines) - max_lines
-            lines = lines[-max_lines:]
-            if diff > 0:
-                lines.insert(0, '[{}] ... ...'.format(diff))
-
+    def _get_chunk(self, prefix, lines):
         new_lines = list()
         for line in lines:
             new_lines.append(prefix.ljust(10) + line)
             prefix = str()
         return new_lines
 
-    def get_text(self, data, max_lines=10):
+    def get_text(self, data):
         lines = list()
         prefix = 'code[{}]'.format(data.return_code)
-        lines += self._get_chunk(prefix, data.command.split('\n'), None)
-        lines += self._get_chunk('stdout:', data.stdout.splitlines(), max_lines)
-        lines += self._get_chunk('stderr:', data.stderr.splitlines(), max_lines)
+        lines += self._get_chunk(prefix, data.command.split('\n'))
+        lines += self._get_chunk('stdout:', data.stdout.splitlines())
+        lines += self._get_chunk('stderr:', data.stderr.splitlines())
         return '\n'.join(lines)
 
 

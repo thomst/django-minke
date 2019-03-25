@@ -3,6 +3,8 @@
     margin-bottom: 8px;
     border: 1px solid #eee;
     background-position: 12px 12px;
+    max-height: 200px;
+    overflow: auto;
 }
 
 #result_list tr.minke_news td {

@@ -21,9 +21,11 @@ function add_session_info (tr, session) {
     tr.addClass(session.session_status);
     var session_tr = $(session.get_html).hide();
     var msgs_ul = session_tr.find('ul').hide();
+    var li = msgs_ul.find('li');
     tr.after(session_tr);
     session_tr.show(500);
     msgs_ul.slideDown('fast');
+    li.each(function (i, e) {$(e).scrollTop($(e)[0].scrollHeight)});
 }
 
 function get_json (url) {
@@ -34,6 +36,7 @@ function get_json (url) {
 }
 
 function process() {
+    $('ul.messagelist > li').each(function (i,e){$(e).scrollTop($(e)[0].scrollHeight)});
     var object_ids = $(cf.input_selector)
         .map(function() {return $(this).val()}).get().join(',');
     if (object_ids) {
