@@ -86,15 +86,15 @@ class SessionTest(TransactionTestCase):
     def test_03_set_status(self):
 
         session = MethodTestSession(None, self.server, dict())
-        session.set_status('error', only_raise=False)
+        session.set_status('error', alert=False)
         self.assertTrue(session.status == 'error')
-        session.set_status('WARNING', only_raise=False)
+        session.set_status('WARNING', alert=False)
         self.assertTrue(session.status == 'warning')
-        session.set_status(True, only_raise=False)
+        session.set_status(True, alert=False)
         self.assertTrue(session.status == 'success')
-        session.set_status(False, only_raise=False)
+        session.set_status(False, alert=False)
         self.assertTrue(session.status == 'error')
-        session.set_status('success', only_raise=True)
+        session.set_status('success', alert=True)
         self.assertTrue(session.status == 'error')
         self.assertRaises(InvalidMinkeSetup, session.set_status, 'foobar')
 

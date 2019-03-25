@@ -162,7 +162,7 @@ LOGGING = {
             }
         },
     'loggers': {
-        'minke.engine': {
+        'minke.tasks': {
             'handlers': ['null'],
             'level': 'INFO',
         },
