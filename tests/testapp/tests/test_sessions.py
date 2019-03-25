@@ -13,7 +13,7 @@ from minke.sessions import SessionRegistry
 from minke.sessions import UpdateEntriesSession
 from minke.exceptions import InvalidMinkeSetup
 from minke.models import Host
-from minke.models import SessionData
+from minke.models import MinkeSession
 from minke.engine import process
 from minke.settings import MINKE_FABRIC_CONFIG
 from ..models import Server
@@ -38,13 +38,13 @@ class SessionTest(TransactionTestCase):
         self.user = User.objects.get(username='admin')
         config = MINKE_FABRIC_CONFIG.clone()
         self.con = Connection(self.host.hostname, self.host.username, config=config)
-        self._REGISTRY = SessionData.REGISTRY.copy()
+        self._REGISTRY = MinkeSession.REGISTRY.copy()
 
     def tearDown(self):
         self.reset_registry()
 
     def reset_registry(self, session_name='MySession'):
-        SessionData.REGISTRY = self._REGISTRY
+        MinkeSession.REGISTRY = self._REGISTRY
         Permission.objects.filter(codename__startswith='run_').delete()
 
     def test_01_register_session(self):

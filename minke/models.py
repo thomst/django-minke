@@ -42,7 +42,7 @@ class SessionDataQuerySet(models.QuerySet):
         return self.get_currents(user, minkeobjs).update(current=False)
 
 
-class SessionData(models.Model):
+class MinkeSession(models.Model):
     objects = SessionDataQuerySet.as_manager()
 
     RESULT_STATES = (
@@ -79,7 +79,7 @@ class SessionData(models.Model):
     run_time = models.DurationField(blank=True, null=True)
 
     def __init__(self, *args, **kwargs):
-        super(SessionData, self).__init__(*args, **kwargs)
+        super(MinkeSession, self).__init__(*args, **kwargs)
         self.proxy = None
 
     def get_proxy(self, con):
@@ -157,14 +157,16 @@ class SessionData(models.Model):
                 print ul(fg[msg.level](level) + sep + line[:width]) + line[width:]
 
 
-class MessageData(models.Model):
+class BaseMessage(models.Model):
     LEVELS = (
         ('info', 'info'),
         ('warning', 'warning'),
         ('error', 'error'))
 
-    session = models.ForeignKey(SessionData, on_delete=models.CASCADE, related_name='messages')
+    session = models.ForeignKey(MinkeSession, on_delete=models.CASCADE, related_name='messages')
     level = models.CharField(max_length=128, choices=LEVELS)
+    # data = PickledObjectField(blank=True, null=True)
+
     text = models.TextField()
     html = models.TextField()
 

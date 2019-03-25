@@ -15,7 +15,7 @@ from fabric2 import Connection
 
 from minke import settings
 from .models import Host
-from .models import SessionData
+from .models import MinkeSession
 from .messages import Message
 from .messages import ExceptionMessage
 from .settings import MINKE_FABRIC_CONFIG
@@ -29,7 +29,7 @@ def process_sessions(host_id, session_ids, fabric_config=None):
 
     # get host and sessions
     host = Host.objects.get(pk=host_id)
-    sessions = SessionData.objects.filter(id__in=session_ids)
+    sessions = MinkeSession.objects.filter(id__in=session_ids)
 
     # prepare the config and create a connection...
     config = MINKE_FABRIC_CONFIG.clone()

@@ -4,7 +4,7 @@ from __future__ import unicode_literals
 from django.contrib import admin
 from django.utils.translation import gettext_lazy as _
 
-from .models import SessionData
+from .models import MinkeSession
 
 
 class StatusFilter(admin.SimpleListFilter):
@@ -14,7 +14,7 @@ class StatusFilter(admin.SimpleListFilter):
     def __init__(self, request, params, model, model_admin):
         super(StatusFilter, self).__init__(request, params, model, model_admin)
         self.states = ('success', 'warning', 'error')
-        self.sessions = SessionData.objects.get_currents_by_model(request.user, model)
+        self.sessions = MinkeSession.objects.get_currents_by_model(request.user, model)
 
     def has_output(self):
         return bool(self.sessions)

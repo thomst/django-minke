@@ -8,8 +8,8 @@ from django.contrib.contenttypes.models import ContentType
 from django.contrib.auth.models import Permission
 
 from minke.models import Host
-from minke.models import SessionData
-from minke.models import MessageData
+from minke.models import MinkeSession
+from minke.models import BaseMessage
 from ..models import Server
 from ..models import AnySystem
 from ..sessions import DummySession
@@ -58,7 +58,7 @@ def create_test_data():
 def create_session(minkeobj, session_cls=DummySession, user='admin',
     current=True, status='success', proc_status='done'):
     user = User.objects.get(username=user)
-    session = SessionData()
+    session = MinkeSession()
     session.init(user, minkeobj, session_cls, dict())
     session.start(None)
     session.proxy.status = status

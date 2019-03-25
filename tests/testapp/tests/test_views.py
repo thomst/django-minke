@@ -13,7 +13,7 @@ from django.urls import reverse
 
 from minke import sessions
 from minke import settings
-from minke.models import SessionData
+from minke.models import MinkeSession
 from minke.messages import PreMessage
 from ..settings import CELERY_TEST_SETTINGS
 from ..sessions import LeaveAMessageSession
@@ -51,7 +51,7 @@ class ViewsTest(TransactionTestCase):
             self.assertEqual(resp.status_code, 200)
             self.assertIn(LeaveAMessageSession.MSG, resp.content)
             user = resp.context['user']
-            current_sessions = SessionData.objects.get_currents_by_model(user, model)
+            current_sessions = MinkeSession.objects.get_currents_by_model(user, model)
             object_ids = list(current_sessions.values_list('minkeobj_id', flat=True))
             self.assertEqual(sorted(object_ids), sorted(player_ids))
         else:

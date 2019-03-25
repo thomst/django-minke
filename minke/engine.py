@@ -11,7 +11,7 @@ from django.contrib.contenttypes.models import ContentType
 import minke.sessions
 from .messages import Message
 from .messages import ExceptionMessage
-from .models import SessionData
+from .models import MinkeSession
 from .tasks import process_sessions
 
 
@@ -19,7 +19,7 @@ def process(session_cls, queryset, session_data, user,
             fabric_config=None, wait=False, console=False):
     """Initiate fabric's session-processing."""
 
-    SessionData.objects.clear_currents(user, queryset)
+    MinkeSession.objects.clear_currents(user, queryset)
     hosts = queryset.get_hosts()
     lock = hosts.filter(disabled=False).get_lock()
 
@@ -28,7 +28,7 @@ def process(session_cls, queryset, session_data, user,
     for minkeobj in queryset.all():
         host = minkeobj.get_host()
 
-        session = SessionData()
+        session = MinkeSession()
         session.init(user, minkeobj, session_cls, session_data)
 
         # Skip disabled or locked hosts...
@@ -83,7 +83,7 @@ def process(session_cls, queryset, session_data, user,
             try: result, session_ids = next((r for r in print_results if r[0].ready()))
             except StopIteration: continue
             # reload session-objects
-            sessions = SessionData.objects.filter(id__in=session_ids)
+            sessions = MinkeSession.objects.filter(id__in=session_ids)
             # print and remove list-item
             for session in sessions: session.prnt()
             print_results.remove((result, session_ids))

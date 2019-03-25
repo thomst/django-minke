@@ -7,7 +7,7 @@ from django.core.management.base import BaseCommand
 from django.core.management.base import CommandError
 
 from ...models import Host
-from ...models import SessionData
+from ...models import MinkeSession
 
 
 class Command(BaseCommand):
@@ -31,6 +31,6 @@ class Command(BaseCommand):
         if options['release_locks']:
             print Host.objects.update(lock=None)
         if options['clear_current_sessions']:
-            print SessionData.objects.update(current=False)
+            print MinkeSession.objects.update(current=False)
         if options['clear_sessions']:
-            print SessionData.objects.all().delete()
+            print MinkeSession.objects.all().delete()

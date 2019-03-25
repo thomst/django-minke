@@ -6,7 +6,7 @@ import traceback
 
 from django.utils.html import escape
 
-from .models import MessageData
+from .models import BaseMessage
 
 
 # We declare the Meta-class whithin a mixin.
@@ -16,7 +16,7 @@ class ProxyMixin(object):
         proxy = True
 
 
-class Message(ProxyMixin, MessageData):
+class Message(ProxyMixin, BaseMessage):
 
     def __init__(self, data, level='info'):
         super(Message, self).__init__()

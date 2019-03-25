@@ -16,7 +16,7 @@ from django.utils.text import camel_case_to_spaces
 from .views import SessionView
 from .models import Host
 from .models import MinkeModel
-from .models import SessionData
+from .models import MinkeSession
 from .messages import ExecutionMessage
 from .messages import PreMessage
 from .exceptions import InvalidMinkeSetup
@@ -48,7 +48,7 @@ class SessionRegistry(type):
         # create session-permission...
         # Applying migrations tumbles over get_for_model if the
         # migrations for content-types aren't applied yet.
-        try: content_type = ContentType.objects.get_for_model(SessionData)
+        try: content_type = ContentType.objects.get_for_model(MinkeSession)
         except (OperationalError, ProgrammingError): return
         codename = 'run_{}'.format(classname.lower())
         permname = 'Can run {}'.format(camel_case_to_spaces(classname))
@@ -60,7 +60,7 @@ class SessionRegistry(type):
         cls.PERMISSIONS += (permission_name,)
 
         # register session
-        SessionData.REGISTRY[cls.__name__] = cls
+        MinkeSession.REGISTRY[cls.__name__] = cls
 
 
 class Session(object):
