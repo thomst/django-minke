@@ -9,9 +9,3 @@ register = Library()
 def get_session(context, cl, index):
     context['session'] = cl.minke_sessions[index]
     return str()
-
-@register.simple_tag(takes_context=True)
-def underscore(text):
-    
-    context['session'] = cl.minke_sessions[index]
-    return str()
