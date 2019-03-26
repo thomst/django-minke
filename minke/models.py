@@ -6,8 +6,6 @@ import datetime
 from time import time
 from collections import OrderedDict
 
-from picklefield.fields import PickledObjectField
-
 from django.db import models
 from django.contrib.auth.models import User
 from django.contrib.contenttypes.fields import GenericForeignKey
@@ -19,6 +17,7 @@ from django.utils.safestring import mark_safe
 from django.template.loader import render_to_string
 
 from .exceptions import InvalidMinkeSetup
+from .utils import JSONField
 
 
 class SessionDataQuerySet(models.QuerySet):
@@ -63,7 +62,7 @@ class MinkeSession(models.Model):
     session_verbose_name = models.CharField(max_length=128)
     session_description = models.TextField(blank=True, null=True)
     session_status = models.CharField(max_length=128, choices=RESULT_STATES)
-    session_data = PickledObjectField(blank=True, null=True)
+    session_data = JSONField(blank=True, null=True)
 
     # the minkeobj to work on
     minkeobj_type = models.ForeignKey(ContentType, on_delete=models.CASCADE)
@@ -165,7 +164,6 @@ class BaseMessage(models.Model):
 
     session = models.ForeignKey(MinkeSession, on_delete=models.CASCADE, related_name='messages')
     level = models.CharField(max_length=128, choices=LEVELS)
-    # data = PickledObjectField(blank=True, null=True)
 
     text = models.TextField()
     html = models.TextField()
@@ -203,7 +201,7 @@ class Host(models.Model):
     hostname = models.CharField(max_length=255, blank=True, null=True)
     username = models.CharField(max_length=255, blank=True, null=True)
     comment = models.TextField(blank=True, null=True)
-    group = models.ForeignKey(HostGroup, blank=True, null=True)
+    group = models.ForeignKey(HostGroup, blank=True, null=True, on_delete=models.SET_NULL)
     disabled = models.BooleanField(default=False)
     lock = models.CharField(max_length=20, blank=True, null=True)
 

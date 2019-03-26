@@ -17,7 +17,6 @@ class ProxyMixin(object):
 
 
 class Message(ProxyMixin, BaseMessage):
-
     def __init__(self, data, level='info'):
         super(Message, self).__init__()
         self.text = self.get_text(data)
