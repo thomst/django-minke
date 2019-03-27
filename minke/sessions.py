@@ -4,8 +4,6 @@ from __future__ import unicode_literals
 import re
 from collections import OrderedDict
 
-from fabric.api import run
-
 from django.db.utils import OperationalError
 from django.db.utils import ProgrammingError
 from django.core.exceptions import FieldDoesNotExist
