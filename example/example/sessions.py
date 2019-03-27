@@ -5,8 +5,8 @@ from random import randint, choice
 
 from minke.models import Host
 from minke.sessions import Session
-from minke.sessions import SingleActionSession
-from minke.sessions import UpdateEntriesSession
+from minke.sessions import SingleCommandSession
+from minke.sessions import SessionChain
 from minke.messages import Message
 from minke.messages import ExecutionMessage
 from minke.messages import PreMessage
@@ -14,6 +14,13 @@ from minke.messages import TableMessage
 
 from .models import Server
 from .models import AnySystem
+from .forms import CommandForm
+
+
+class Command(SingleCommandSession):
+    FORM = CommandForm
+    WORK_ON = (Host, Server, AnySystem)
+    COMMAND = '{cmd}'
 
 
 class ThisAndThat(Session):
