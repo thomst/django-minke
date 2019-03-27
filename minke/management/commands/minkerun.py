@@ -130,7 +130,7 @@ class Command(BaseCommand):
     def get_changelist_queryset(self, model_cls, options):
         from django.contrib import admin
         from django.test import RequestFactory
-        from django.core.urlresolvers import reverse
+        from django.urls import reverse
         from django.contrib.sessions.middleware import SessionMiddleware
 
         url_query = options['url_query']
