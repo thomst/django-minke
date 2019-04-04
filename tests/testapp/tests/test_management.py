@@ -1,7 +1,12 @@
 # -*- coding: utf-8 -*-
 from __future__ import unicode_literals
+from builtins import input
 
-from StringIO import StringIO
+try:
+    from StringIO import StringIO
+except ImportError:
+    from io import StringIO
+
 import subprocess
 import sys
 
@@ -28,14 +33,14 @@ class InOut(list):
         self.inputs = iter(inputs)
 
     def __enter__(self):
-        minkerun.raw_input = lambda x: self.inputs.next()
+        minkerun.input = lambda x: next(self.inputs)
         self._stdin = sys.stdin
         self._stdout = sys.stdout
         sys.stdout = self._out = StringIO()
         return self
 
     def __exit__(self, *args):
-        minkerun.raw_input = raw_input
+        minkerun.input = input
         self.extend(self._out.getvalue().splitlines())
         sys.stdout = self._stdout
 

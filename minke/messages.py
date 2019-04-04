@@ -1,5 +1,6 @@
 # -*- coding: utf-8 -*-
 from __future__ import unicode_literals
+from builtins import str
 
 import sys
 import traceback
@@ -78,9 +79,16 @@ class ExecutionMessage(PreMessage):
 class ExceptionMessage(PreMessage):
     def __init__(self, level='error', print_tb=False):
         type, value, tb = sys.exc_info()
+
         if print_tb:
             data = traceback.format_exception(type, value, tb)
         else:
             data = traceback.format_exception_only(type, value)
-        data = str().join(data).decode('utf-8')
+
+        # python2/3-hack
+        try:
+            data = str().join([s.decode('utf-8') for s in data])
+        except AttributeError:
+            data = str().join(data)
+
         super(ExceptionMessage, self).__init__(data, level)

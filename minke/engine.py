@@ -45,7 +45,7 @@ def process(session_cls, queryset, session_data, user,
 
         # otherwise group sessions by hosts...
         else:
-            if not session_groups.has_key(host):
+            if host not in session_groups:
                 session_groups[host] = list()
             session_groups[host].append(session)
 

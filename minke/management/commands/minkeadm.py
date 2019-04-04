@@ -29,8 +29,8 @@ class Command(BaseCommand):
 
     def handle(self, *args, **options):
         if options['release_locks']:
-            print Host.objects.update(lock=None)
+            print(Host.objects.update(lock=None))
         if options['clear_current_sessions']:
-            print MinkeSession.objects.update(current=False)
+            print(MinkeSession.objects.update(current=False))
         if options['clear_sessions']:
-            print MinkeSession.objects.all().delete()
+            print(MinkeSession.objects.all().delete())

@@ -1,5 +1,6 @@
 # -*- coding: utf-8 -*-
 from __future__ import unicode_literals
+from builtins import str
 
 from minke.models import Host
 from minke.sessions import Session
@@ -37,9 +38,9 @@ class ExceptionSession(Session):
     VERBOSE_NAME = 'Raise an exception.'
     WORK_ON = (Host, Server, AnySystem)
 
-    ERR_MSG = '¡ ¢ £ ¤ ¥ ¦ § ¨ © ª « ¬ ­ ® ¯ ° ± ² ³ ´ µ'.encode('utf-8')
+    ERR_MSG = '¡ ¢ £ ¤ ¥ ¦ § ¨ © ª « ¬ ­ ® ¯ ° ± ² ³ ´ µ'
     def process(self):
-        raise Exception(str('process: ') + self.ERR_MSG)
+        raise Exception(self.ERR_MSG)
 
 
 class SingleActionDummySession(SingleCommandSession):
@@ -82,7 +83,7 @@ class LeaveAMessageSession(Session):
     VERBOSE_NAME = 'Leave a message.'
     WORK_ON = (Host, Server, AnySystem)
 
-    MSG = '¡ ¢ £ ¤ ¥ ¦ § ¨ © ª « ¬ ­ ® ¯ ° ± ² ³ ´ µ'.encode('utf-8')
+    MSG = '¡ ¢ £ ¤ ¥ ¦ § ¨ © ª « ¬ ­ ® ¯ ° ± ² ³ ´ µ'
     def process(self):
         self.add_msg(Message(self.MSG, 'info'))
 

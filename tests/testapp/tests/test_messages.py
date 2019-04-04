@@ -1,8 +1,10 @@
 # -*- coding: utf-8 -*-
 from __future__ import unicode_literals
+from builtins import str
 
 from django.test import SimpleTestCase
 
+from minke import sessions
 from minke.messages import Message
 from minke.messages import PreMessage
 from minke.messages import TableMessage
@@ -22,22 +24,22 @@ class MessageTest(SimpleTestCase):
         self.assertEqual(message.text, 'foobär')
         self.assertRegex(message.html, 'foobär')
 
-        class dummy_result:
+        class dummy_result(object):
             return_code = 1
             command = 'foobär'
             stdout = 'foobär-out'
-            stderr = unicode()
+            stderr = str()
 
         message = ExecutionMessage(dummy_result)
         self.assertRegex(message.text, 'foobär')
         self.assertRegex(message.html, 'foobär')
 
-        try: raise Exception('foobär'.encode('utf-8'))
+        try: raise Exception('foobär')
         except: message = ExceptionMessage()
         self.assertRegex(message.text, 'foobär')
         self.assertRegex(message.html, 'foobär')
 
-        try: raise Exception('foobär'.encode('utf-8'))
+        try: raise Exception('foobär')
         except: message = ExceptionMessage(print_tb=True)
         self.assertRegex(message.text, 'Traceback')
         self.assertRegex(message.html, 'Traceback')

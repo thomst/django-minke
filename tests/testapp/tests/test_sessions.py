@@ -144,8 +144,6 @@ class SessionTest(TransactionTestCase):
         data = dict(test='unicode_result')
         session = session = MethodTestSession(self.con, self.server, data)
         result = session.process()
-        self.assertEqual(type(result.stdout), unicode)
-        self.assertEqual(type(result.stderr), unicode)
         self.assertEqual(result.stdout, 'hällo\n')
         self.assertEqual(result.stderr, 'wörld\n')
 

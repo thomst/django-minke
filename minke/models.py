@@ -1,5 +1,7 @@
 # -*- coding: utf-8 -*-
 from __future__ import unicode_literals
+from builtins import str
+from django.utils.encoding import python_2_unicode_compatible
 
 import re
 import datetime
@@ -138,9 +140,9 @@ class MinkeSession(models.Model):
         ul = '\033[4m{}\033[0m'.format
 
         # print header
-        minkeobj = unicode(self.minkeobj).ljust(width)
+        minkeobj = str(self.minkeobj).ljust(width)
         status = self.session_status.upper().ljust(pre_width)
-        print bg[self.session_status](status + sep + minkeobj)
+        print(bg[self.session_status](status + sep + minkeobj))
 
         # print messages
         msgs = list(self.messages.all())
@@ -150,10 +152,10 @@ class MinkeSession(models.Model):
             level = msg.level.ljust(pre_width)
             lines = msg.text.splitlines()
             for line in lines[:-1 if underlined else None]:
-                print fg[msg.level](level) + sep + line
+                print(fg[msg.level](level) + sep + line)
             if underlined:
                 line = lines[-1].ljust(width)
-                print ul(fg[msg.level](level) + sep + line[:width]) + line[width:]
+                print(ul(fg[msg.level](level) + sep + line[:width]) + line[width:])
 
 
 class BaseMessage(models.Model):
@@ -169,6 +171,7 @@ class BaseMessage(models.Model):
     html = models.TextField()
 
 
+@python_2_unicode_compatible
 class HostGroup(models.Model):
     name = models.CharField(max_length=255, unique=True)
     comment = models.TextField(blank=True, null=True)
@@ -195,6 +198,7 @@ class HostQuerySet(models.QuerySet):
         return self & hosts
 
 
+@python_2_unicode_compatible
 class Host(models.Model):
     name = models.SlugField(max_length=128, unique=True)
     verbose_name = models.CharField(max_length=255, blank=True, null=True)

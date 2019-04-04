@@ -1,5 +1,7 @@
 # -*- coding: utf-8 -*-
 from __future__ import unicode_literals
+from builtins import input
+from builtins import str
 
 import sys
 
@@ -56,8 +58,8 @@ class Command(BaseCommand):
 
     def print_usage_and_quit(self, error=None):
         if error:
-            print '\033[1;31m' + '[ERROR] ' + unicode(error) + '\033[0m'
-            print
+            print('\033[1;31m' + '[ERROR] ' + str(error) + '\033[0m')
+            print()
         self.print_help('manage.py', 'minkesessions')
         sys.exit(1 if error else 0)
 
@@ -131,7 +133,6 @@ class Command(BaseCommand):
         from django.contrib import admin
         from django.test import RequestFactory
         from django.urls import reverse
-        from django.contrib.sessions.middleware import SessionMiddleware
 
         url_query = options['url_query']
 
@@ -145,23 +146,34 @@ class Command(BaseCommand):
 
         # get a changelist-class
         modeladmin = admin.site._registry[model_cls]
-        changelist_cls = modeladmin.get_changelist(request)
 
-        # get a changelist-instance
-        list_display = modeladmin.get_list_display(request)
-        list_display_links = modeladmin.get_list_display_links(request, list_display)
-        list_filter = modeladmin.get_list_filter(request)
-        search_fields = modeladmin.get_search_fields(request)
-        list_select_related = modeladmin.get_list_select_related(request)
+        # get the changelist-instance the django-2-way
         try:
-            changelist = changelist_cls(
-                request, modeladmin.model, list_display,
-                list_display_links, list_filter, modeladmin.date_hierarchy,
-                search_fields, list_select_related, modeladmin.list_per_page,
-                modeladmin.list_max_show_all, modeladmin.list_editable, modeladmin)
-        except (IncorrectLookupParameters, FieldError):
-            msg = 'Invalid url-query: {}'.format(url_query)
-            raise CommandError(msg)
+            try:
+                changelist = modeladmin.get_changelist_instance(request)
+            except (IncorrectLookupParameters, FieldError):
+                msg = 'Invalid url-query: {}'.format(url_query)
+                raise CommandError(msg)
+
+        # fallback for django-1.11
+        except AttributeError:
+            changelist_cls = modeladmin.get_changelist(request)
+
+            # get a changelist-instance
+            list_display = modeladmin.get_list_display(request)
+            list_display_links = modeladmin.get_list_display_links(request, list_display)
+            list_filter = modeladmin.get_list_filter(request)
+            search_fields = modeladmin.get_search_fields(request)
+            list_select_related = modeladmin.get_list_select_related(request)
+            try:
+                changelist = changelist_cls(
+                    request, modeladmin.model, list_display,
+                    list_display_links, list_filter, modeladmin.date_hierarchy,
+                    search_fields, list_select_related, modeladmin.list_per_page,
+                    modeladmin.list_max_show_all, modeladmin.list_editable, modeladmin)
+            except (IncorrectLookupParameters, FieldError):
+                msg = 'Invalid url-query: {}'.format(url_query)
+                raise CommandError(msg)
 
         # prepared to get the queryset
         return changelist.get_queryset(request)
@@ -192,13 +204,13 @@ class Command(BaseCommand):
             form_data = dict()
             fields = form.visible_fields()
             for field in fields:
-                if field.help_text: print field.help_text
-                form_data[field.name] = raw_input(field.name + ': ')
+                if field.help_text: print(field.help_text)
+                form_data[field.name] = input(field.name + ': ')
             form = form_cls(form_data)
             while not form.is_valid():
                 for field, error in form.errors.items():
-                    if error: print error[0]
-                    form_data[field] = raw_input(field + ': ')
+                    if error: print(error[0])
+                    form_data[field] = input(field + ': ')
                 form = form_cls(form_data)
 
         # got valid form-data now
@@ -207,7 +219,7 @@ class Command(BaseCommand):
     def handle(self, *args, **options):
         if options['list_sessions']:
             for session_cls in MinkeSession.REGISTRY.values():
-                print session_cls.__name__
+                print(session_cls.__name__)
             return
 
         try:
@@ -236,6 +248,6 @@ class Command(BaseCommand):
             self.print_usage_and_quit(err)
 
         if options['list_players']:
-            for obj in queryset: print obj
+            for obj in queryset: print(obj)
         else:
             process(session_cls, queryset, form_data, user, console=True)
