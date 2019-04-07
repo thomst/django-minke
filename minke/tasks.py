@@ -1,9 +1,9 @@
 # -*- coding: utf-8 -*-
-from __future__ import absolute_import, unicode_literals
-import logging, os
+
+import logging
+import os
 
 from django.contrib.contenttypes.models import ContentType
-
 from socket import error as SocketError
 from socket import gaierror as GaiError
 from paramiko.ssh_exception import SSHException
@@ -13,7 +13,7 @@ from invoke.exceptions import UnexpectedExit
 from celery import shared_task
 from fabric2 import Connection
 
-from minke import settings
+from . import settings
 from .models import Host
 from .models import MinkeSession
 from .messages import Message

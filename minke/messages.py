@@ -1,12 +1,8 @@
 # -*- coding: utf-8 -*-
-from __future__ import unicode_literals
-from builtins import str
 
 import sys
 import traceback
-
 from django.utils.html import escape
-
 from .models import BaseMessage
 
 
@@ -85,10 +81,5 @@ class ExceptionMessage(PreMessage):
         else:
             data = traceback.format_exception_only(type, value)
 
-        # python2/3-hack
-        try:
-            data = str().join([s.decode('utf-8') for s in data])
-        except AttributeError:
-            data = str().join(data)
-
+        data = str().join(data)
         super(ExceptionMessage, self).__init__(data, level)

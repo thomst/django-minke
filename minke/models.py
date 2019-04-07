@@ -1,7 +1,4 @@
 # -*- coding: utf-8 -*-
-from __future__ import unicode_literals
-from builtins import str
-from django.utils.encoding import python_2_unicode_compatible
 
 import re
 import datetime
@@ -171,7 +168,6 @@ class BaseMessage(models.Model):
     html = models.TextField()
 
 
-@python_2_unicode_compatible
 class HostGroup(models.Model):
     name = models.CharField(max_length=255, unique=True)
     comment = models.TextField(blank=True, null=True)
@@ -198,7 +194,6 @@ class HostQuerySet(models.QuerySet):
         return self & hosts
 
 
-@python_2_unicode_compatible
 class Host(models.Model):
     name = models.SlugField(max_length=128, unique=True)
     verbose_name = models.CharField(max_length=255, blank=True, null=True)

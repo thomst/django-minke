@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-from __future__ import unicode_literals
+
 from multiprocessing import Process
 from multiprocessing import JoinableQueue
 from threading import Thread

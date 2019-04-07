@@ -1,8 +1,6 @@
 # -*- coding: utf-8 -*-
-from __future__ import unicode_literals
 
 from fabric2 import Connection
-
 from django.test import TransactionTestCase
 from django.contrib.auth.models import Permission
 from django.contrib.auth.models import User

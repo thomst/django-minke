@@ -1,12 +1,6 @@
 # -*- coding: utf-8 -*-
-from __future__ import unicode_literals
-from builtins import input
 
-try:
-    from StringIO import StringIO
-except ImportError:
-    from io import StringIO
-
+import io
 import subprocess
 import sys
 
@@ -36,7 +30,7 @@ class InOut(list):
         minkerun.input = lambda x: next(self.inputs)
         self._stdin = sys.stdin
         self._stdout = sys.stdout
-        sys.stdout = self._out = StringIO()
+        sys.stdout = self._out = io.StringIO()
         return self
 
     def __exit__(self, *args):

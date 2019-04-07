@@ -1,6 +1,4 @@
 # -*- coding: utf-8 -*-
-from __future__ import unicode_literals
-from six import with_metaclass
 
 import re
 from collections import OrderedDict
@@ -62,7 +60,7 @@ class SessionRegistry(type):
         MinkeSession.REGISTRY[cls.__name__] = cls
 
 
-class Session(with_metaclass(SessionRegistry)):
+class Session(metaclass=SessionRegistry):
 
     VERBOSE_NAME = None
     WORK_ON = tuple()

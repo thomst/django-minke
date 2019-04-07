@@ -1,8 +1,4 @@
 # -*- coding: utf-8 -*-
-from __future__ import unicode_literals
-from builtins import input
-from builtins import str
-
 import sys
 
 from django.core.management.base import BaseCommand
