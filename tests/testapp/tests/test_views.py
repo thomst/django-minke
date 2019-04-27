@@ -2,19 +2,19 @@
 
 import json
 import re
+from unittest import skipIf
 
 from django.contrib.auth.models import User
 from django.contrib.contenttypes.models import ContentType
 from django.test import TransactionTestCase
+from django.test import TestCase
 from django.test import Client
-from django.test import override_settings
 from django.urls import reverse
 
 from minke import sessions
 from minke import settings
 from minke.models import MinkeSession
 from minke.messages import PreMessage
-from ..settings import CELERY_TEST_SETTINGS
 from ..sessions import LeaveAMessageSession
 from ..sessions import DummySession
 from ..sessions import ExceptionSession
@@ -24,26 +24,32 @@ from .utils import create_test_data
 from .utils import create_session
 
 
-class ViewsTest(TransactionTestCase):
-    def setUp(self):
+class ViewsTest(TestCase):
+    @classmethod
+    def setUpTestData(cls):
         create_test_data()
+
+    def setUp(self):
         self.admin = User.objects.get(username='admin')
         self.anyuser = User.objects.get(username='anyuser')
+        self.player_ids = {
+            Host: Host.objects.all().values_list('id', flat=True),
+            Server: Server.objects.all().values_list('id', flat=True),
+            AnySystem: AnySystem.objects.all().values_list('id', flat=True),
+        }
 
-    @override_settings(**CELERY_TEST_SETTINGS)
     def test_01_session_view(self):
         url_pattern = 'admin:{}_{}_changelist'
-        player_ids = [1, 2, 3]
         post_data = dict()
         post_data['action'] = LeaveAMessageSession.__name__
-        post_data['_selected_action'] = player_ids
 
-        # work with admin-user
         self.client.force_login(self.admin)
 
         # valid action-requests for Host, Server and AnySystem
         # also check the current-sessions that were created
         for model in [Host, Server, AnySystem]:
+            player_ids = self.player_ids[model][:3]
+            post_data['_selected_action'] = player_ids
             url = reverse(url_pattern.format(model._meta.app_label, model._meta.model_name))
             resp = self.client.post(url, post_data, follow=True)
             self.assertEqual(resp.redirect_chain[0][0], url)
@@ -56,12 +62,12 @@ class ViewsTest(TransactionTestCase):
         else:
             self.client.logout()
 
-    @override_settings(**CELERY_TEST_SETTINGS)
+    @skipIf(settings.settings.DATABASES['default']['ENGINE'] == 'django.db.backends.sqlite3', 'create permissions fails with sqlite3')
     def test_02_permissions(self):
         url = reverse('admin:minke_host_changelist')
         post_data = dict()
         post_data['action'] = LeaveAMessageSession.__name__
-        post_data['_selected_action'] = [1]
+        post_data['_selected_action'] = self.player_ids[Host][0]
 
         # work with unprivileged user
         self.client.force_login(self.anyuser)
@@ -87,12 +93,11 @@ class ViewsTest(TransactionTestCase):
         self.assertIn(LeaveAMessageSession.MSG, resp.content.decode('utf-8'))
         self.client.logout()
 
-    @override_settings(**CELERY_TEST_SETTINGS)
     def test_03_session_raises_exception(self):
         url = reverse('admin:minke_host_changelist')
         post_data = dict()
         post_data['action'] = ExceptionSession.__name__
-        post_data['_selected_action'] = [1]
+        post_data['_selected_action'] = self.player_ids[Host][0]
         self.client.force_login(self.admin)
         old_minke_debug = settings.MINKE_DEBUG
 
@@ -109,12 +114,12 @@ class ViewsTest(TransactionTestCase):
         settings.MINKE_DEBUG = old_minke_debug
         self.client.logout()
 
-    @override_settings(**CELERY_TEST_SETTINGS)
     def test_04_session_form(self):
         url = reverse('admin:testapp_anysystem_changelist')
+        any_system_id = self.player_ids[AnySystem][0]
         post_data = dict()
         post_data['action'] = DummySession.__name__
-        post_data['_selected_action'] = [1]
+        post_data['_selected_action'] = any_system_id
         invalid_form_data = post_data.copy()
         invalid_form_data['minke_form'] = True
         invalid_form_data['connect_kwargs_passphrase'] = ''
@@ -126,14 +131,15 @@ class ViewsTest(TransactionTestCase):
         valid_form_data['one'] = 1
         valid_form_data['two'] = 2
 
-        self.client.force_login(self.admin)
         old_minke_password_form = settings.MINKE_FABRIC_FORM
         indicator_action_form = '<input type="hidden" name="minke_form" value="True">'
         indicator_password = '<input type="password" name="connect_kwargs_passphrase"'
-        indicator_confirm = 'type="checkbox" name="_selected_action" value="1" checked>'
+        indicator_confirm = 'type="checkbox" name="_selected_action" value="%d" checked>' % any_system_id
         indicator_testform = '<input type="number" name="one"'
 
         get_test = lambda b: self.assertIn if bool(b) else self.assertNotIn
+
+        self.client.force_login(self.admin)
 
         # calling the form in all possible variations
         options = list()
@@ -175,7 +181,6 @@ class ViewsTest(TransactionTestCase):
         DummySession.FORM = None
         settings.MINKE_FABRIC_FORM = old_minke_password_form
 
-    @override_settings(**CELERY_TEST_SETTINGS)
     def test_05_minke_filter(self):
         self.client.force_login(self.admin)
         baseurl = reverse('admin:minke_host_changelist')
@@ -211,7 +216,6 @@ class ViewsTest(TransactionTestCase):
 
         self.client.logout()
 
-    @override_settings(**CELERY_TEST_SETTINGS)
     def test_06_session_api(self):
         servers = list(Server.objects.filter(hostname__contains='222'))
         server_ct = ContentType.objects.get_for_model(Server)

@@ -42,9 +42,13 @@ class SessionRegistry(type):
         if not cls.VERBOSE_NAME:
             cls.VERBOSE_NAME = camel_case_to_spaces(classname)
 
+        # register session
+        MinkeSession.REGISTRY[cls.__name__] = cls
+
         # create session-permission...
-        # Applying migrations tumbles over get_for_model if the
-        # migrations for content-types aren't applied yet.
+        # In some contexts get_for_model fails because content_types aren't
+        # setup. This happens when applying migrations but also when testing
+        # with sqlite3.
         try: content_type = ContentType.objects.get_for_model(MinkeSession)
         except (OperationalError, ProgrammingError): return
         codename = 'run_{}'.format(classname.lower())
@@ -55,9 +59,6 @@ class SessionRegistry(type):
             defaults=dict(name=permname))
         permission_name = 'minke.{}'.format(codename)
         cls.PERMISSIONS += (permission_name,)
-
-        # register session
-        MinkeSession.REGISTRY[cls.__name__] = cls
 
 
 class Session(metaclass=SessionRegistry):

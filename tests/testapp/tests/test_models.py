@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 
-from django.test import TransactionTestCase
+from django.test import TestCase
 
 from minke.models import Host, MinkeModel
 from minke.exceptions import InvalidMinkeSetup
@@ -9,11 +9,13 @@ from .utils import create_hosts
 from .utils import create_players
 
 
-class MinkeModelTest(TransactionTestCase):
-
-    def setUp(self):
+class MinkeModelTest(TestCase):
+    @classmethod
+    def setUpTestData(cls):
         create_hosts()
         create_players()
+
+    def setUp(self):
         self.anysystem = AnySystem.objects.all()[0]
         self.server = self.anysystem.server
         self.host = self.server.host

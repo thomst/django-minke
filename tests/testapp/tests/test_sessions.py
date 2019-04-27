@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 
 from fabric2 import Connection
-from django.test import TransactionTestCase
+from django.test import TestCase
 from django.contrib.auth.models import Permission
 from django.contrib.auth.models import User
 
@@ -28,9 +28,12 @@ def process_session(session, host):
     return session.proxy.process()
 
 
-class SessionTest(TransactionTestCase):
-    def setUp(self):
+class SessionTest(TestCase):
+    @classmethod
+    def setUpTestData(cls):
         create_test_data()
+
+    def setUp(self):
         self.host = Host.objects.get(name='localhost')
         self.server = Server.objects.get(host=self.host)
         self.user = User.objects.get(username='admin')
