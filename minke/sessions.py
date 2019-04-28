@@ -38,6 +38,18 @@ class SessionRegistry(type):
                 msg = '{} is no minke-model.'.format(model)
                 raise InvalidMinkeSetup(msg)
 
+        if issubclass(cls, SingleCommandSession) and not cls.COMMAND:
+            msg = 'SingleCommandSession needs to specify an COMMAND.'
+            raise InvalidMinkeSetup(msg)
+
+        if issubclass(cls, CommandChainSession) and not cls.COMMANDS:
+            msg = 'CommandChainSession needs to specify COMMANDS.'
+            raise InvalidMinkeSetup(msg)
+
+        if issubclass(cls, SessionChain) and not cls.SESSIONS:
+            msg = 'SessionChain needs to specify SESSIONS.'
+            raise InvalidMinkeSetup(msg)
+
         # set verbose-name if missing
         if not cls.VERBOSE_NAME:
             cls.VERBOSE_NAME = camel_case_to_spaces(classname)
@@ -209,10 +221,6 @@ class SingleCommandSession(Session):
     COMMAND = None
 
     def process(self):
-        if not self.COMMAND:
-            msg = 'Missing COMMAND for SingleCommandSession!'
-            raise InvalidMinkeSetup(msg)
-
         self.execute(self.format_cmd(self.COMMAND))
 
 
@@ -221,10 +229,6 @@ class CommandChainSession(Session):
     BREAK_STATUUS = ('error',)
 
     def process(self):
-        if not self.COMMANDS:
-            msg = 'Missing COMMANDS for CommandChainSession!'
-            raise InvalidMinkeSetup(msg)
-
         for cmd in self.COMMANDS:
             self.execute(self.format_cmd(cmd))
             if self.status in self.BREAK_STATUUS:
