@@ -20,11 +20,16 @@ from .exceptions import InvalidMinkeSetup
 
 
 class SessionRegistry(type):
-    """metaclass for Sessions that implements session-registration"""
+    """
+    metaclass for Sessions that implements session-registration
+    """
+    def __new__(cls, name, bases, dct):
+        dct['ABSTRACT'] = dct.get('ABSTRACT', False)
+        return super().__new__(cls, name, bases, dct)
 
     def __init__(cls, classname, bases, attr):
         super().__init__(classname, bases, attr)
-        if attr['__module__'] == 'minke.sessions': return
+        if cls.ABSTRACT: return
 
         # some sanity-checks
         if not cls.WORK_ON:
@@ -74,7 +79,7 @@ class SessionRegistry(type):
 
 
 class Session(metaclass=SessionRegistry):
-
+    ABSTRACT = True
     VERBOSE_NAME = None
     WORK_ON = tuple()
     PERMISSIONS = tuple()
@@ -171,6 +176,7 @@ class Session(metaclass=SessionRegistry):
 
 
 class UpdateEntriesSession(Session):
+    ABSTRACT = True
 
     def update_field(self, field, cmd, regex=None):
         """
@@ -218,6 +224,7 @@ class UpdateEntriesSession(Session):
 
 
 class SingleCommandSession(Session):
+    ABSTRACT = True
     COMMAND = None
 
     def process(self):
@@ -225,6 +232,7 @@ class SingleCommandSession(Session):
 
 
 class CommandChainSession(Session):
+    ABSTRACT = True
     COMMANDS = tuple()
     BREAK_STATUUS = ('error',)
 
@@ -236,6 +244,7 @@ class CommandChainSession(Session):
 
 
 class SessionChain(Session):
+    ABSTRACT = True
     SESSIONS = tuple()
     BREAK_STATUUS = ('error',)
 
