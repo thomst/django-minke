@@ -1,5 +1,8 @@
 *.pyc
 *~
-.coverage
-my.cnf
 *.backup
+.coverage
+.tox/
+my.cnf
+/minke.egg-info
+/MANIFEST.in
