@@ -2,6 +2,7 @@
 
 from fabric2 import Connection
 from django.test import TestCase
+from django.test import tag
 from django.contrib.auth.models import Permission
 from django.contrib.auth.models import User
 
@@ -99,7 +100,7 @@ class SessionTest(TestCase):
         self.assertTrue(session.status == 'error')
         self.assertRaises(InvalidMinkeSetup, session.set_status, 'foobar')
 
-    # TODO: skipIf-decorator if localhost cannot be connected
+    @tag('ssh')
     def test_04_processing(self):
 
         # test message-calls
@@ -139,7 +140,7 @@ class SessionTest(TestCase):
         session = MethodTestSession(self.con, self.server, data)
         self.assertRaises(AttributeError, session.update_field, 'nofield', 'echo')
 
-    # TODO: skipIf-decorator if localhost cannot be connected
+    @tag('ssh')
     def test_05_unicdoe_result(self):
         # test with utf-8-encoding
         data = dict(test='unicode_result')
@@ -148,7 +149,7 @@ class SessionTest(TestCase):
         self.assertEqual(result.stdout, 'hällo\n')
         self.assertEqual(result.stderr, 'wörld\n')
 
-    # TODO: skipIf-decorator if localhost cannot be connected
+    @tag('ssh')
     def test_06_more_sessions(self):
         session = RunCommands(self.con, self.server)
         session.process()

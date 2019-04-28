@@ -44,7 +44,7 @@ class ExceptionSession(Session):
 class SingleActionDummySession(SingleCommandSession):
     VERBOSE_NAME = 'Single-action-session.'
     WORK_ON = (Host, Server, AnySystem)
-    COMMAND = None
+    COMMAND = True
 
 
 class EchoUnicodeSession(Session):

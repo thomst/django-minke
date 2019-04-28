@@ -143,7 +143,7 @@ class MinkeManagerTest(TestCase):
         self.assertIn('TestFormSession', out)
         self.assertIn('TestUpdateEntriesSession', out)
 
-        # list sessions
+        # list players
         with InOut() as out:
             call_command('minkerun', 'DummySession', 'Server', '--list-players')
         self.assertIn('host_0_label000', out)
