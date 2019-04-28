@@ -77,7 +77,7 @@ class MinkeSession(models.Model):
     run_time = models.DurationField(blank=True, null=True)
 
     def __init__(self, *args, **kwargs):
-        super(MinkeSession, self).__init__(*args, **kwargs)
+        super().__init__(*args, **kwargs)
         self.proxy = None
 
     def get_proxy(self, con):

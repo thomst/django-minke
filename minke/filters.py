@@ -10,7 +10,7 @@ class StatusFilter(admin.SimpleListFilter):
     parameter_name = 'minkestatus'
 
     def __init__(self, request, params, model, model_admin):
-        super(StatusFilter, self).__init__(request, params, model, model_admin)
+        super().__init__(request, params, model, model_admin)
         self.states = ('success', 'warning', 'error')
         self.sessions = MinkeSession.objects.get_currents_by_model(request.user, model)
 

@@ -23,7 +23,7 @@ class SessionRegistry(type):
     """metaclass for Sessions that implements session-registration"""
 
     def __init__(cls, classname, bases, attr):
-        super(SessionRegistry, cls).__init__(classname, bases, attr)
+        super().__init__(classname, bases, attr)
         if attr['__module__'] == 'minke.sessions': return
 
         # some sanity-checks

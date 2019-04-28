@@ -15,7 +15,7 @@ class ProxyMixin(object):
 
 class Message(ProxyMixin, BaseMessage):
     def __init__(self, data, level='info'):
-        super(Message, self).__init__()
+        super().__init__()
         self.text = self.get_text(data)
         self.html = self.get_html(data)
 
@@ -82,4 +82,4 @@ class ExceptionMessage(PreMessage):
             data = traceback.format_exception_only(type, value)
 
         data = str().join(data)
-        super(ExceptionMessage, self).__init__(data, level)
+        super().__init__(data, level)

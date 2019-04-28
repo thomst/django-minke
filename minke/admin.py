@@ -11,7 +11,7 @@ from .utils import item_by_attr
 
 class MinkeChangeList(ChangeList):
     def __init__(self, request, modeladmin, *args, **kwargs):
-        super(MinkeChangeList, self).__init__(request, modeladmin, *args, **kwargs)
+        super().__init__(request, modeladmin, *args, **kwargs)
         sessions = MinkeSession.objects.get_currents(request.user, self.result_list)
         sessions = list(sessions.prefetch_related('messages'))
         minke_sessions = list()
@@ -25,7 +25,7 @@ class MinkeChangeList(ChangeList):
 class MinkeAdmin(admin.ModelAdmin):
 
     def get_actions(self, request):
-        actions = super(MinkeAdmin, self).get_actions(request)
+        actions = super().get_actions(request)
         prep_action = lambda a: (a, a.__name__, a.short_description)
 
         # add clear-news if there are any minke-news for this model...
