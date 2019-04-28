@@ -10,7 +10,6 @@ from django.contrib.auth.models import Permission
 from django.contrib.contenttypes.models import ContentType
 from django.utils.text import camel_case_to_spaces
 
-from .views import SessionView
 from .models import Host
 from .models import MinkeModel
 from .models import MinkeSession
@@ -90,6 +89,7 @@ class Session(metaclass=SessionRegistry):
 
     @classmethod
     def as_action(cls):
+        from .views import SessionView
         def action(modeladmin, request, queryset):
             session_view = SessionView.as_view()
             return session_view(request, session_cls=cls, queryset=queryset)
