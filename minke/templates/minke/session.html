@@ -3,7 +3,7 @@
         <p>Run "<span title="{{session.session_description}}">{{session.session_verbose_name}}</span>"
            in {{session.run_time.total_seconds|floatformat}} seconds.</p>
     {% elif session.proc_status == 'aborted' %}
-        <p>Could not run "<span title="{{session.session_description}}">{{session.verbose_name}}</span>".</p>
+        <p>Could not run "<span title="{{session.session_description}}">{{session.session_verbose_name}}</span>".</p>
     {% endif %}
 
     {% if session.messages.all %}
