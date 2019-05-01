@@ -157,15 +157,15 @@ class Session(metaclass=SessionRegistry):
         """
         return self.connection.run(cmd, *args, **kwargs)
 
-    def execute(self, cmd, stderr_warning=True):
+    def execute(self, cmd, *args, **kwargs):
         """
         Run cmd, leave a message and set session-status.
         """
-        result = self.run(cmd)
+        result = self.run(cmd, *args, **kwargs)
         if result.failed:
             self.add_msg(ExecutionMessage(result, 'error'))
             self.set_status('error')
-        elif stderr_warning and result.stderr:
+        elif result.stderr:
             self.add_msg(ExecutionMessage(result, 'warning'))
             self.set_status('warning')
         else:
@@ -213,14 +213,6 @@ class UpdateEntriesSession(Session):
 
         setattr(self.minkeobj, field, value)
         return bool(value)
-
-    def save_minkeobj(self, raise_exception=False):
-        try:
-            return self.minkeobj.save()
-        except (ValidationError, IntegrityError):
-            self.add_msg(ExceptionMessage())
-            if raise_exception: raise
-            else: return None
 
 
 class SingleCommandSession(Session):
