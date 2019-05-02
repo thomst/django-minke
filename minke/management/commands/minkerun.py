@@ -64,7 +64,7 @@ class Command(BaseCommand):
         try:
             user = User.objects.get(username=user)
         except User.DoesNotExist:
-            msg = 'MINKE_CLI_USER does not exist: {user}'
+            msg = 'MINKE_CLI_USER does not exist: {}'.format(user)
             raise InvalidMinkeSetup(msg)
         return user
 
