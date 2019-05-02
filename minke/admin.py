@@ -6,23 +6,10 @@ from django.contrib import admin
 
 from .actions import clear_news
 from .models import MinkeSession
-from .utils import item_by_attr
-
-
-class MinkeChangeList(ChangeList):
-    def __init__(self, request, modeladmin, *args, **kwargs):
-        super().__init__(request, modeladmin, *args, **kwargs)
-        sessions = MinkeSession.objects.get_currents(request.user, self.result_list)
-        sessions = list(sessions.prefetch_related('messages'))
-        minke_sessions = list()
-        for obj in self.result_list:
-            session = item_by_attr(sessions, 'minkeobj_id', obj.id)
-            if session: minke_sessions.append(session)
-            else: minke_sessions.append(None)
-        self.minke_sessions = minke_sessions
 
 
 class MinkeAdmin(admin.ModelAdmin):
+    change_list_template = 'minke/change_list.html'
 
     def get_actions(self, request):
         actions = super().get_actions(request)
@@ -41,6 +28,3 @@ class MinkeAdmin(admin.ModelAdmin):
                 actions[action.__name__] = prep_action(action)
 
         return actions
-
-    def get_changelist(self, request, **kwargs):
-        return MinkeChangeList

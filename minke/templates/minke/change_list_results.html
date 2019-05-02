@@ -27,21 +27,14 @@
 </tr>
 </thead>
 <tbody>
-{% for result in results %}
-{% if result.form.non_field_errors %}
-    <tr><td colspan="{{ result|length }}">{{ result.form.non_field_errors }}</td></tr>
-{% endif %}
-
-{% if cl.minke_sessions %}
-    {% get_session cl forloop.counter0 %}
-    <tr class="{% cycle 'row1' 'row2' %} {{ session.session_status }} {{ session.proc_status }}">{% for item in result %}{{ item }}{% endfor %}</tr>
-    {% if session.proc_status in 'done,aborted' %}
-        {{ session.get_html }}
+{% for result, session in results %}
+    {% if result.form.non_field_errors %}
+        <tr><td colspan="{{ result|length }}">{{ result.form.non_field_errors }}</td></tr>
     {% endif %}
-{% else %}
-    <tr class="{% cycle 'row1' 'row2' %}">{% for item in result %}{{ item }}{% endfor %}</tr>
-{% endif %}
-
+    <tr class="{% cycle 'row1' 'row2' %} {{ session.session_status }} {{ session.proc_status }}">
+        {% for item in result %}{{ item }}{% endfor %}
+    </tr>
+    {% if session.proc_status in 'done,aborted' %}{{ session.get_html }}{% endif %}
 {% endfor %}
 </tbody>
 </table>
