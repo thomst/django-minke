@@ -118,14 +118,12 @@ class SessionTest(TestCase):
         data = dict(test='update')
         session = MethodTestSession(self.con, self.server, data)
         session.process()
-        session.save_minkeobj()
         self.assertEqual(session.minkeobj.hostname, 'foobär\n')
 
         # test update_field with regex
         data = dict(test='update_regex')
         session = session = MethodTestSession(self.con, self.server, data)
         session.process()
-        session.save_minkeobj()
         self.assertEqual(session.minkeobj.hostname, 'foo')
 
         # test update_field with failing regex

@@ -100,20 +100,23 @@ class MethodTestSession(UpdateEntriesSession):
         self.execute('[ 1 == 2 ]')
         return self
 
+    def test_unicode_result(self):
+        return self.run('(echo "hällo"; echo "wörld" 1>&2)')
+
     def test_update(self):
         self.update_field('hostname', 'echo "foobär"')
+        self.minkeobj.save()
         return self
 
     def test_update_regex(self):
         self.update_field('hostname', 'echo "foobär"', '(foo).+')
+        self.minkeobj.save()
         return self
 
     def test_update_regex_fails(self):
         self.update_field('hostname', 'echo "foobär"', 'fails')
+        self.minkeobj.save()
         return self
-
-    def test_unicode_result(self):
-        return self.run('(echo "hällo"; echo "wörld" 1>&2)')
 
 
 class RunCommands(CommandChainSession):
