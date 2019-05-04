@@ -1,7 +1,7 @@
 (function($) {
 
 var cf = {
-    interval : 800,
+    interval : 400,
     baseurl : window.location.protocol + '//'
               + window.location.host
               + '/minkeapi/currentsessions/'
