@@ -85,7 +85,7 @@ class MinkeSession(models.Model):
         self.user = user
         self.minkeobj = minkeobj
         self.session_name = session_cls.__name__
-        self.session_verbose_name = session_cls.VERBOSE_NAME
+        self.session_verbose_name = session_cls.verbose_name
         self.session_description = session_cls.__doc__
         self.session_data = session_data
         self.save()

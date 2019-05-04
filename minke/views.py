@@ -35,7 +35,7 @@ class SessionView(PermissionRequiredMixin, View):
 
     def get_permission_required(self):
         session_cls = self.get_session_cls()
-        return session_cls.PERMISSIONS
+        return session_cls.permissions
 
     def get_queryset(self):
         queryset = self.kwargs.get('queryset', None)
@@ -50,10 +50,10 @@ class SessionView(PermissionRequiredMixin, View):
     def post(self, request, *args, **kwargs):
         session_cls = self.get_session_cls()
         queryset = self.get_queryset()
-        wait = session_cls.WAIT
+        wait = session_cls.wait_for_execution
         fabric_config = None
         session_data = dict()
-        confirm = session_cls.CONFIRM
+        confirm = session_cls.confirm
         session_form_cls = session_cls.get_form()
         fabric_form_cls = None
         render_params = dict()
@@ -77,7 +77,7 @@ class SessionView(PermissionRequiredMixin, View):
             else:
                 minke_form = MinkeForm(dict(
                     action=session_cls.__name__,
-                    wait=session_cls.WAIT))
+                    wait=session_cls.wait_for_execution))
                 valid = False
                 form_data = list()
 
@@ -89,13 +89,13 @@ class SessionView(PermissionRequiredMixin, View):
 
             # initiate session-form
             if session_form_cls:
-                session_form = session_cls.FORM(*form_data)
+                session_form = session_cls.form(*form_data)
                 render_params['session_form'] = session_form
                 valid &= session_form.is_valid()
 
             # render minke-form the first time or if form-data where not valid...
             if not valid:
-                render_params['title'] = session_cls.VERBOSE_NAME,
+                render_params['title'] = session_cls.verbose_name,
                 render_params['minke_form'] = minke_form
                 render_params['objects'] = queryset
                 render_params['object_list'] = confirm

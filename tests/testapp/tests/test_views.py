@@ -150,8 +150,8 @@ class ViewsTest(TestCase):
 
         for passform, confirm, testform in options:
             settings.MINKE_FABRIC_FORM = passform
-            DummySession.CONFIRM = confirm
-            DummySession.FORM = testform
+            DummySession.confirm = confirm
+            DummySession.form = testform
 
             # without form-data
             if not (passform or confirm or testform): continue
@@ -177,8 +177,8 @@ class ViewsTest(TestCase):
             self.assertEqual(resp.status_code, 200)
 
         self.client.logout()
-        DummySession.CONFIRM = False
-        DummySession.FORM = None
+        DummySession.confirm = False
+        DummySession.form = None
         settings.MINKE_FABRIC_FORM = old_minke_password_form
 
     def test_05_minke_filter(self):
@@ -237,7 +237,7 @@ class ViewsTest(TestCase):
             self.assertIn(str(session['minkeobj_id']), object_ids)
             self.assertEqual(session['session_status'], 'success')
             self.assertEqual(session['proc_status'], 'done')
-            self.assertIn(DummySession.VERBOSE_NAME, session['get_html'])
+            self.assertIn(DummySession.verbose_name, session['get_html'])
             self.assertIn('foobär', session['get_html'])
             self.assertTrue(session['ready'])
 

@@ -21,7 +21,7 @@ class CommandAdmin(MinkeAdmin):
         # set choices for session_cls to CommandChoicesSessions
         check = lambda s: issubclass(s, CommandChoicesSession)
         sessions = MinkeSession.REGISTRY.values()
-        choices = [(s.__name__, s.VERBOSE_NAME) for s in sessions if check(s)]
+        choices = [(s.__name__, s.verbose_name) for s in sessions if check(s)]
         form.base_fields['session_cls'].widget = Select(choices=choices)
         form.base_fields['session_cls'].choices = choices
         return form

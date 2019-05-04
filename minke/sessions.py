@@ -24,19 +24,19 @@ class SessionRegistry(type):
     metaclass for Sessions that implements session-registration
     """
     def __new__(cls, name, bases, dct):
-        dct['ABSTRACT'] = dct.get('ABSTRACT', False)
+        dct['abstract'] = dct.get('abstract', False)
         return super().__new__(cls, name, bases, dct)
 
     def __init__(cls, classname, bases, attr):
         super().__init__(classname, bases, attr)
-        if cls.ABSTRACT: return
+        if cls.abstract: return
 
         # some sanity-checks
-        if not cls.WORK_ON:
+        if not cls.work_on:
             msg = 'At least one minke-model must be specified for a session.'
             raise InvalidMinkeSetup(msg)
 
-        for model in cls.WORK_ON:
+        for model in cls.work_on:
             try:
                 assert(model == Host or issubclass(model, MinkeModel))
             except (TypeError, AssertionError):
@@ -56,8 +56,8 @@ class SessionRegistry(type):
             raise InvalidMinkeSetup(msg)
 
         # set verbose-name if missing
-        if not cls.VERBOSE_NAME:
-            cls.VERBOSE_NAME = camel_case_to_spaces(classname)
+        if not cls.verbose_name:
+            cls.verbose_name = camel_case_to_spaces(classname)
 
         # register session
         MinkeSession.REGISTRY[cls.__name__] = cls
@@ -75,18 +75,18 @@ class SessionRegistry(type):
             content_type=content_type,
             defaults=dict(name=permname))
         permission_name = 'minke.{}'.format(codename)
-        cls.PERMISSIONS += (permission_name,)
+        cls.permissions += (permission_name,)
 
 
 class Session(metaclass=SessionRegistry):
-    ABSTRACT = True
-    VERBOSE_NAME = None
-    WORK_ON = tuple()
-    PERMISSIONS = tuple()
-    FORM = None
-    CONFIRM = False
-    WAIT = False
-    INVOKE_CONFIG = dict()
+    abstract = True
+    verbose_name = None
+    work_on = tuple()
+    permissions = tuple()
+    form = None
+    confirm = False
+    wait_for_execution = False
+    invoke_config = dict()
 
     @classmethod
     def as_action(cls):
@@ -95,12 +95,12 @@ class Session(metaclass=SessionRegistry):
             session_view = SessionView.as_view()
             return session_view(request, session_cls=cls, queryset=queryset)
         action.__name__ = cls.__name__
-        action.short_description = cls.VERBOSE_NAME
+        action.short_description = cls.verbose_name
         return action
 
     @classmethod
     def get_form(cls):
-        return cls.FORM
+        return cls.form
 
     def __init__(self, connection, minkeobj, session_data=None):
         self.connection = connection
@@ -181,7 +181,7 @@ class Session(metaclass=SessionRegistry):
 
 
 class UpdateEntriesSession(Session):
-    ABSTRACT = True
+    abstract = True
 
     def update_field(self, field, cmd, regex=None):
         """
@@ -221,7 +221,7 @@ class UpdateEntriesSession(Session):
 
 
 class SingleCommandSession(Session):
-    ABSTRACT = True
+    abstract = True
     COMMAND = None
 
     def process(self):
@@ -229,13 +229,13 @@ class SingleCommandSession(Session):
 
 
 class CommandFormSession(SingleCommandSession):
-    ABSTRACT = True
-    FORM = CommandForm
+    abstract = True
+    form = CommandForm
     COMMAND = '{cmd}'
 
 
 class CommandChainSession(Session):
-    ABSTRACT = True
+    abstract = True
     COMMANDS = tuple()
     BREAK_STATUUS = ('error',)
 
@@ -247,7 +247,7 @@ class CommandChainSession(Session):
 
 
 class SessionChain(Session):
-    ABSTRACT = True
+    abstract = True
     SESSIONS = tuple()
     BREAK_STATUUS = ('error',)
 

@@ -55,12 +55,12 @@ class SessionTest(TestCase):
             pass
 
         # invalid minke-model
-        attr = dict(WORK_ON=(Foobar,), __module__='testapp.sessions')
+        attr = dict(work_on=(Foobar,), __module__='testapp.sessions')
         args = [str('MySession'), (), attr]
         self.assertRaises(InvalidMinkeSetup, SessionRegistry, *args)
 
         # missing minke-models
-        attr = dict(WORK_ON=(), __module__='testapp.sessions')
+        attr = dict(work_on=(), __module__='testapp.sessions')
         args = [str('MySession'), (), attr]
         self.assertRaises(InvalidMinkeSetup, SessionRegistry, *args)
 

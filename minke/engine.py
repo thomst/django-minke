@@ -53,7 +53,7 @@ def process(session_cls, queryset, session_data, user,
     if not session_groups: return
 
     # merge fabric-config and invoke-config
-    config = session_cls.INVOKE_CONFIG.copy()
+    config = session_cls.invoke_config.copy()
     config.update(fabric_config or dict())
 
     # run celery-tasks to process the sessions...

@@ -86,15 +86,15 @@ class Command(BaseCommand):
         model = options['model']
 
         if model:
-            model_cls = item_by_attr(session_cls.WORK_ON, '__name__', model)
+            model_cls = item_by_attr(session_cls.work_on, '__name__', model)
             if not model_cls:
                 msg = 'Invalid model for {}: {}'.format(session_cls.__name__, model)
                 raise CommandError(msg)
-        elif len(session_cls.WORK_ON) == 1:
-            model_cls = session_cls.WORK_ON[0]
+        elif len(session_cls.work_on) == 1:
+            model_cls = session_cls.work_on[0]
         else:
             msg = 'You need to specify a model to run {} with.'
-            msg = msg.format(session_cls, session_cls.WORK_ON)
+            msg = msg.format(session_cls, session_cls.work_on)
             raise CommandError(msg)
 
         return model_cls
@@ -175,8 +175,8 @@ class Command(BaseCommand):
         return changelist.get_queryset(request)
 
     def get_form_data(self, session_cls, options):
-        form_cls = session_cls.FORM
-        if not session_cls.FORM: return dict()
+        form_cls = session_cls.form
+        if not session_cls.form: return dict()
 
         # form-data passed via command-line?
         form_data = options['form_data']

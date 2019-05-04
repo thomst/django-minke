@@ -22,8 +22,8 @@ class MinkeAdmin(admin.ModelAdmin):
 
         # add sessions depending on the model and the user-perms...
         for session in MinkeSession.REGISTRY.values():
-            if not request.user.has_perms(session.PERMISSIONS): continue
-            if not self.model in session.WORK_ON: continue
+            if not request.user.has_perms(session.permissions): continue
+            if not self.model in session.work_on: continue
             actions[session.__name__] = prepare(session.as_action())
 
         return actions

@@ -17,24 +17,24 @@ from .forms import TestForm
 
 
 class DummySession(Session):
-    VERBOSE_NAME = 'Do nothing'
-    WORK_ON = (Host, Server, AnySystem)
+    verbose_name = 'Do nothing'
+    work_on = (Host, Server, AnySystem)
 
     def process(self):
         pass
 
 
 class SingleModelDummySession(Session):
-    VERBOSE_NAME = 'Do nothing (one-model-session).'
-    WORK_ON = (Server,)
+    verbose_name = 'Do nothing (one-model-session).'
+    work_on = (Server,)
 
     def process(self):
         pass
 
 
 class ExceptionSession(Session):
-    VERBOSE_NAME = 'Raise an exception.'
-    WORK_ON = (Host, Server, AnySystem)
+    verbose_name = 'Raise an exception.'
+    work_on = (Host, Server, AnySystem)
 
     ERR_MSG = '¡ ¢ £ ¤ ¥ ¦ § ¨ © ª « ¬ ­ ® ¯ ° ± ² ³ ´ µ'
     def process(self):
@@ -42,14 +42,14 @@ class ExceptionSession(Session):
 
 
 class SingleActionDummySession(SingleCommandSession):
-    VERBOSE_NAME = 'Single-action-session.'
-    WORK_ON = (Host, Server, AnySystem)
+    verbose_name = 'Single-action-session.'
+    work_on = (Host, Server, AnySystem)
     COMMAND = True
 
 
 class EchoUnicodeSession(Session):
-    VERBOSE_NAME = 'Echo unicode-literals.'
-    WORK_ON = (Server,)
+    verbose_name = 'Echo unicode-literals.'
+    work_on = (Server,)
 
     def process(self):
         cmd = 'echo "¡ ¢ £ ¤ ¥ ¦ § ¨ © ª « ¬ ­ ® ¯ ° ± ² ³ ´ µ"'
@@ -58,17 +58,17 @@ class EchoUnicodeSession(Session):
 
 
 class TestUpdateEntriesSession(UpdateEntriesSession):
-    VERBOSE_NAME = 'Update hostname.'
-    WORK_ON = (Server,)
+    verbose_name = 'Update hostname.'
+    work_on = (Server,)
 
     def process(self):
         self.update_field('hostname', 'hostname', '^[a-z0-9._-]+$')
 
 
 class TestFormSession(Session):
-    VERBOSE_NAME = 'Test the session form.'
-    WORK_ON = (Host, Server, AnySystem)
-    FORM = TestForm
+    verbose_name = 'Test the session form.'
+    work_on = (Host, Server, AnySystem)
+    form = TestForm
 
     def process(self):
         one = self.session_data['one']
@@ -78,8 +78,8 @@ class TestFormSession(Session):
 
 
 class LeaveAMessageSession(Session):
-    VERBOSE_NAME = 'Leave a message.'
-    WORK_ON = (Host, Server, AnySystem)
+    verbose_name = 'Leave a message.'
+    work_on = (Host, Server, AnySystem)
 
     MSG = '¡ ¢ £ ¤ ¥ ¦ § ¨ © ª « ¬ ­ ® ¯ ° ± ² ³ ´ µ'
     def process(self):
@@ -87,8 +87,8 @@ class LeaveAMessageSession(Session):
 
 
 class MethodTestSession(UpdateEntriesSession):
-    VERBOSE_NAME = 'Test session-methods'
-    WORK_ON = (Host, Server, AnySystem)
+    verbose_name = 'Test session-methods'
+    work_on = (Host, Server, AnySystem)
 
     def process(self):
         return getattr(self, 'test_' + self.session_data['test'])()
@@ -120,7 +120,7 @@ class MethodTestSession(UpdateEntriesSession):
 
 
 class RunCommands(CommandChainSession):
-    WORK_ON = (Host, Server, AnySystem)
+    work_on = (Host, Server, AnySystem)
     COMMANDS = (
         'echo "hello wörld"',
         'echo "hello wörld" 1>&2',
@@ -128,20 +128,20 @@ class RunCommands(CommandChainSession):
 
 
 class InfoCommand(SingleCommandSession):
-    WORK_ON = (Host, Server, AnySystem)
+    work_on = (Host, Server, AnySystem)
     COMMAND = 'echo "hello wörld"'
 
 
 class WarningCommand(SingleCommandSession):
-    WORK_ON = (Host, Server, AnySystem)
+    work_on = (Host, Server, AnySystem)
     COMMAND = 'echo "hello wörld" 1>&2'
 
 
 class ErrorCommand(SingleCommandSession):
-    WORK_ON = (Host, Server, AnySystem)
+    work_on = (Host, Server, AnySystem)
     COMMAND = '[ 1 == 2 ]'
 
 
 class RunSessions(SessionChain):
-    WORK_ON = (Host, Server, AnySystem)
+    work_on = (Host, Server, AnySystem)
     SESSIONS = (InfoCommand, WarningCommand, ErrorCommand)
