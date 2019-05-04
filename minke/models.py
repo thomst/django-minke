@@ -80,10 +80,6 @@ class MinkeSession(models.Model):
         super().__init__(*args, **kwargs)
         self.proxy = None
 
-    def get_proxy(self, con):
-        proxy_cls = self.REGISTRY[self.session_name]
-        return proxy_cls(con, self.minkeobj, self.session_data)
-
     def init(self, user, minkeobj, session_cls, session_data):
         self.proc_status = 'initialized'
         self.user = user
@@ -95,7 +91,8 @@ class MinkeSession(models.Model):
         self.save()
 
     def start(self, con):
-        self.proxy = self.get_proxy(con)
+        proxy_cls = self.REGISTRY[self.session_name]
+        self.proxy = proxy_cls(con, self.minkeobj, self.session_data)
         self.proc_status = 'running'
         self.start_time = datetime.datetime.now()
         self.save(update_fields=['proc_status', 'start_time'])
