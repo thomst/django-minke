@@ -102,10 +102,10 @@ class Session(metaclass=SessionRegistry):
     def get_form(cls):
         return cls.form
 
-    def __init__(self, connection, minkeobj, session_data=None):
+    def __init__(self, connection, minkeobj, data=None):
         self.connection = connection
         self.minkeobj = minkeobj
-        self.session_data = session_data or dict()
+        self.data = data or dict()
         self.status = 'success'
         self.messages = list()
 
@@ -141,7 +141,7 @@ class Session(metaclass=SessionRegistry):
         and the session_data while the session_data has precedence.
         """
         params = vars(self.minkeobj)
-        params.update(self.session_data)
+        params.update(self.data)
         return cmd.format(**params)
 
     def valid(self, result, regex=None):
@@ -253,7 +253,7 @@ class SessionChain(Session):
 
     def process(self):
         for cls in self.SESSIONS:
-            session = cls(self.connection, self.minkeobj, self.session_data)
+            session = cls(self.connection, self.minkeobj, self.data)
             session.process()
             self.messages += session.messages
             self.set_status(session.status)

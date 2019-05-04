@@ -17,5 +17,5 @@ class CommandChoicesSession(CommandFormSession):
         return cls.form
 
     def format_cmd(self, cmd):
-        cmd_obj = Command.objects.get(pk=self.session_data['cmd'])
+        cmd_obj = Command.objects.get(pk=self.data['cmd'])
         return super().format_cmd(cmd_obj.cmd)

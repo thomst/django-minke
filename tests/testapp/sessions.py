@@ -71,8 +71,8 @@ class TestFormSession(Session):
     form = TestForm
 
     def process(self):
-        one = self.session_data['one']
-        two = self.session_data['two']
+        one = self.data['one']
+        two = self.data['two']
         msg = '{:d} + {:d} = {:d}'.format(one, two, one + two)
         self.add_msg(Message(msg, 'WARNING'))
 
@@ -91,7 +91,7 @@ class MethodTestSession(UpdateEntriesSession):
     work_on = (Host, Server, AnySystem)
 
     def process(self):
-        return getattr(self, 'test_' + self.session_data['test'])()
+        return getattr(self, 'test_' + self.data['test'])()
 
     def test_execute(self):
         # execute-calls: valid, valid + stderr, invalid
