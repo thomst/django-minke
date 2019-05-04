@@ -44,7 +44,7 @@ class ExceptionSession(Session):
 class SingleActionDummySession(SingleCommandSession):
     verbose_name = 'Single-action-session.'
     work_on = (Host, Server, AnySystem)
-    COMMAND = True
+    command = True
 
 
 class EchoUnicodeSession(Session):
@@ -121,7 +121,7 @@ class MethodTestSession(UpdateEntriesSession):
 
 class RunCommands(CommandChainSession):
     work_on = (Host, Server, AnySystem)
-    COMMANDS = (
+    commands = (
         'echo "hello wörld"',
         'echo "hello wörld" 1>&2',
         '[ 1 == 2 ]')
@@ -129,19 +129,19 @@ class RunCommands(CommandChainSession):
 
 class InfoCommand(SingleCommandSession):
     work_on = (Host, Server, AnySystem)
-    COMMAND = 'echo "hello wörld"'
+    command = 'echo "hello wörld"'
 
 
 class WarningCommand(SingleCommandSession):
     work_on = (Host, Server, AnySystem)
-    COMMAND = 'echo "hello wörld" 1>&2'
+    command = 'echo "hello wörld" 1>&2'
 
 
 class ErrorCommand(SingleCommandSession):
     work_on = (Host, Server, AnySystem)
-    COMMAND = '[ 1 == 2 ]'
+    command = '[ 1 == 2 ]'
 
 
 class RunSessions(SessionChain):
     work_on = (Host, Server, AnySystem)
-    SESSIONS = (InfoCommand, WarningCommand, ErrorCommand)
+    sessions = (InfoCommand, WarningCommand, ErrorCommand)

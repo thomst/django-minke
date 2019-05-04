@@ -43,16 +43,16 @@ class SessionRegistry(type):
                 msg = '{} is no minke-model.'.format(model)
                 raise InvalidMinkeSetup(msg)
 
-        if issubclass(cls, SingleCommandSession) and not cls.COMMAND:
-            msg = 'SingleCommandSession needs to specify an COMMAND.'
+        if issubclass(cls, SingleCommandSession) and not cls.command:
+            msg = 'SingleCommandSession needs to specify an command.'
             raise InvalidMinkeSetup(msg)
 
-        if issubclass(cls, CommandChainSession) and not cls.COMMANDS:
-            msg = 'CommandChainSession needs to specify COMMANDS.'
+        if issubclass(cls, CommandChainSession) and not cls.commands:
+            msg = 'CommandChainSession needs to specify commands.'
             raise InvalidMinkeSetup(msg)
 
-        if issubclass(cls, SessionChain) and not cls.SESSIONS:
-            msg = 'SessionChain needs to specify SESSIONS.'
+        if issubclass(cls, SessionChain) and not cls.sessions:
+            msg = 'SessionChain needs to specify sessions.'
             raise InvalidMinkeSetup(msg)
 
         # set verbose-name if missing
@@ -222,40 +222,40 @@ class UpdateEntriesSession(Session):
 
 class SingleCommandSession(Session):
     abstract = True
-    COMMAND = None
+    command = None
 
     def process(self):
-        self.execute(self.format_cmd(self.COMMAND))
+        self.execute(self.format_cmd(self.command))
 
 
 class CommandFormSession(SingleCommandSession):
     abstract = True
     form = CommandForm
-    COMMAND = '{cmd}'
+    command = '{cmd}'
 
 
 class CommandChainSession(Session):
     abstract = True
-    COMMANDS = tuple()
-    BREAK_STATUUS = ('error',)
+    commands = tuple()
+    break_states = ('error',)
 
     def process(self):
-        for cmd in self.COMMANDS:
+        for cmd in self.commands:
             self.execute(self.format_cmd(cmd))
-            if self.status in self.BREAK_STATUUS:
+            if self.status in self.break_states:
                 break
 
 
 class SessionChain(Session):
     abstract = True
-    SESSIONS = tuple()
-    BREAK_STATUUS = ('error',)
+    sessions = tuple()
+    break_states = ('error',)
 
     def process(self):
-        for cls in self.SESSIONS:
+        for cls in self.sessions:
             session = cls(self.connection, self.minkeobj, self.data)
             session.process()
             self.messages += session.messages
             self.set_status(session.status)
-            if session.status in self.BREAK_STATUUS:
+            if session.status in self.break_states:
                 break
