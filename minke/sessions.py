@@ -13,6 +13,7 @@ from django.utils.text import camel_case_to_spaces
 from .models import Host
 from .models import MinkeModel
 from .models import MinkeSession
+from .forms import CommandForm
 from .messages import ExecutionMessage
 from .messages import PreMessage
 from .exceptions import InvalidMinkeSetup
@@ -221,6 +222,12 @@ class SingleCommandSession(Session):
 
     def process(self):
         self.execute(self.format_cmd(self.COMMAND))
+
+
+class CommandFormSession(SingleCommandSession):
+    ABSTRACT = True
+    FORM = CommandForm
+    COMMAND = '{cmd}'
 
 
 class CommandChainSession(Session):

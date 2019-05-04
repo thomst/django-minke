@@ -23,3 +23,17 @@ class PassphraseForm(forms.Form):
             'autofocus': '',
             'required': ''})
         )
+
+
+class CommandField(forms.CharField):
+    widget = forms.Textarea
+    def clean(self, value):
+        value = super().clean(value)
+        return value.replace('\r\n', '\n').replace('\r', '\n')
+
+
+class CommandForm(forms.Form):
+    cmd = CommandField(
+        label='Command',
+        help_text='Command to execute. Use with care!',
+    )
