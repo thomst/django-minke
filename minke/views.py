@@ -54,7 +54,7 @@ class SessionView(PermissionRequiredMixin, View):
         fabric_config = None
         session_data = dict()
         confirm = session_cls.CONFIRM
-        session_form_cls = session_cls.FORM
+        session_form_cls = session_cls.get_form()
         fabric_form_cls = None
         render_params = dict()
 

@@ -98,6 +98,10 @@ class Session(metaclass=SessionRegistry):
         action.short_description = cls.VERBOSE_NAME
         return action
 
+    @classmethod
+    def get_form(cls):
+        return cls.FORM
+
     def __init__(self, connection, minkeobj, session_data=None):
         self.connection = connection
         self.minkeobj = minkeobj
