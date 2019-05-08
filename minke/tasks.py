@@ -3,15 +3,15 @@
 import logging
 import os
 
-from django.contrib.contenttypes.models import ContentType
 from socket import error as SocketError
 from socket import gaierror as GaiError
 from paramiko.ssh_exception import SSHException
+from fabric2 import Connection
 from invoke.exceptions import Failure
 from invoke.exceptions import ThreadException
 from invoke.exceptions import UnexpectedExit
 from celery import shared_task
-from fabric2 import Connection
+from django.contrib.contenttypes.models import ContentType
 
 from . import settings
 from .models import Host
