@@ -1,6 +1,7 @@
 # -*- coding: utf-8 -*-
 
 import getpass
+import datetime
 
 from django.contrib.auth.models import User
 from django.contrib.contenttypes.models import ContentType
@@ -54,12 +55,24 @@ def create_test_data():
     create_hosts()
     create_players()
 
-def create_session(minkeobj, session_cls=DummySession, user='admin',
-    current=True, status='success', proc_status='done'):
+def create_minkesession(minkeobj, session_cls=DummySession, data=None,
+    status='success', user='admin', current=True, proc_status='done'):
     user = User.objects.get(username=user)
     session = MinkeSession()
-    session.init(user, minkeobj, session_cls, dict())
-    session.start(None)
-    session.proxy.status = status
-    session.end()
+    session.user = user
+    session.minkeobj = minkeobj
+    session.proc_status = proc_status
+    session.session_status = status
+    session.session_name = session_cls.__name__
+    session.session_verbose_name = session_cls.verbose_name
+    session.session_description = session_cls.__doc__
+    session.session_data = data or dict()
+    session.start_time = datetime.datetime.now()
+    session.end_time = datetime.datetime.now()
+    session.run_time = session.end_time - session.start_time
+    session.save()
     return session
+
+def create_session(session_cls, minkeobj, data=None, con=None):
+    minkesession = create_minkesession(minkeobj, session_cls, data=data or dict())
+    return session_cls(con, minkesession)

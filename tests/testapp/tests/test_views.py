@@ -21,7 +21,7 @@ from ..sessions import ExceptionSession
 from ..models import Host, Server, AnySystem
 from ..forms import TestForm
 from .utils import create_test_data
-from .utils import create_session
+from .utils import create_minkesession
 
 
 class ViewsTest(TestCase):
@@ -189,7 +189,7 @@ class ViewsTest(TestCase):
         hosts = Host.objects.all()[:7]
         for i, host in enumerate(hosts):
             status = 'success' if i == 0 else 'error' if i > 2 else 'warning'
-            session = create_session(host, status=status)
+            session = create_minkesession(host, status=status)
 
         # create a matrix for all variations of filter-params
         options = list()
@@ -220,7 +220,7 @@ class ViewsTest(TestCase):
         servers = list(Server.objects.filter(hostname__contains='222'))
         server_ct = ContentType.objects.get_for_model(Server)
         for server in servers:
-            session = create_session(server, user='anyuser')
+            session = create_minkesession(server, user='anyuser')
             session.messages.add(PreMessage('foobär'), bulk=False)
 
         url = reverse('minke_session_api', args=['server'])
