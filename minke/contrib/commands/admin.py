@@ -2,26 +2,37 @@
 
 from django.contrib import admin
 from django.forms.widgets import Select
-from minke.admin import MinkeAdmin
-from minke.models import MinkeSession
+from minke.sessions import REGISTRY
 from .models import Command
-from .sessions import CommandChoicesSession
+from .models import CommandGroup
+from .models import CommandOrder
+
+
+class CommandOrderInline(admin.TabularInline):
+    model = CommandOrder
+    fields = ('command',)
+    extra = 1
+
+
+class BaseCommandAdmin(admin.ModelAdmin):
+    list_editable = ('active',)
+    ordering = ('label',)
+    list_filter = ('minketypes',)
+
+    def minketypes_view(self, obj):
+        types = (ct.model_class().__name__ for ct in obj.minketypes.all())
+        return ', '.join(types)
+    minketypes_view.short_description = 'Minke-Models'
 
 
 @admin.register(Command)
-class CommandAdmin(MinkeAdmin):
-    list_display = ('cmd', 'short_description', 'session_cls', 'active')
-    list_editable = ('active',)
-    search_fields = ('short_description', 'cmd')
-    ordering = ('short_description', 'session_cls')
-    list_filter = ('session_cls',)
+class CommandAdmin(BaseCommandAdmin):
+    list_display = ('cmd', 'label', 'minketypes_view', 'active')
+    search_fields = ('label', 'cmd')
 
-    def get_form(self, request, obj=None, **kwargs):
-        form = super().get_form(request, obj, **kwargs)
-        # set choices for session_cls to CommandChoicesSessions
-        check = lambda s: issubclass(s, CommandChoicesSession)
-        sessions = MinkeSession.REGISTRY.values()
-        choices = [(s.__name__, s.verbose_name) for s in sessions if check(s)]
-        form.base_fields['session_cls'].widget = Select(choices=choices)
-        form.base_fields['session_cls'].choices = choices
-        return form
+
+@admin.register(CommandGroup)
+class CommandGroupAdmin(BaseCommandAdmin):
+    inlines = (CommandOrderInline,)
+    list_display = ('label', 'minketypes_view', 'active')
+    search_fields = ('label',)
