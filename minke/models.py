@@ -54,13 +54,12 @@ class MinkeSession(models.Model):
         ('done', 'done'),
         ('aborted', 'aborted'),
     )
-    REGISTRY = OrderedDict()
 
     # those fields will be derived from the session-class
     session_name = models.CharField(max_length=128)
     session_verbose_name = models.CharField(max_length=128)
     session_description = models.TextField(blank=True, null=True)
-    session_status = models.CharField(max_length=128, choices=RESULT_STATES)
+    session_status = models.CharField(max_length=128, choices=RESULT_STATES, default='success')
     session_data = JSONField(blank=True, null=True)
 
     # the minkeobj to work on
@@ -76,10 +75,6 @@ class MinkeSession(models.Model):
     end_time = models.DateTimeField(blank=True, null=True)
     run_time = models.DurationField(blank=True, null=True)
 
-    def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
-        self.proxy = None
-
     def init(self, user, minkeobj, session_cls, session_data):
         self.proc_status = 'initialized'
         self.user = user
@@ -90,27 +85,22 @@ class MinkeSession(models.Model):
         self.session_data = session_data
         self.save()
 
-    def start(self, con):
-        proxy_cls = self.REGISTRY[self.session_name]
-        self.proxy = proxy_cls(con, self.minkeobj, self.session_data)
+    def start(self):
         self.proc_status = 'running'
         self.start_time = datetime.datetime.now()
         self.save(update_fields=['proc_status', 'start_time'])
 
     def end(self):
-        if self.proc_status == 'initialized':
-            self.proc_status = 'aborted'
-            self.session_status = 'error'
-            self.save(update_fields=['proc_status', 'session_status'])
-        else:
-            self.proc_status = 'done'
-            self.session_status = self.proxy.status
-            self.end_time = datetime.datetime.now()
-            self.run_time = self.end_time - self.start_time
-            update_fields = ['proc_status', 'session_status', 'end_time', 'run_time']
-            self.save(update_fields=update_fields)
-            for msg in self.proxy.messages:
-                self.messages.add(msg, bulk=False)
+        self.proc_status = 'done'
+        self.end_time = datetime.datetime.now()
+        self.run_time = self.end_time - self.start_time
+        update_fields = ['proc_status', 'session_status', 'end_time', 'run_time']
+        self.save(update_fields=update_fields)
+
+    def abort(self):
+        self.proc_status = 'aborted'
+        self.session_status = 'error'
+        self.save(update_fields=['proc_status', 'session_status'])
 
     def ready(self):
         return self.proc_status in ('done', 'aborted')

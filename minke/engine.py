@@ -35,12 +35,12 @@ def process(session_cls, queryset, session_data, user,
         if host.disabled:
             msg = '{}: Host is disabled.'.format(minkeobj)
             session.messages.add(Message(msg, 'error'), bulk=False)
-            session.end()
+            session.abort()
             if console: session.prnt()
         elif host.lock and host.lock != lock:
             msg = '{}: Host is locked.'.format(minkeobj)
             session.messages.add(Message(msg, 'error'), bulk=False)
-            session.end()
+            session.abort()
             if console: session.prnt()
 
         # otherwise group sessions by hosts...

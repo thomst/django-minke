@@ -19,7 +19,31 @@ from .messages import PreMessage
 from .exceptions import InvalidMinkeSetup
 
 
-class SessionRegistry(type):
+class REGISTRY(OrderedDict):
+    _session_factories = list()
+
+    @classmethod
+    def add_session_factory(cls, factory):
+        cls._session_factories.append(factory)
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self._dict = None
+
+    def reload(self):
+        if self._dict:
+            self.clear()
+            self.update(self._dict)
+        else:
+            self._dict = self.copy()
+        for factory in self._session_factories:
+            factory()
+
+
+REGISTRY = REGISTRY()
+
+
+class SessionRegistration(type):
     """
     metaclass for Sessions that implements session-registration
     """
@@ -30,6 +54,7 @@ class SessionRegistry(type):
     def __init__(cls, classname, bases, attr):
         super().__init__(classname, bases, attr)
         if cls.abstract: return
+        if cls.__name__ in REGISTRY: return
 
         # some sanity-checks
         if not cls.work_on:
@@ -60,25 +85,26 @@ class SessionRegistry(type):
             cls.verbose_name = camel_case_to_spaces(classname)
 
         # register session
-        MinkeSession.REGISTRY[cls.__name__] = cls
+        REGISTRY[cls.__name__] = cls
 
-        # create session-permission...
-        # In some contexts get_for_model fails because content_types aren't
-        # setup. This happens when applying migrations but also when testing
-        # with sqlite3.
-        try: content_type = ContentType.objects.get_for_model(MinkeSession)
-        except (OperationalError, ProgrammingError): return
-        codename = 'run_{}'.format(classname.lower())
-        permname = 'Can run {}'.format(camel_case_to_spaces(classname))
-        permission = Permission.objects.get_or_create(
-            codename=codename,
-            content_type=content_type,
-            defaults=dict(name=permname))
-        permission_name = 'minke.{}'.format(codename)
-        cls.permissions += (permission_name,)
+        if cls.create_permissions:
+            # create session-permission...
+            # In some contexts get_for_model fails because content_types aren't
+            # setup. This happens when applying migrations but also when testing
+            # with sqlite3.
+            try: content_type = ContentType.objects.get_for_model(MinkeSession)
+            except (OperationalError, ProgrammingError): return
+            codename = 'run_{}'.format(classname.lower())
+            permname = 'Can run {}'.format(camel_case_to_spaces(classname))
+            permission = Permission.objects.get_or_create(
+                codename=codename,
+                content_type=content_type,
+                defaults=dict(name=permname))
+            permission_name = 'minke.{}'.format(codename)
+            cls.permissions += (permission_name,)
 
 
-class Session(metaclass=SessionRegistry):
+class Session(metaclass=SessionRegistration):
     abstract = True
     verbose_name = None
     work_on = tuple()
@@ -86,6 +112,7 @@ class Session(metaclass=SessionRegistry):
     form = None
     confirm = False
     wait_for_execution = False
+    create_permissions = True
     invoke_config = dict()
 
     @classmethod
@@ -102,12 +129,27 @@ class Session(metaclass=SessionRegistry):
     def get_form(cls):
         return cls.form
 
-    def __init__(self, connection, minkeobj, data=None):
+    def __init__(self, connection, db):
         self.connection = connection
-        self.minkeobj = minkeobj
-        self.data = data or dict()
-        self.status = 'success'
-        self.messages = list()
+        self._db = db
+
+    @property
+    def status(self):
+        return self._db.session_status
+
+    @property
+    def minkeobj(self):
+        return self._db.minkeobj
+
+    @property
+    def data(self):
+        return self._db.session_data
+
+    def start(self):
+        self._db.start()
+
+    def end(self):
+        self._db.end()
 
     def process(self):
         """
@@ -116,7 +158,7 @@ class Session(metaclass=SessionRegistry):
         raise NotImplementedError('Your session must define a process-method!')
 
     def add_msg(self, msg):
-        self.messages.append(msg)
+        self._db.messages.add(msg, bulk=False)
 
     def set_status(self, status, alert=True):
         """
@@ -132,7 +174,7 @@ class Session(metaclass=SessionRegistry):
             raise InvalidMinkeSetup(msg)
 
         if not alert or statuus[self.status] < statuus[status]:
-            self.status = status
+            self._db.session_status = status
 
     # helper-methods
     def format_cmd(self, cmd):
@@ -253,9 +295,7 @@ class SessionChain(Session):
 
     def process(self):
         for cls in self.sessions:
-            session = cls(self.connection, self.minkeobj, self.data)
+            session = cls(self.connection, self._db)
             session.process()
-            self.messages += session.messages
-            self.set_status(session.status)
             if session.status in self.break_states:
                 break

@@ -16,6 +16,7 @@ from django.contrib.contenttypes.models import ContentType
 from . import settings
 from .models import Host
 from .models import MinkeSession
+from .sessions import REGISTRY
 from .messages import Message
 from .messages import ExceptionMessage
 from .settings import MINKE_FABRIC_CONFIG
@@ -29,39 +30,43 @@ def process_sessions(host_id, session_ids, fabric_config=None):
 
     # get host and sessions
     host = Host.objects.get(pk=host_id)
-    sessions = MinkeSession.objects.filter(id__in=session_ids)
+    minke_sessions = MinkeSession.objects.filter(id__in=session_ids)
 
     # prepare the config and create a connection...
     config = MINKE_FABRIC_CONFIG.clone()
     config.load_snakeconfig(fabric_config or dict())
     hostname = host.hostname or host.name
     con = Connection(hostname, host.username, config=config)
+    REGISTRY.reload()
 
     # process the sessions...
-    for session in sessions:
-        session.start(con)
-        try: session.proxy.process()
+    for minke_session in minke_sessions:
+        session_cls = REGISTRY[minke_session.session_name]
+        session = session_cls(con, minke_session)
+        session.start()
+
+        try: session.process()
 
         # paramiko- and socket-related exceptions (ssh-layer)
         except (SSHException, GaiError, SocketError):
-            session.proxy.set_status('error')
-            session.messages.add(ExceptionMessage(), bulk=False)
+            session.set_status('error')
+            session.add_msg(ExceptionMessage())
 
         # invoke-related exceptions (shell-layer)
         except (Failure, ThreadException, UnexpectedExit):
-            session.proxy.set_status('error')
-            session.messages.add(ExceptionMessage(), bulk=False)
+            session.set_status('error')
+            session.add_msg(ExceptionMessage())
 
         # other exceptions
         except Exception:
-            session.proxy.set_status('error')
+            session.set_status('error')
             exc_msg = ExceptionMessage(print_tb=True)
             logger.error(exc_msg.text)
             if settings.MINKE_DEBUG:
-                session.messages.add(exc_msg, bulk=False)
+                session.add_msg(exc_msg)
             else:
                 msg = 'An error occurred.'
-                session.messages.add(Message(msg, 'error'), bulk=False)
+                session.add_msg(Message(msg, 'error'))
 
         finally:
             session.end()
