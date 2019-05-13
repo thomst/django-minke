@@ -1,0 +1,8 @@
+* add modeladmins for hosts and hostgroups
+* make fabric-settings a dictonary of settings, which keys can be choosen by
+  a select-widget and are saved with the hosts and hostgroups
+* verbose_name/verbose_name_plural for models Host and HostGroup
+* gettext
+* upload-helper-method for sessions
+* tests for commands-contrib-app
+* POC for stopping celery-tasks via minke-api
