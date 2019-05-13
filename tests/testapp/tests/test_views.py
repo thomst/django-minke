@@ -239,7 +239,7 @@ class ViewsTest(TestCase):
             self.assertEqual(session['proc_status'], 'done')
             self.assertIn(DummySession.verbose_name, session['get_html'])
             self.assertIn('foobär', session['get_html'])
-            self.assertTrue(session['ready'])
+            self.assertTrue(session['finished'])
 
         self.client.logout()
 

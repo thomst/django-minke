@@ -8,7 +8,6 @@ from collections import OrderedDict
 from django.db import models
 from django.contrib.auth.models import User
 from django.contrib.contenttypes.fields import GenericForeignKey
-from django.contrib.contenttypes.models import ContentType
 from django.contrib.contenttypes.fields import GenericRelation
 from django.contrib.contenttypes.models import ContentType
 from django.core.exceptions import FieldError
@@ -75,6 +74,10 @@ class MinkeSession(models.Model):
     end_time = models.DateTimeField(blank=True, null=True)
     run_time = models.DurationField(blank=True, null=True)
 
+    @property
+    def finished(self):
+        return self.proc_status in ('done', 'aborted')
+
     def init(self, user, minkeobj, session_cls, session_data):
         self.proc_status = 'initialized'
         self.user = user
@@ -101,9 +104,6 @@ class MinkeSession(models.Model):
         self.proc_status = 'aborted'
         self.session_status = 'error'
         self.save(update_fields=['proc_status', 'session_status'])
-
-    def ready(self):
-        return self.proc_status in ('done', 'aborted')
 
     def get_html(self):
         html = render_to_string('minke/session.html', dict(session=self))

@@ -55,5 +55,5 @@ class JSONField(models.TextField):
 
 
 def prepare_shell_command(cmd):
-    # linux-shells will need \n as the newline-chars
+    # linux-shells need \n as newline
     return cmd.replace('\r\n', '\n').replace('\r', '\n')

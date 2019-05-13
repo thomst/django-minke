@@ -14,7 +14,7 @@ function process_session (i, session) {
     object_id = session.minkeobj_id;
     var tr = $('tr input.action-select[value='+object_id+']').closest('tr');
     tr.removeClass('initialized running').addClass(session.proc_status);
-    if (session.ready) add_session_info(tr, session);
+    if (session.finished) add_session_info(tr, session);
 }
 
 function add_session_info (tr, session) {
