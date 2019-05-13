@@ -1,6 +1,7 @@
 # -*- coding: utf-8 -*-
 
 from django import forms
+from .utils import prepare_shell_command
 
 
 class MinkeForm(forms.Form):
@@ -29,7 +30,7 @@ class CommandField(forms.CharField):
     widget = forms.Textarea
     def clean(self, value):
         value = super().clean(value)
-        return value.replace('\r\n', '\n').replace('\r', '\n')
+        return prepare_shell_command(value)
 
 
 class CommandForm(forms.Form):

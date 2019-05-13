@@ -52,3 +52,8 @@ class JSONField(models.TextField):
 
     def get_prep_value(self, value):
         return json.dumps(value, cls=DjangoJSONEncoder)
+
+
+def prepare_shell_command(cmd):
+    # linux-shells will need \n as the newline-chars
+    return cmd.replace('\r\n', '\n').replace('\r', '\n')
