@@ -1,19 +1,26 @@
 # -*- coding: utf-8 -*-
-from __future__ import unicode_literals
 
-import paramiko
-from fabric.api import env
+from pydoc import locate
 
-from django.conf import settings
 from django.shortcuts import render
 from django.views.generic import View
 from django.contrib import messages
 from django.contrib.auth.mixins import PermissionRequiredMixin
+from django.contrib.auth.mixins import LoginRequiredMixin
+from django.contrib.contenttypes.models import ContentType
+from django.http import JsonResponse
 
+from rest_framework.generics import ListAPIView
+from rest_framework.permissions import IsAuthenticated
+from rest_framework.exceptions import NotFound
+
+from minke import settings
 from minke import engine
 from .forms import MinkeForm
-from .forms import InitialPasswordForm
-from .messages import Messenger
+from .models import MinkeSession
+from .serializers import SessionSerializer
+from .exceptions import InvalidURLQuery
+from .exceptions import InvalidMinkeSetup
 
 
 class SessionView(PermissionRequiredMixin, View):
@@ -28,82 +35,114 @@ class SessionView(PermissionRequiredMixin, View):
 
     def get_permission_required(self):
         session_cls = self.get_session_cls()
-        self.permission_required = session_cls.permission_required
-        return super(SessionView, self).get_permission_required()
+        return session_cls.permissions
 
     def get_queryset(self):
-        self.queryset = self.kwargs.get('queryset', None)
-        if self.queryset is not None:
-            return self.queryset
-        else:
-            raise AttributeError('Missing queryset!')
+        queryset = self.kwargs.get('queryset', None)
+        if queryset is not None: return queryset
+        else: raise AttributeError('Missing queryset!')
 
     def get_session_cls(self):
-        self.session_cls = self.kwargs.get('session_cls', None)
-        if self.session_cls:
-            return self.session_cls
-        else:
-            raise AttributeError('Missing session-class!')
+        session_cls = self.kwargs.get('session_cls', None)
+        if session_cls: return session_cls
+        else: raise AttributeError('Missing session-class!')
 
     def post(self, request, *args, **kwargs):
         session_cls = self.get_session_cls()
         queryset = self.get_queryset()
-
-        password_form = getattr(settings, 'MINKE_INITIAL_PASSWORD_FORM', None)
-        session_form = bool(session_cls.FORM) or None
-        confirm = session_cls.CONFIRM
+        wait = session_cls.wait_for_execution
+        fabric_config = None
         session_data = dict()
+        confirm = session_cls.confirm
+        session_form_cls = session_cls.get_form()
+        fabric_form_cls = None
+        render_params = dict()
 
-        # do we have to render a form?
-        if password_form or session_form or confirm:
-            minke_form = MinkeForm(dict(action=session_cls.__name__))
+        # import fabric-form if needed...
+        if settings.MINKE_FABRIC_FORM:
+            fabric_form_cls = locate(settings.MINKE_FABRIC_FORM)
+            if not fabric_form_cls:
+                msg = '{} could not be loaded'.format(settings.MINKE_FABRIC_FORM)
+                raise InvalidMinkeSetup(msg)
 
+        # do we have to work with a form?
+        if confirm or fabric_form_cls or session_form_cls:
+
+            # first time or validation?
             from_form = request.POST.get('minke_form', False)
-            if password_form:
-                if from_form: password_form = InitialPasswordForm(request.POST)
-                else: password_form = InitialPasswordForm()
+            if from_form:
+                minke_form = MinkeForm(request.POST)
+                valid = minke_form.is_valid()
+                form_data = [request.POST]
+            else:
+                minke_form = MinkeForm(dict(
+                    action=session_cls.__name__,
+                    wait=session_cls.wait_for_execution))
+                valid = False
+                form_data = list()
 
-            if session_form:
-                if from_form: session_form = session_cls.FORM(request.POST)
-                else: session_form = session_cls.FORM()
+            # initiate fabric-form
+            if fabric_form_cls:
+                fabric_form = fabric_form_cls(*form_data)
+                render_params['fabric_form'] = fabric_form
+                valid &= fabric_form.is_valid()
 
-            valid = minke_form.is_valid()
-            valid &= not password_form or password_form.is_valid()
-            valid &= not session_form or session_form.is_valid()
+            # initiate session-form
+            if session_form_cls:
+                session_form = session_cls.form(*form_data)
+                render_params['session_form'] = session_form
+                valid &= session_form.is_valid()
 
-            params = dict(
-                title=session_cls.short_description,
-                minke_form=minke_form,
-                password_form=password_form,
-                session_form=session_form,
-                objects=queryset,
-                object_list=confirm
-            )
+            # render minke-form the first time or if form-data where not valid...
+            if not valid:
+                render_params['title'] = session_cls.verbose_name,
+                render_params['minke_form'] = minke_form
+                render_params['objects'] = queryset
+                render_params['object_list'] = confirm
+                return render(request, 'minke/minke_form.html', render_params)
 
-            if not valid or not from_form:
-                return render(request, 'minke/minke_form.html', params)
+            # get fabric-config from fabric-form...
+            if fabric_form_cls:
+                fabric_config = fabric_form.cleaned_data
 
-            if password_form:
-                env.password = password_form.cleaned_data['initial_password']
-
-            if session_form:
+            # get session-data from session-form...
+            if session_form_cls:
                 session_data = session_form.cleaned_data
 
+            # update wait-param from minke-form...
+            wait = minke_form.cleaned_data['wait']
 
-        # do we have a chance to get keys from an ssh-agent?
-        if not env.no_agent:
-            from paramiko.agent import Agent
-            env.no_agent = not bool(Agent().get_keys())
+        # lets rock...
+        engine.process(session_cls, queryset, session_data, request.user,
+                       fabric_config=fabric_config, wait=wait)
 
-        # do we have any option to get a key at all?
-        if env.no_agent and not env.key and not env.key_filename:
-            msg = 'Got no keys from the agent nor have a key-file!'
-            messages.add_message(request, messages.ERROR, msg)
-            return
 
-        # initiate the messenger and clear already stored messages for this model
-        messenger = Messenger(request)
-        messenger.remove(queryset.model)
+class SessionAPI(ListAPIView):
+    """
+    API endpoint to retrieve current sessions.
+    """
+    permission_classes = (IsAuthenticated,)
+    serializer_class = SessionSerializer
 
-        # hopefully we are prepared...
-        engine.process(session_cls, queryset, messenger, session_data)
+    def get_queryset(self):
+        try:
+            object_ids = self.request.GET['object_ids'].split(',')
+            object_ids = [int(id) for id in object_ids]
+        except KeyError:
+            object_ids = list()
+        except ValueError:
+            msg = 'Object_ids must be a list of integers.'
+            raise InvalidURLQuery(msg)
+
+        try:
+            model = self.kwargs['model']
+            content_type = ContentType.objects.get(model=model)
+        except ContentType.DoesNotExist:
+            raise NotFound("There is no model named '{}'".format(model))
+
+        return MinkeSession.objects.filter(
+            minkeobj_id__in=object_ids,
+            minkeobj_type=content_type,
+            user=self.request.user,
+            current=True
+            ).prefetch_related('messages')

@@ -1,11 +1,8 @@
 # -*- coding: utf-8 -*-
-from __future__ import unicode_literals
 
 from django.contrib import admin
 from django.utils.translation import gettext_lazy as _
-
-from .sessions import Session
-from .messages import Messenger
+from .models import MinkeSession
 
 
 class StatusFilter(admin.SimpleListFilter):
@@ -13,15 +10,12 @@ class StatusFilter(admin.SimpleListFilter):
     parameter_name = 'minkestatus'
 
     def __init__(self, request, params, model, model_admin):
-        super(StatusFilter, self).__init__(request, params, model, model_admin)
-        self.states = (Session.SUCCESS, Session.WARNING, Session.ERROR)
-
-        # are there messages for this model?
-        messenger = Messenger(request)
-        self.reports = messenger.get(model)
+        super().__init__(request, params, model, model_admin)
+        self.states = ('success', 'warning', 'error')
+        self.sessions = MinkeSession.objects.get_currents_by_model(request.user, model)
 
     def has_output(self):
-        return bool(self.reports)
+        return bool(self.sessions)
 
     def values(self):
         return self.value().split(',') if self.value() else list()
@@ -31,9 +25,9 @@ class StatusFilter(admin.SimpleListFilter):
 
         ids = list()
         for status in self.values():
-            for id, report in self.reports.items():
-                if not report['status'] == status: continue
-                ids.append(int(id))
+            for session in self.sessions.all():
+                if not session.session_status == status: continue
+                ids.append(session.minkeobj.id)
         return queryset.filter(id__in=ids)
 
     def choices(self, changelist):

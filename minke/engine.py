@@ -1,108 +1,100 @@
 # -*- coding: utf-8 -*-
-from __future__ import unicode_literals
 
-from fabric.api import env, execute
-from fabric.network import disconnect_all
+from multiprocessing import Process
+from multiprocessing import JoinableQueue
+from threading import Thread
+import logging
 
-from django.utils.html import mark_safe
+from django.contrib import messages
+from django.contrib.contenttypes.models import ContentType
 
 import minke.sessions
-from .models import Host
 from .messages import Message
 from .messages import ExceptionMessage
-from .exceptions import Abortion
-from .exceptions import NetworkError
-from .exceptions import SocketError
-from .exceptions import CommandTimeout
+from .models import MinkeSession
+from .tasks import process_sessions
 
 
-def process(session_cls, queryset, messenger, session_data):
+def process(session_cls, queryset, session_data, user,
+            fabric_config=None, wait=False, console=False):
     """Initiate fabric's session-processing."""
 
-    # get players per host
-    players_per_host = dict()
-    for player in queryset:
-        host = player if isinstance(player, Host) else player.get_host()
-        if not players_per_host.has_key(host):
-            players_per_host[host] = list()
-        players_per_host[host].append(player)
+    MinkeSession.objects.clear_currents(user, queryset)
+    hosts = queryset.get_hosts()
+    lock = hosts.filter(disabled=False).get_lock()
 
-    # validate hosts and prepare sessions
-    sessions_per_host = dict()
-    for host, players in players_per_host.items():
+    # group sessions by hosts
+    session_groups = dict()
+    for minkeobj in queryset.all():
+        host = minkeobj.get_host()
 
-        # skip invalid hosts (disabled or locked)
-        invalid = None
+        session = MinkeSession()
+        session.init(user, minkeobj, session_cls, session_data)
+
+        # Skip disabled or locked hosts...
         if host.disabled:
-            invalid = Message('Host were disabled!', 'ERROR')
+            msg = '{}: Host is disabled.'.format(minkeobj)
+            session.messages.add(Message(msg, 'error'), bulk=False)
+            session.abort()
+            if console: session.prnt()
+        elif host.lock and host.lock != lock:
+            msg = '{}: Host is locked.'.format(minkeobj)
+            session.messages.add(Message(msg, 'error'), bulk=False)
+            session.abort()
+            if console: session.prnt()
 
-        # Never let a host be involved in two simultaneous sessions...
-        elif not Host.objects.get_lock(id=host.id):
-            invalid = Message('Host were locked!', 'ERROR')
-
-        if invalid:
-            error = minke.sessions.Session.ERROR
-            for player in players:
-                messenger.store(player, [invalid], error)
+        # otherwise group sessions by hosts...
         else:
-            # Grouping sessions by hosts.
-            sessions = [session_cls(host, p, **session_data) for p in players]
-            sessions_per_host[host.hoststring] = sessions
+            if host not in session_groups:
+                session_groups[host] = list()
+            session_groups[host].append(session)
 
     # Stop here if no valid hosts are left...
-    if not sessions_per_host:
-        messenger.process()
-        return
+    if not session_groups: return
 
-    try:
-        host_sessions = HostSessions(sessions_per_host)
-        result = execute(host_sessions.run, hosts=sessions_per_host.keys())
-    finally:
-        # disconnect fabrics ssh-connections
-        disconnect_all()
+    # merge fabric-config and invoke-config
+    config = session_cls.invoke_config.copy()
+    config.update(fabric_config or dict())
 
-        # release the lock
-        Host.objects.release_lock(hoststring__in=sessions_per_host.keys())
+    # run celery-tasks to process the sessions...
+    results = list()
+    for host, sessions in session_groups.items():
+        try:
+            # FIXME: celery-4.2.1 fails to raise an exception if rabbitmq is
+            # down or no celery-worker is running at all... hope for 4.3.x
+            session_ids = [s.id for s in sessions]
+            result = process_sessions.delay(host.id, session_ids, config)
+            results.append((result, [s.id for s in sessions]))
+        except process_sessions.OperationalError:
+            host.lock = None
+            host.save(update_fields=['lock'])
+            for session in sessions:
+                msg = 'Could not process session.'
+                session.add_msg(ExceptionMessage())
+                session.end()
+                if console: session.prnt(session)
 
-    # finish up...
-    for host_sessions in result.values():
-        for session in host_sessions:
-            # Use rework for final db-actions.
-            session.rework()
 
-            # store session-status and messages
-            messenger.store(session.player, session.news, session.status)
+    # print sessions in cli-mode as soon as they are ready...
+    if console:
+        print_results = results[:]
+        while print_results:
+            # try to find a ready result...
+            try: result, session_ids = next((r for r in print_results if r[0].ready()))
+            except StopIteration: continue
+            # reload session-objects
+            sessions = MinkeSession.objects.filter(id__in=session_ids)
+            # print and remove list-item
+            for session in sessions: session.prnt()
+            print_results.remove((result, session_ids))
 
-    messenger.process()
+    # evt. wait till all tasks finished...
+    elif wait:
+        for result, sessions in results:
+            result.wait()
 
-
-class HostSessions(object):
-    """
-    Wrapper-class for session-processing with fabric.
-
-    The run-method will be executed in a parallized multiprocessing
-    context that is orchestrated by fabric. Itself processes sessions
-    grouped by the associated host. This way we beware the parallel
-    execution of two sessions on one host.
-    """
-    def __init__(self, sessions_per_host):
-        self.sessions_per_host = sessions_per_host
-
-    def run(self):
-        sessions = self.sessions_per_host[env.host_string]
-        for session in sessions:
-
-            try:
-                session.process()
-            except (Abortion, NetworkError, CommandTimeout, SocketError):
-                session.set_status('ERROR')
-                session.news.append(ExceptionMessage())
-            except Exception:
-                # FIXME: Actually this is debugging-stuff and should
-                # not be handled as a minke-news! We could return the
-                # exception instead of the session and raise it in the
-                # main process.
-                session.set_status('ERROR')
-                session.news.append(ExceptionMessage(print_tb=True))
-
-        return sessions
+    # At least call forget on every result - in case a result-backend is in use
+    # that eats up ressources to store result-data...
+    for result, sessions in results:
+        try: result.forget()
+        except NotImplementedError: pass

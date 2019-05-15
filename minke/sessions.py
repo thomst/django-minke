@@ -1,172 +1,189 @@
 # -*- coding: utf-8 -*-
-from __future__ import unicode_literals
 
 import re
-
-from fabric.api import run
+from collections import OrderedDict
 
 from django.db.utils import OperationalError
+from django.db.utils import ProgrammingError
 from django.core.exceptions import FieldDoesNotExist
 from django.contrib.auth.models import Permission
 from django.contrib.contenttypes.models import ContentType
-from django.utils.text import camel_case_to_spaces, slugify
+from django.utils.text import camel_case_to_spaces
 
-from .views import SessionView
 from .models import Host
+from .models import MinkeModel
+from .models import MinkeSession
+from .forms import CommandForm
 from .messages import ExecutionMessage
 from .messages import PreMessage
 from .exceptions import InvalidMinkeSetup
-from .utils import UnicodeResult
 
 
-registry = list()
-def register(session_cls, models=None,
-             short_description=None,
-             permission_required=None,
-             create_permission=False):
-    """
-    Register session-classes.
-    They will be provided as admin-actions for the specified models
-    """
+class REGISTRY(OrderedDict):
+    _session_factories = list()
 
-    if models:
-        if not type(models) == tuple:
-            models = (models,)
-        session_cls.models = models
+    @classmethod
+    def add_session_factory(cls, factory):
+        cls._session_factories.append(factory)
 
-    if permission_required:
-        if not type(permission_required) == tuple:
-            permission_required = (permission_required,)
-        session_cls.permission_required = permission_required
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self._dict = None
 
-    if short_description:
-        session_cls.short_description = short_description
-
-    if not issubclass(session_cls, Session):
-        raise InvalidMinkeSetup('Registered class must subclass Session.')
-
-    if not session_cls.models:
-        raise InvalidMinkeSetup('At least one model must be specified for a session.')
-
-    for model in session_cls.models:
-        if model is not Host and not hasattr(model, 'get_host'):
-            raise InvalidMinkeSetup(
-                'Models used with sessions must define a get_host-method.')
-
-    if create_permission:
-        # We only create a permission for one model. Otherwise a user would
-        # must have all permissions for all session-models and not as expected
-        # only the permission for the model she wants to run the session with.
-        # FIXME: Better solution here?
-        model = session_cls.models[0]
-
-        # Applying minke-migrations tumbles over get_for_model if the
-        # migrations for this model aren't applied yet.
-        try: content_type = ContentType.objects.get_for_model(model)
-        except OperationalError: return
-
-        model_name = slugify(model.__name__)
-        session_name = session_cls.__name__
-        session_codename = camel_case_to_spaces(session_name).replace(' ', '_')
-        codename = 'run_{}_on_{}'.format(session_codename, model_name)
-        permission_name = '{}.{}'.format(model._meta.app_label, codename)
-
-        # create permission...
-        permission = Permission.objects.get_or_create(
-            name='Can run {}'.format(session_name),
-            codename=codename,
-            content_type=content_type)
-
-        # add permission to permission_required...
-        session_cls.permission_required += (permission_name,)
-
-    registry.append(session_cls)
-
-
-class BaseSession(object):
-    """
-    Implement the base-functionality of a session-class.
-    """
-
-    SUCCESS = 'success'
-    WARNING = 'warning'
-    ERROR = 'error'
-    FORM = None
-    CONFIRM = False
-
-    def __init__(self, host, player, **session_data):
-        self.host = host
-        self.player = player
-        self.session_data = session_data
-        self.news = list()
-        self.status = self.SUCCESS
-
-    def set_status(self, status):
-        """
-        Set session-status.
-
-        The session-status can be 'error', 'warning' or 'success'.
-        You can pass a status-code as 'error', 'ERROR' or self.ERROR.
-        You can also pass a boolean while True means 'success' and False 'error'.
-        (The default session-status is 'success'.)
-        """
-        try: status = getattr(self, status)
-        except (AttributeError, TypeError): pass
-
-        if status in (self.SUCCESS, self.WARNING, self.ERROR):
-            self.status = status
-        elif type(status) is bool:
-            self.status = self.SUCCESS if status else self.ERROR
+    def reload(self):
+        if self._dict:
+            self.clear()
+            self.update(self._dict)
         else:
-            raise ValueError('Invalid session-status: {}'.format(status))
-
-    def process(self):
-        """
-        Real work is done here...
-
-        This is the part of a session which is executed within fabric's
-        multiprocessing-szenario. It's the right place for all
-        fabric-operations. But keep it clean of database-related stuff.
-        Database-connections are multiplied with spawend processes and
-        then are not reliable anymore.
-        """
-        raise NotImplementedError('Your session must define a process-method!')
-
-    def rework(self):
-        """
-        This method is called after fabric's work is done.
-        Database-related actions should be done here."""
-        pass
+            self._dict = self.copy()
+        for factory in self._session_factories:
+            factory()
 
 
-class AdminSession(BaseSession):
+REGISTRY = REGISTRY()
+
+
+class SessionRegistration(type):
     """
-    Implement attributes for admin-site-integration.
+    metaclass for Sessions that implements session-registration
     """
+    def __new__(cls, name, bases, dct):
+        dct['abstract'] = dct.get('abstract', False)
+        return super().__new__(cls, name, bases, dct)
 
-    models = tuple()
-    short_description = None
-    permission_required = tuple()
+    def __init__(cls, classname, bases, attr):
+        super().__init__(classname, bases, attr)
+        if cls.abstract: return
+        if cls.__name__ in REGISTRY: return
+
+        # some sanity-checks
+        if not cls.work_on:
+            msg = 'At least one minke-model must be specified for a session.'
+            raise InvalidMinkeSetup(msg)
+
+        for model in cls.work_on:
+            try:
+                assert(model == Host or issubclass(model, MinkeModel))
+            except (TypeError, AssertionError):
+                msg = '{} is no minke-model.'.format(model)
+                raise InvalidMinkeSetup(msg)
+
+        if issubclass(cls, SingleCommandSession) and not cls.command:
+            msg = 'SingleCommandSession needs to specify an command.'
+            raise InvalidMinkeSetup(msg)
+
+        if issubclass(cls, CommandChainSession) and not cls.commands:
+            msg = 'CommandChainSession needs to specify commands.'
+            raise InvalidMinkeSetup(msg)
+
+        if issubclass(cls, SessionChain) and not cls.sessions:
+            msg = 'SessionChain needs to specify sessions.'
+            raise InvalidMinkeSetup(msg)
+
+        # set verbose-name if missing
+        if not cls.verbose_name:
+            cls.verbose_name = camel_case_to_spaces(classname)
+
+        # register session
+        REGISTRY[cls.__name__] = cls
+
+        if cls.create_permissions:
+            # create session-permission...
+            # In some contexts get_for_model fails because content_types aren't
+            # setup. This happens when applying migrations but also when testing
+            # with sqlite3.
+            try: content_type = ContentType.objects.get_for_model(MinkeSession)
+            except (OperationalError, ProgrammingError): return
+            codename = 'run_{}'.format(classname.lower())
+            permname = 'Can run {}'.format(camel_case_to_spaces(classname))
+            permission = Permission.objects.get_or_create(
+                codename=codename,
+                content_type=content_type,
+                defaults=dict(name=permname))
+            permission_name = 'minke.{}'.format(codename)
+            cls.permissions += (permission_name,)
+
+
+class Session(metaclass=SessionRegistration):
+    abstract = True
+    verbose_name = None
+    work_on = tuple()
+    permissions = tuple()
+    form = None
+    confirm = False
+    wait_for_execution = False
+    create_permissions = True
+    invoke_config = dict()
 
     @classmethod
     def as_action(cls):
+        from .views import SessionView
         def action(modeladmin, request, queryset):
             session_view = SessionView.as_view()
             return session_view(request, session_cls=cls, queryset=queryset)
         action.__name__ = cls.__name__
-        action.short_description = cls.short_description
+        action.short_description = cls.verbose_name
         return action
 
+    @classmethod
+    def get_form(cls):
+        return cls.form
 
-class Session(AdminSession):
+    def __init__(self, connection, db):
+        self.connection = connection
+        self._db = db
 
+    @property
+    def status(self):
+        return self._db.session_status
+
+    @property
+    def minkeobj(self):
+        return self._db.minkeobj
+
+    @property
+    def data(self):
+        return self._db.session_data
+
+    def start(self):
+        self._db.start()
+
+    def end(self):
+        self._db.end()
+
+    def process(self):
+        """
+        Real work is done here...
+        """
+        raise NotImplementedError('Your session must define a process-method!')
+
+    def add_msg(self, msg):
+        self._db.messages.add(msg, bulk=False)
+
+    def set_status(self, status, alert=True):
+        """
+        Set session-status. Pass a valid session-status or a boolean.
+        """
+        statuus = {'success': 0, 'warning': 1, 'error': 2}
+        if type(status) == bool:
+            status = 'success' if status else 'error'
+        elif status.lower() in statuus.keys():
+            status = status.lower()
+        else:
+            msg = 'session-status must be one of {}'.format(statuus)
+            raise InvalidMinkeSetup(msg)
+
+        if not alert or statuus[self.status] < statuus[status]:
+            self._db.session_status = status
+
+    # helper-methods
     def format_cmd(self, cmd):
         """
-        Will format a given command-string using the player's attributes
+        Will format a given command-string using the minkeobj's attributes
         and the session_data while the session_data has precedence.
         """
-        params = vars(self.player)
-        params.update(self.session_data)
+        params = vars(self.minkeobj)
+        params.update(self.data)
         return cmd.format(**params)
 
     def valid(self, result, regex=None):
@@ -176,84 +193,109 @@ class Session(AdminSession):
         Return True if rtn-code is 0.
         If regex is given it must also match stdout.
         """
-        if regex and result.return_code == 0:
+        if regex and result.ok:
             return bool(re.match(regex, result.stdout))
         else:
-            return result.return_code == 0
+            return result.ok
 
-    def run(self, cmd, encoding='utf-8'):
-        # TODO: encoding is host-specific
-        # There should be a get_encoding-method for minke-models that returns
-        # a host-attribute holding the codec.
-        return UnicodeResult(run(cmd), encoding, 'replace')
-
-    def execute(self, cmd, **kwargs):
+    def run(self, cmd, *args, **kwargs):
         """
-        Just run cmd and leave a message.
+        run a command
         """
-        result = self.run(cmd, **kwargs)
-        valid = self.valid(result)
+        return self.connection.run(cmd, *args, **kwargs)
 
-        if not valid or result.stderr:
-            level = 'WARNING' if valid else 'ERROR'
-            self.news.append(ExecutionMessage(result, level))
-        elif result:
-            self.news.append(PreMessage(result, 'INFO'))
-
-        return valid
-
-
-class SingleActionSession(Session):
-    COMMAND = None
-
-    def get_cmd(self):
-        if not self.COMMAND:
-            raise InvalidMinkeSetup('Missing COMMAND for SingleActionSession!')
+    def execute(self, cmd, *args, **kwargs):
+        """
+        Run cmd, leave a message and set session-status.
+        """
+        result = self.run(cmd, *args, **kwargs)
+        if result.failed:
+            self.add_msg(ExecutionMessage(result, 'error'))
+            self.set_status('error')
+        elif result.stderr:
+            self.add_msg(ExecutionMessage(result, 'warning'))
+            self.set_status('warning')
         else:
-            return self.format_cmd(self.COMMAND)
+            self.add_msg(ExecutionMessage(result, 'info'))
+            self.set_status('success')
 
-    def process(self):
-        valid = self.execute(self.get_cmd())
-        self.set_status(valid)
+        return result.ok
 
 
 class UpdateEntriesSession(Session):
+    abstract = True
 
     def update_field(self, field, cmd, regex=None):
         """
         Update a field using either the stdout or the first matching-group
         from regex.
         """
-        # is field a player-attribute?
-        try: getattr(self.player, field)
+        # is field a minkeobj-attribute?
+        try: getattr(self.minkeobj, field)
         except AttributeError as e: raise e
 
         # run cmd
         result = self.run(cmd)
         valid = self.valid(result, regex)
 
-        # A valid call and stdout? Then try to use the first captured
-        # regex-group or just use stdout as value.
-        if valid and result.stdout:
-            try:
-                assert regex
-                value = re.match(regex, result.stdout).groups()[0]
-            except (AssertionError, IndexError):
-                value = result.stdout
+        # do we have a regex? Then use the first captured group if there is one,
+        # stdout otherwise...
+        if valid and regex and result.stdout:
+            groups = re.match(regex, result.stdout).groups()
+            value = groups[0] if groups else result.stdout
 
-        # call were valid but no stdout? Leave a warning.
+        # no regex? just take stdout as it is...
+        elif valid and result.stdout:
+            value = result.stdout
+
+        # valid but no stdout? Leave a warning...
         elif valid and not result.stdout:
-            self.news.append(ExecutionMessage(result, 'WARNING'))
+            self.add_msg(ExecutionMessage(result, 'WARNING'))
             value = None
 
-        # call failed.
+        # not valid - error-message...
         else:
+            self.add_msg(ExecutionMessage(result, 'ERROR'))
             value = None
-            self.news.append(ExecutionMessage(result, 'ERROR'))
 
-        setattr(self.player, field, value)
+        setattr(self.minkeobj, field, value)
         return bool(value)
 
-    def rework(self):
-        # TODO: catch exceptions that may be raised because of invalid values.
-        self.player.save()
+
+class SingleCommandSession(Session):
+    abstract = True
+    command = None
+
+    def process(self):
+        self.execute(self.format_cmd(self.command))
+
+
+class CommandFormSession(SingleCommandSession):
+    abstract = True
+    form = CommandForm
+    command = '{cmd}'
+
+
+class CommandChainSession(Session):
+    abstract = True
+    commands = tuple()
+    break_states = ('error',)
+
+    def process(self):
+        for cmd in self.commands:
+            self.execute(self.format_cmd(cmd))
+            if self.status in self.break_states:
+                break
+
+
+class SessionChain(Session):
+    abstract = True
+    sessions = tuple()
+    break_states = ('error',)
+
+    def process(self):
+        for cls in self.sessions:
+            session = cls(self.connection, self._db)
+            session.process()
+            if session.status in self.break_states:
+                break

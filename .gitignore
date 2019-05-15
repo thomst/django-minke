@@ -1,4 +1,8 @@
 *.pyc
 *~
-test.db
+*.backup
 .coverage
+.tox/
+my.cnf
+/minke.egg-info
+/MANIFEST.in

@@ -13,8 +13,8 @@
     {{ minke_form }}
     <input type="hidden" name="minke_form" value="True">
 
-    {% if password_form %}
-        <fieldset><table>{{ password_form.as_table }}</table></fieldset>
+    {% if fabric_form %}
+        <fieldset><table>{{ fabric_form.as_table }}</table></fieldset>
     {% endif %}
 
     {% if session_form %}
@@ -26,7 +26,7 @@
         <a class="default" style="float: none" href="">Abbrechen</a>
     </fieldset>
 
-    <fieldset><ul class="{{ object_list_type }}">
+    <fieldset><ul>
         {% for object in objects %}
             {% if object_list %}
                 <li>
