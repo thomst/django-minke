@@ -5,4 +5,8 @@
 * gettext
 * upload-helper-method for sessions
 * tests for commands-contrib-app
-* POC for stopping celery-tasks via minke-api
+* stopping celery-tasks via minke-api
+* session-log / cmd-log
+* session/cmd-log in minke-changelist
+* optional parrallel execution of tasks running on the same host
+* documentation
