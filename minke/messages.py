@@ -7,7 +7,7 @@ from .models import BaseMessage
 
 
 # We declare the Meta-class whithin a mixin.
-# Otherwise the proxy-attribute won't be inherited by child-classes of Session.
+# Otherwise the proxy-attribute won't be inherited by child-classes.
 class ProxyMixin(object):
     class Meta:
         proxy = True
