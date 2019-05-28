@@ -27,7 +27,7 @@ class Session {
     }
     updateProcStatus(session) {
         this.session.data('procStatus', session.proc_status);
-        this.session.find('p.session_proc_info').replaceWith(session.html_proc_info);
+        this.session.find('span.session_proc_info').text(session.proc_info);
         this.minkeobj.removeClass(['initialized', 'running']);
         this.minkeobj.addClass(session.proc_status);
     }

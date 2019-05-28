@@ -1,8 +1,0 @@
-<p class="session_proc_info"><span{% if session.session_description %} title="{{session.session_description}}"{% endif %}>
-    <b>{{session.session_verbose_name}}</b></span>
-    {% if session.proc_status == 'initialized' %}[waiting...]
-    {% elif session.proc_status == 'running' %}[running...]
-    {% elif session.proc_status == 'done' %}[completed in {{session.run_time.total_seconds|floatformat}} seconds]
-    {% elif session.proc_status == 'aborted' %}[aborted!]
-    {% endif %}
-</p>

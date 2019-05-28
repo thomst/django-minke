@@ -102,14 +102,15 @@ class MinkeSession(models.Model):
         self.save(update_fields=['proc_status', 'session_status'])
 
     @property
-    def html_proc_info(self):
-        html = render_to_string('minke/proc_info.html', dict(session=self))
-        return mark_safe(html)
-
-    @property
-    def html(self):
-        html = render_to_string('minke/session.html', dict(session=self))
-        return mark_safe(html)
+    def proc_info(self):
+        if self.proc_status == 'initialized':
+            return '[waiting...]'
+        elif self.proc_status == 'running':
+            return '[running...]'
+        elif self.proc_status == 'aborted':
+            return '[aborted!]'
+        elif self.proc_status == 'done':
+            return '[completed in {0:.1f} seconds]'.format(self.run_time.total_seconds())
 
     def prnt(self):
         width = 60
