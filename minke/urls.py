@@ -18,5 +18,5 @@ from .views import SessionAPI
 
 
 urlpatterns = [
-    url(r'^minkeapi/currentsessions/(?P<model>.+)/', SessionAPI.as_view(), name='minke_session_api'),
+    url(r'^minkeapi/sessions/', SessionAPI.as_view(), name='minke_session_api'),
 ]

@@ -5,11 +5,11 @@ var interval = 400;
 var error_msg = 'minkeapi-error: ';
 var baseurl = window.location.protocol + '//'
             + window.location.host
-            + '/minkeapi/currentsessions/'
-            + window.location.pathname.split('/')[2];
+            + '/minkeapi/sessions/'
 
 class Session {
     constructor(session_el) {
+        this.id = $(session_el).data('id');
         this.session = $(session_el);
         this.minkeobj = $(session_el).prev('tr');
     }
@@ -60,11 +60,11 @@ function getJson (url) {
 }
 
 function run() {
-    var object_ids = $.map(sessions, function(s, i) {return s.session.data('minkeobjId')});
-    if (object_ids.length) {
+    var session_ids = $.map(sessions, function(session, i) {return session.id});
+    if (session_ids.length) {
         $('#action-toggle').prop('disabled', true);
         $('#result_list').addClass('running');
-        var url = baseurl + '?object_ids=' + object_ids;
+        var url = baseurl + '?session_ids=' + session_ids;
         window.setTimeout(getJson, interval, url);
     } else {
         $('#action-toggle').prop('disabled', false);

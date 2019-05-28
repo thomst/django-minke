@@ -126,23 +126,12 @@ class SessionAPI(ListAPIView):
 
     def get_queryset(self):
         try:
-            object_ids = self.request.GET['object_ids'].split(',')
-            object_ids = [int(id) for id in object_ids]
+            session_ids = self.request.GET['session_ids'].split(',')
+            session_ids = [int(id) for id in session_ids]
         except KeyError:
-            object_ids = list()
+            session_ids = list()
         except ValueError:
-            msg = 'Object_ids must be a list of integers.'
+            msg = 'session_ids must be a list of integers.'
             raise InvalidURLQuery(msg)
 
-        try:
-            model = self.kwargs['model']
-            content_type = ContentType.objects.get(model=model)
-        except ContentType.DoesNotExist:
-            raise NotFound("There is no model named '{}'".format(model))
-
-        return MinkeSession.objects.filter(
-            minkeobj_id__in=object_ids,
-            minkeobj_type=content_type,
-            user=self.request.user,
-            current=True
-            ).prefetch_related('messages')
+        return MinkeSession.objects.filter(id__in=session_ids).prefetch_related('messages')
