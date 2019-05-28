@@ -173,7 +173,7 @@ class Session(metaclass=SessionRegistration):
             msg = 'session-status must be one of {}'.format(statuus)
             raise InvalidMinkeSetup(msg)
 
-        if not alert or statuus[self.status] < statuus[status]:
+        if not self.status or not alert or statuus[self.status] < statuus[status]:
             self._db.session_status = status
 
     # helper-methods

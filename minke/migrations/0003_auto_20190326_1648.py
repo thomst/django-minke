@@ -45,7 +45,7 @@ class Migration(migrations.Migration):
                 ('session_name', models.CharField(max_length=128)),
                 ('session_verbose_name', models.CharField(max_length=128)),
                 ('session_description', models.TextField(blank=True, null=True)),
-                ('session_status', models.CharField(choices=[('success', 'success'), ('warning', 'warning'), ('error', 'error')], max_length=128, default='success')),
+                ('session_status', models.CharField(choices=[('success', 'success'), ('warning', 'warning'), ('error', 'error')], max_length=128)),
                 ('session_data', minke.utils.JSONField(blank=True, null=True)),
                 ('minkeobj_id', models.PositiveIntegerField()),
                 ('current', models.BooleanField(default=True)),

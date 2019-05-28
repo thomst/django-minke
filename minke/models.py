@@ -58,7 +58,7 @@ class MinkeSession(models.Model):
     session_name = models.CharField(max_length=128)
     session_verbose_name = models.CharField(max_length=128)
     session_description = models.TextField(blank=True, null=True)
-    session_status = models.CharField(max_length=128, choices=RESULT_STATES, default='success')
+    session_status = models.CharField(max_length=128, choices=RESULT_STATES)
     session_data = JSONField(blank=True, null=True)
 
     # the minkeobj to work on
