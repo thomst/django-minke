@@ -34,7 +34,7 @@
     <tr class="{% cycle 'row1' 'row2' %} {{ session.session_status }} {{ session.proc_status }}">
         {% for item in result %}{{ item }}{% endfor %}
     </tr>
-    {% if session.proc_status in 'done,aborted' %}{{ session.get_html }}{% endif %}
+    {{ session.html }}
 {% endfor %}
 </tbody>
 </table>

@@ -1,55 +1,84 @@
 (function($) {
 
-var cf = {
-    interval : 400,
-    baseurl : window.location.protocol + '//'
-              + window.location.host
-              + '/minkeapi/currentsessions/'
-              + window.location.pathname.split('/')[2],
-    input_selector : 'tr.initialized input.action-select, tr.running input.action-select',
-    error_msg : 'minkeapi-error: '
+sessions = {};
+var interval = 400;
+var error_msg = 'minkeapi-error: ';
+var baseurl = window.location.protocol + '//'
+            + window.location.host
+            + '/minkeapi/currentsessions/'
+            + window.location.pathname.split('/')[2];
+
+class Session {
+    constructor(session_el) {
+        this.session = $(session_el);
+        this.minkeobj = $(session_el).prev('tr');
+    }
+    update(session) {
+        if (session.proc_status != this.session.data('procStatus')) {
+            this.updateProcStatus(session);
+        }
+        if (session.messages.length > this.session.data('msgCount')) {
+            this.updateMessages(session);
+        }
+        if (session.proc_status == 'done' || session.proc_status == 'abbort') {
+            this.setStatus(session);
+            delete sessions[session.id];
+        }
+    }
+    updateProcStatus(session) {
+        this.session.data('procStatus', session.proc_status);
+        this.session.find('p.session_proc_info').replaceWith(session.html_proc_info);
+        this.minkeobj.removeClass(['initialized', 'running']);
+        this.minkeobj.addClass(session.proc_status);
+    }
+    updateMessages(session) {
+        var that = this;
+        // if (this.session.data('msgCount') == 0) addMessageList();
+        session.messages.slice(this.session.data('msgCount'))
+            .forEach(function(msg) {that.addMessage(msg)});
+        this.session.data('msgCount', session.messages.length);
+    }
+    addMessage(msg) {
+        var li = $('<li>' + msg.html + '</li>').addClass(msg.level).hide();
+        this.session.find('ul').append(li);
+        li.slideDown('fast').scrollTop(li[0].scrollHeight);
+    }
+    setStatus(session) {
+        this.session.addClass(session.session_status);
+        this.minkeobj.addClass(session.session_status);
+    }
 }
 
-function process_session (i, session) {
-    object_id = session.minkeobj_id;
-    var tr = $('tr input.action-select[value='+object_id+']').closest('tr');
-    tr.removeClass('initialized running').addClass(session.proc_status);
-    if (session.finished) add_session_info(tr, session);
+function processJson(json) {
+    $.each(json, function(i, session) {sessions[session.id].update(session)})
 }
 
-function add_session_info (tr, session) {
-    tr.addClass(session.session_status);
-    var session_tr = $(session.get_html).hide();
-    var msgs_ul = session_tr.find('ul').hide();
-    var li = msgs_ul.find('li');
-    tr.after(session_tr);
-    session_tr.show(500);
-    msgs_ul.slideDown('fast');
-    li.each(function (i, e) {$(e).scrollTop($(e)[0].scrollHeight)});
+function getJson (url) {
+    $.getJSON(url, processJson)
+        .fail(function(result) {console.log(error_msg + result.responseJSON.detail)})
+        .done(run)
 }
 
-function get_json (url) {
-    $.getJSON(url, function(result) {$.each(result, process_session)})
-        .fail(function(result) {
-            console.log(cf.error_msg + result.responseJSON.detail)})
-        .done(process)
-}
-
-function process() {
-    $('ul.messagelist > li').each(function (i,e){$(e).scrollTop($(e)[0].scrollHeight)});
-    var object_ids = $(cf.input_selector)
-        .map(function() {return $(this).val()}).get().join(',');
-    if (object_ids) {
+function run() {
+    var object_ids = $.map(sessions, function(s, i) {return s.session.data('minkeobjId')});
+    if (object_ids.length) {
         $('#action-toggle').prop('disabled', true);
         $('#result_list').addClass('running');
-        var url = cf.baseurl + '?object_ids=' + object_ids;
-        window.setTimeout(get_json, cf.interval, url);
+        var url = baseurl + '?object_ids=' + object_ids;
+        window.setTimeout(getJson, interval, url);
     } else {
         $('#action-toggle').prop('disabled', false);
         $('#result_list').removeClass('running');
     }
 }
 
-$(document).ready(process);
+$(document).ready(function () {
+    // scroll all minke-messages to the bottom...
+    $('ul.messagelist > li').each(function (i,e) {$(e).scrollTop($(e)[0].scrollHeight)});
+    // initialize session-objects...
+    $('tr.session[data-proc-status="initialized"],tr.session[data-proc-status="running"]').each(function(i, e) {sessions[$(e).data('id')] = new Session(e)});
+    // run...
+    run();
+});
 
 })(django.jQuery);

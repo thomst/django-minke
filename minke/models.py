@@ -74,10 +74,6 @@ class MinkeSession(models.Model):
     end_time = models.DateTimeField(blank=True, null=True)
     run_time = models.DurationField(blank=True, null=True)
 
-    @property
-    def finished(self):
-        return self.proc_status in ('done', 'aborted')
-
     def init(self, user, minkeobj, session_cls, session_data):
         self.proc_status = 'initialized'
         self.user = user
@@ -105,7 +101,13 @@ class MinkeSession(models.Model):
         self.session_status = 'error'
         self.save(update_fields=['proc_status', 'session_status'])
 
-    def get_html(self):
+    @property
+    def html_proc_info(self):
+        html = render_to_string('minke/proc_info.html', dict(session=self))
+        return mark_safe(html)
+
+    @property
+    def html(self):
         html = render_to_string('minke/session.html', dict(session=self))
         return mark_safe(html)
 

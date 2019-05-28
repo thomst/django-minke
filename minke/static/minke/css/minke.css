@@ -7,7 +7,7 @@
     overflow: auto;
 }
 
-#result_list tr.minke_news td {
+#result_list tr.session td {
     border: 0;
     padding: 8px 8px 0 33px;
     color: #666;
@@ -30,15 +30,15 @@
     background-color: #ffefef;
 }
 
-#result_list tr.minke_news.success {
+#result_list tr.session.success {
     background-color: #e8ffe8;
 }
 
-#result_list tr.minke_news.warning {
+#result_list tr.session.warning {
     background-color: #ffffe6;
 }
 
-#result_list tr.minke_news.error {
+#result_list tr.session.error {
     background-color: #fff6f6;
 }
 

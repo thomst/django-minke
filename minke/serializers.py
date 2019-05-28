@@ -6,8 +6,16 @@ from .models import MinkeSession
 from .models import BaseMessage
 
 
+class MessageSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = BaseMessage
+        fields = ('level', 'html')
+
+
 class SessionSerializer(serializers.ModelSerializer):
+    messages = MessageSerializer(many=True, read_only=True)
+
     class Meta:
         model = MinkeSession
-        fields = ('minkeobj_id', 'session_status', 'proc_status', 'get_html', 'finished')
+        fields = ('id', 'minkeobj_id', 'session_status', 'proc_status', 'html_proc_info', 'messages')
         read_only_fields = fields
