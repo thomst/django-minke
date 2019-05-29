@@ -49,31 +49,29 @@ def process_sessions(host_id, session_ids, fabric_config=None):
 
         # paramiko- and socket-related exceptions (ssh-layer)
         except (SSHException, GaiError, SocketError):
-            session.set_status('error')
             session.add_msg(ExceptionMessage())
+            session.end('failed')
 
         # invoke-related exceptions (shell-layer)
         except (Failure, ThreadException, UnexpectedExit):
-            session.set_status('error')
             session.add_msg(ExceptionMessage())
+            session.end('failed')
 
         # other exceptions
         except Exception:
-            session.set_status('error')
             exc_msg = ExceptionMessage(print_tb=True)
             logger.error(exc_msg.text)
-            if settings.MINKE_DEBUG:
-                session.add_msg(exc_msg)
-            else:
-                msg = 'An error occurred.'
-                session.add_msg(Message(msg, 'error'))
+            if settings.MINKE_DEBUG: session.add_msg(exc_msg)
+            else: session.add_msg(Message('An error occurred.', 'error'))
+            session.end('failed')
 
-        finally:
+        # success
+        else:
             session.end()
 
     # to be explicit - close connection...
     con.close()
 
-    # release the lock
+    # release host's lock
     host.lock = None
     host.save(update_fields=['lock'])

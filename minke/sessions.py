@@ -132,6 +132,8 @@ class Session(metaclass=SessionRegistration):
     def __init__(self, connection, db):
         self.connection = connection
         self._db = db
+        self.start = db.start
+        self.end = db.end
 
     @property
     def status(self):
@@ -144,12 +146,6 @@ class Session(metaclass=SessionRegistration):
     @property
     def data(self):
         return self._db.session_data
-
-    def start(self):
-        self._db.start()
-
-    def end(self):
-        self._db.end()
 
     def process(self):
         """

@@ -35,12 +35,12 @@ def process(session_cls, queryset, session_data, user,
         if host.disabled:
             msg = '{}: Host is disabled.'.format(minkeobj)
             session.messages.add(Message(msg, 'error'), bulk=False)
-            session.abort()
+            session.cancel()
             if console: session.prnt()
         elif host.lock and host.lock != lock:
             msg = '{}: Host is locked.'.format(minkeobj)
             session.messages.add(Message(msg, 'error'), bulk=False)
-            session.abort()
+            session.cancel()
             if console: session.prnt()
 
         # otherwise group sessions by hosts...
@@ -64,6 +64,7 @@ def process(session_cls, queryset, session_data, user,
             # down or no celery-worker is running at all... hope for 4.3.x
             session_ids = [s.id for s in sessions]
             result = process_sessions.delay(host.id, session_ids, config)
+            for session in sessions: session.track(result.task_id)
             results.append((result, [s.id for s in sessions]))
         except process_sessions.OperationalError:
             host.lock = None

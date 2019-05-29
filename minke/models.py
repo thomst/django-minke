@@ -48,10 +48,12 @@ class MinkeSession(models.Model):
         ('error', 'error'),
     )
     PROC_STATES = (
-        ('initialized', 'initialized'),
-        ('running', 'running'),
-        ('done', 'done'),
-        ('aborted', 'aborted'),
+        ('initialized', '[waiting...]'),
+        ('running', '[running...]'),
+        ('done', '[completed in {0:.1f} seconds]'),
+        ('stopped', '[stopped after {0:.1f} seconds]'),
+        ('canceled', '[canceled!]'),
+        ('failed', '[failed!]'),
     )
 
     # those fields will be derived from the session-class
@@ -70,6 +72,7 @@ class MinkeSession(models.Model):
     user = models.ForeignKey(User, on_delete=models.CASCADE)
     current = models.BooleanField(default=True)
     proc_status = models.CharField(max_length=128, choices=PROC_STATES)
+    task_id = models.CharField(max_length=128, blank=True, null=True)
     start_time = models.DateTimeField(blank=True, null=True)
     end_time = models.DateTimeField(blank=True, null=True)
     run_time = models.DurationField(blank=True, null=True)
@@ -84,33 +87,31 @@ class MinkeSession(models.Model):
         self.session_data = session_data
         self.save()
 
+    def track(self, task_id):
+        self.task_id = task_id
+        self.save(update_fields=['task_id'])
+
     def start(self):
         self.proc_status = 'running'
         self.start_time = datetime.datetime.now()
         self.save(update_fields=['proc_status', 'start_time'])
 
-    def end(self):
-        self.proc_status = 'done'
+    def end(self, proc_status='done'):
+        self.proc_status = proc_status
         self.end_time = datetime.datetime.now()
         self.run_time = self.end_time - self.start_time
         update_fields = ['proc_status', 'session_status', 'end_time', 'run_time']
         self.save(update_fields=update_fields)
 
-    def abort(self):
-        self.proc_status = 'aborted'
-        self.session_status = 'error'
-        self.save(update_fields=['proc_status', 'session_status'])
+    def cancel(self):
+        self.proc_status = 'canceled'
+        self.save(update_fields=['proc_status'])
 
     @property
     def proc_info(self):
-        if self.proc_status == 'initialized':
-            return '[waiting...]'
-        elif self.proc_status == 'running':
-            return '[running...]'
-        elif self.proc_status == 'aborted':
-            return '[aborted!]'
-        elif self.proc_status == 'done':
-            return '[completed in {0:.1f} seconds]'.format(self.run_time.total_seconds())
+        info = next((s[1] for s in self.PROC_STATES if s[0] == self.proc_status))
+        if self.run_time: return info.format(self.run_time.total_seconds())
+        else: return info
 
     def prnt(self):
         width = 60

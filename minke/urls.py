@@ -14,9 +14,11 @@ Including another URLconf
     2. Add a URL to urlpatterns:  url(r'^blog/', include('blog.urls'))
 """
 from django.conf.urls import url
-from .views import SessionAPI
+from .views import SessionListAPI
+from .views import SessionRevokeAPI
 
 
 urlpatterns = [
-    url(r'^minkeapi/sessions/', SessionAPI.as_view(), name='minke_session_api'),
+    url(r'^minkeapi/sessions/', SessionListAPI.as_view(), name='minke_session_api'),
+    url(r'^minkeapi/session/(?P<pk>[0-9]+)/', SessionRevokeAPI.as_view(), name='minke_session_api'),
 ]

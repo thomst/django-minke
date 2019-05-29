@@ -3,6 +3,7 @@
 sessions = {};
 var interval = 400;
 var error_msg = 'minkeapi-error: ';
+var end_statuus = ['done', 'stopped', 'canceled', 'failed']
 var baseurl = window.location.protocol + '//'
             + window.location.host
             + '/minkeapi/sessions/'
@@ -20,7 +21,7 @@ class Session {
         if (session.messages.length > this.session.data('msgCount')) {
             this.updateMessages(session);
         }
-        if (session.proc_status == 'done' || session.proc_status == 'abbort') {
+        if ($.inArray(session.proc_status, end_statuus) > -1) {
             this.setStatus(session);
             delete sessions[session.id];
         }
@@ -30,6 +31,8 @@ class Session {
         this.session.find('span.session_proc_info').text(session.proc_info);
         this.minkeobj.removeClass(['initialized', 'running']);
         this.minkeobj.addClass(session.proc_status);
+        this.session.removeClass(['initialized', 'running']);
+        this.session.addClass(session.proc_status);
     }
     updateMessages(session) {
         var that = this;
@@ -64,7 +67,7 @@ function run() {
     if (session_ids.length) {
         $('#action-toggle').prop('disabled', true);
         $('#result_list').addClass('running');
-        var url = baseurl + '?session_ids=' + session_ids;
+        var url = baseurl + '?id__in=' + session_ids;
         window.setTimeout(getJson, interval, url);
     } else {
         $('#action-toggle').prop('disabled', false);

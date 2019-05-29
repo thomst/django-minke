@@ -2,6 +2,7 @@
 
 from pydoc import locate
 
+from django.core.exceptions import FieldError
 from django.shortcuts import render
 from django.views.generic import View
 from django.contrib import messages
@@ -10,9 +11,13 @@ from django.contrib.auth.mixins import LoginRequiredMixin
 from django.contrib.contenttypes.models import ContentType
 from django.http import JsonResponse
 
+from rest_framework.response import Response
 from rest_framework.generics import ListAPIView
+from rest_framework.generics import UpdateAPIView
+from rest_framework.filters import BaseFilterBackend
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.exceptions import NotFound
+from celery.task.control import revoke
 
 from minke import settings
 from minke import engine
@@ -117,21 +122,65 @@ class SessionView(PermissionRequiredMixin, View):
                        fabric_config=fabric_config, wait=wait)
 
 
-class SessionAPI(ListAPIView):
+class FilterBackend(BaseFilterBackend):
     """
-    API endpoint to retrieve current sessions.
+    Use the url-query as lookup-params.
+    """
+    def get_lookup_params(self, request):
+        params = dict()
+        for k, v in request.GET.items():
+            if k.endswith('__in'):
+                params[k] = v.split(',')
+            else:
+                params[k] = v
+        return params
+
+    def filter_queryset(self, request, queryset, view):
+        lookup_params = self.get_lookup_params(request)
+        try:
+            return queryset.filter(**lookup_params)
+        except (FieldError, ValueError):
+            msg = 'Invalid lookup-parameter: {}'.format(lookup_params)
+            raise InvalidURLQuery(msg)
+
+
+class SessionListAPI(ListAPIView):
+    """
+    API endpoint to retrieve sessions.
     """
     permission_classes = (IsAuthenticated,)
     serializer_class = SessionSerializer
+    filter_backends = (FilterBackend,)
+    queryset = MinkeSession.objects.prefetch_related('messages')
 
-    def get_queryset(self):
-        try:
-            session_ids = self.request.GET['session_ids'].split(',')
-            session_ids = [int(id) for id in session_ids]
-        except KeyError:
-            session_ids = list()
-        except ValueError:
-            msg = 'session_ids must be a list of integers.'
-            raise InvalidURLQuery(msg)
 
-        return MinkeSession.objects.filter(id__in=session_ids).prefetch_related('messages')
+class SessionRevokeAPI(UpdateAPIView):
+    """
+    API endpoint to revoke a task a session runs with.
+    """
+    permission_classes = (IsAuthenticated,)
+    serializer_class = SessionSerializer
+    queryset = MinkeSession.objects.prefetch_related('messages')
+
+    def revoke_sessions(self, sessions):
+        for session in sessions:
+            session.refresh_from_db()
+            if session.proc_status == 'initialized':
+                revoke(session.task_id)
+                session.cancel()
+            elif session.proc_status == 'running':
+                revoke(session.task_id, signal='KILL', terminate=True)
+                # FIXME: We should be able to implement a signal-handler within tasks!
+                session.end('stopped')
+
+    def release_lock(self, host):
+        host.lock = None
+        host.save(update_fields=['lock'])
+
+    def put(self, request, *args, **kwargs):
+        session = self.get_object()
+        sessions = self.queryset.filter(task_id=session.task_id)
+        self.revoke_sessions(sessions)
+        self.release_lock(session.minkeobj.get_host())
+        serializer = self.get_serializer(sessions, many=True)
+        return Response(serializer.data)
