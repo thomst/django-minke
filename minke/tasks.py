@@ -1,7 +1,8 @@
 # -*- coding: utf-8 -*-
 
-import logging
 import os
+import logging
+import signal
 
 from socket import error as SocketError
 from socket import gaierror as GaiError
@@ -20,6 +21,7 @@ from .sessions import REGISTRY
 from .messages import Message
 from .messages import ExceptionMessage
 from .settings import MINKE_FABRIC_CONFIG
+from .exceptions import TaskInterruption
 
 
 logger = logging.getLogger(__name__)
@@ -27,6 +29,10 @@ logger = logging.getLogger(__name__)
 
 @shared_task
 def process_sessions(host_id, session_ids, fabric_config=None):
+
+    # an signal-handler for SIGTERM
+    def stop_task(signum, frame): raise TaskInterruption
+    signal.signal(signal.SIGTERM, stop_task)
 
     # get host and sessions
     host = Host.objects.get(pk=host_id)
@@ -56,6 +62,10 @@ def process_sessions(host_id, session_ids, fabric_config=None):
         except (Failure, ThreadException, UnexpectedExit):
             session.add_msg(ExceptionMessage())
             session.end('failed')
+
+        # task-interruption
+        except TaskInterruption:
+            session.end('stopped')
 
         # other exceptions
         except Exception:

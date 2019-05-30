@@ -13,7 +13,7 @@ from django.http import JsonResponse
 
 from rest_framework.response import Response
 from rest_framework.generics import ListAPIView
-from rest_framework.generics import UpdateAPIView
+from rest_framework.generics import GenericAPIView
 from rest_framework.filters import BaseFilterBackend
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.exceptions import NotFound
@@ -154,7 +154,7 @@ class SessionListAPI(ListAPIView):
     queryset = MinkeSession.objects.prefetch_related('messages')
 
 
-class SessionRevokeAPI(UpdateAPIView):
+class SessionRevokeAPI(GenericAPIView):
     """
     API endpoint to revoke a task a session runs with.
     """
@@ -164,14 +164,10 @@ class SessionRevokeAPI(UpdateAPIView):
 
     def revoke_sessions(self, sessions):
         for session in sessions:
+            revoke(session.task_id, terminate=True)
             session.refresh_from_db()
             if session.proc_status == 'initialized':
-                revoke(session.task_id)
                 session.cancel()
-            elif session.proc_status == 'running':
-                revoke(session.task_id, signal='KILL', terminate=True)
-                # FIXME: We should be able to implement a signal-handler within tasks!
-                session.end('stopped')
 
     def release_lock(self, host):
         host.lock = None
