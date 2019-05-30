@@ -17,5 +17,5 @@ class SessionSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = MinkeSession
-        fields = ('id', 'minkeobj_id', 'session_status', 'proc_status', 'proc_info', 'messages')
+        fields = ('id', 'minkeobj_id', 'session_status', 'proc_status', 'proc_info', 'messages', 'is_done')
         read_only_fields = fields

@@ -3,7 +3,6 @@
 sessions = {};
 var interval = 400;
 var error_msg = 'minkeapi-error: ';
-var end_statuus = ['succeeded', 'stopped', 'canceled', 'failed']
 var baseurl = window.location.protocol + '//'
             + window.location.host
             + '/minkeapi/sessions/'
@@ -21,7 +20,7 @@ class Session {
         if (session.messages.length > this.session.data('msgCount')) {
             this.updateMessages(session);
         }
-        if ($.inArray(session.proc_status, end_statuus) > -1) {
+        if (session.is_done) {
             this.setStatus(session);
             delete sessions[session.id];
         }
