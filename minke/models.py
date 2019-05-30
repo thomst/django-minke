@@ -218,6 +218,10 @@ class Host(models.Model):
     def get_host(self):
         return self
 
+    def release_lock(self):
+        self.lock = None
+        self.save(update_fields=['lock'])
+
     class Meta:
         ordering = ['name']
 

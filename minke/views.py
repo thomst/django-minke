@@ -163,19 +163,14 @@ class SessionRevokeAPI(GenericAPIView):
     queryset = MinkeSession.objects.prefetch_related('messages')
 
     def revoke(self, session):
-        if not session.task_id: return
-        revoke(session.task_id, terminate=True)
-        sessions = self.queryset.filter(task_id=session.task_id)
-        for session in sessions: session.cancel()
-        return sessions
-
-    def release_lock(self, host):
-        host.lock = None
-        host.save(update_fields=['lock'])
+        if session.task_id:
+            revoke(session.task_id, signal='USR1', terminate=True)
+        else:
+            session.cancel()
 
     def put(self, request, *args, **kwargs):
         session = self.get_object()
-        sessions = self.revoke(session)
-        self.release_lock(session.minkeobj.get_host())
-        serializer = self.get_serializer(sessions, many=True)
+        if not session.is_done:
+            self.revoke(session)
+        serializer = self.get_serializer(session)
         return Response(serializer.data)

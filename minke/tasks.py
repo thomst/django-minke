@@ -31,7 +31,7 @@ class SessionProcessor:
     """
     Process sessions.
     """
-    def __init__(self, host_id, session_ids, fabric_config):
+    def __init__(self, host_id, session_id, fabric_config, task_id):
         self.host = Host.objects.get(pk=host_id)
         config = MINKE_FABRIC_CONFIG.clone()
         config.load_snakeconfig(fabric_config or dict())
@@ -39,61 +39,61 @@ class SessionProcessor:
         self.con = Connection(hostname, self.host.username, config=config)
 
         REGISTRY.reload()
-        minke_sessions = MinkeSession.objects.filter(id__in=session_ids)
-        session_cls = REGISTRY[minke_sessions[0].session_name]
-        self.sessions = [session_cls(self.con, ms) for ms in minke_sessions]
-
-        signal.signal(signal.SIGTERM, self.interrupt)
+        self.minke_session = MinkeSession.objects.get(pk=session_id)
+        self.minke_session.track(task_id)
+        session_cls = REGISTRY[self.minke_session.session_name]
+        self.session = session_cls(self.con, self.minke_session)
 
     def interrupt(self, signum, frame):
-        for session in self.sessions: session.cancel()
+        self.minke_session.cancel()
         raise TaskInterruption
 
-    def process_session(self, session):
+    def run(self):
+        if self.minke_session.is_done:
+            return
         try:
-            session.start()
-            session.process()
+            self.session.start()
+            self.session.process()
 
         # paramiko- and socket-related exceptions (ssh-layer)
         except (SSHException, GaiError, SocketError):
-            session.add_msg(ExceptionMessage())
-            session.end('failed')
+            self.session.add_msg(ExceptionMessage())
+            self.session.end('failed')
 
         # invoke-related exceptions (shell-layer)
         except (Failure, ThreadException, UnexpectedExit):
-            session.add_msg(ExceptionMessage())
-            session.end('failed')
+            self.session.add_msg(ExceptionMessage())
+            self.session.end('failed')
 
         # task-interruption
         except TaskInterruption:
-            session.end('stopped')
-            raise TaskInterruption
+            self.session.end('stopped')
 
         # other exceptions
         except Exception:
             exc_msg = ExceptionMessage(print_tb=True)
             logger.error(exc_msg.text)
-            if settings.MINKE_DEBUG: session.add_msg(exc_msg)
-            else: session.add_msg(Message('An error occurred.', 'error'))
-            session.end('failed')
+            if settings.MINKE_DEBUG: self.session.add_msg(exc_msg)
+            else: self.session.add_msg(Message('An error occurred.', 'error'))
+            self.session.end('failed')
 
         # success
         else:
-            session.set_status(session.status or 'success')
-            session.end()
+            self.session.set_status(self.session.status or 'success')
+            self.session.end()
 
-    def __call__(self):
-        try:
-            for session in self.sessions:
-                self.process_session(session)
-        except TaskInterruption:
-            pass
-        finally:
-            self.con.close()
-            self.host.lock = None
-            self.host.save(update_fields=['lock'])
 
-@shared_task
-def process_sessions(host_id, session_ids, fabric_config=None):
-    processor = SessionProcessor(host_id, session_ids, fabric_config)
-    processor()
+@shared_task(bind=True)
+def process_session(self, host_id, session_id, fabric_config, cleanup=False):
+    task_id = self.request.id
+    processor = SessionProcessor(host_id, session_id, fabric_config, task_id)
+    signal.signal(signal.SIGUSR1, processor.interrupt)
+
+    try:
+        processor.run()
+    except TaskInterruption:
+        pass
+    finally:
+        processor.con.close()
+        if cleanup:
+            processor.host.release_lock()

@@ -134,7 +134,6 @@ class Session(metaclass=SessionRegistration):
         self._db = db
         self.start = db.start
         self.end = db.end
-        self.cancel = db.cancel
 
     @property
     def status(self):

@@ -1,18 +1,12 @@
 # -*- coding: utf-8 -*-
 
-from multiprocessing import Process
-from multiprocessing import JoinableQueue
-from threading import Thread
-import logging
-
-from django.contrib import messages
-from django.contrib.contenttypes.models import ContentType
+from celery import chain
 
 import minke.sessions
 from .messages import Message
 from .messages import ExceptionMessage
 from .models import MinkeSession
-from .tasks import process_sessions
+from .tasks import process_session
 
 
 def process(session_cls, queryset, session_data, user,
@@ -59,20 +53,20 @@ def process(session_cls, queryset, session_data, user,
     # run celery-tasks to process the sessions...
     results = list()
     for host, sessions in session_groups.items():
+        session_chain = [process_session.si(host.id, s.id, config) for s in sessions[:-1]]
+        session_chain.append(process_session.si(host.id, sessions[-1].id, config, True))
         try:
-            # FIXME: celery-4.2.1 fails to raise an exception if rabbitmq is
-            # down or no celery-worker is running at all... hope for 4.3.x
-            session_ids = [s.id for s in sessions]
-            result = process_sessions.delay(host.id, session_ids, config)
-            for session in sessions: session.track(result.task_id)
+            result = chain(*session_chain).delay()
             results.append((result, [s.id for s in sessions]))
-        except process_sessions.OperationalError:
-            host.lock = None
-            host.save(update_fields=['lock'])
+
+        # FIXME: celery-4.2.1 fails to raise an exception if rabbitmq is
+        # down or no celery-worker is running at all... hope for 4.3.x
+        except process_session.OperationalError:
+            host.release_lock()
             for session in sessions:
                 msg = 'Could not process session.'
                 session.add_msg(ExceptionMessage())
-                session.end()
+                session.end('failed')
                 if console: session.prnt(session)
 
 
