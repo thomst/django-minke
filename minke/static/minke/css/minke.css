@@ -48,8 +48,8 @@
     background-color: #fff6f6;
 }
 
-#result_list tr.minkeobj.running input,
-#result_list tr.minkeobj.initialized input,
+#result_list tr.minkeobj.running td:first-child input,
+#result_list tr.minkeobj.initialized td:first-child input,
 #result_list.running th:first-child div {
     display: none;
 }
