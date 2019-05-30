@@ -36,7 +36,7 @@
     </tr>
     {% if session %}
         <tr id="session_{{session.id}}" class="session {% cycle 'row1' 'row2' %} {{session.session_status}} {{ session.proc_status }}" data-id="{{session.id}}" data-minkeobj-id="{{session.minkeobj_id}}" data-proc-status="{{session.proc_status}}" data-msg-count="{{session.messages.all|length}}"><td colspan="100">
-            <p><span{% if session.session_description %} title="{{session.session_description}}"{% endif %}><b>{{session.session_verbose_name}}</b></span> - <span class="session_proc_info">{{session.proc_info}}</span></p>
+            <p><span{% if session.session_description %} title="{{session.session_description}}"{% endif %}><b>{{session.session_verbose_name}}</b></span> - [<span class="session_proc_info">{{session.proc_info}}</span>]</p>
             <ul class="messagelist">
             {% if session.messages.all %}
                 {% for msg in session.messages.all %}

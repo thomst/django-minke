@@ -134,6 +134,7 @@ class Session(metaclass=SessionRegistration):
         self._db = db
         self.start = db.start
         self.end = db.end
+        self.cancel = db.cancel
 
     @property
     def status(self):
@@ -160,16 +161,16 @@ class Session(metaclass=SessionRegistration):
         """
         Set session-status. Pass a valid session-status or a boolean.
         """
-        statuus = {'success': 0, 'warning': 1, 'error': 2}
+        states = dict(self._db.RESULT_STATES)
         if type(status) == bool:
             status = 'success' if status else 'error'
-        elif status.lower() in statuus.keys():
+        elif status.lower() in states.keys():
             status = status.lower()
         else:
-            msg = 'session-status must be one of {}'.format(statuus)
+            msg = 'session-status must be one of {}'.format(states)
             raise InvalidMinkeSetup(msg)
 
-        if not self.status or not alert or statuus[self.status] < statuus[status]:
+        if not self.status or not alert or states[self.status] < states[status]:
             self._db.session_status = status
 
     # helper-methods

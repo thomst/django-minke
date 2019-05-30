@@ -3,7 +3,7 @@
 sessions = {};
 var interval = 400;
 var error_msg = 'minkeapi-error: ';
-var end_statuus = ['done', 'stopped', 'canceled', 'failed']
+var end_statuus = ['succeeded', 'stopped', 'canceled', 'failed']
 var baseurl = window.location.protocol + '//'
             + window.location.host
             + '/minkeapi/sessions/'

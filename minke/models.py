@@ -43,17 +43,18 @@ class MinkeSession(models.Model):
     objects = SessionDataQuerySet.as_manager()
 
     RESULT_STATES = (
-        ('success', 'success'),
-        ('warning', 'warning'),
-        ('error', 'error'),
+        ('success', 0),
+        ('warning', 1),
+        ('error', 2),
     )
     PROC_STATES = (
-        ('initialized', '[waiting...]'),
-        ('running', '[running...]'),
-        ('done', '[completed in {0:.1f} seconds]'),
-        ('stopped', '[stopped after {0:.1f} seconds]'),
-        ('canceled', '[canceled!]'),
-        ('failed', '[failed!]'),
+        ('initialized', 'waiting...'),
+        ('running', 'running...'),
+        ('succeeded', 'succeeded in {0:.1f} seconds'),
+        ('stopping', 'stopping...'),
+        ('stopped', 'stopped after {0:.1f} seconds'),
+        ('canceled', 'canceled!'),
+        ('failed', 'failed!'),
     )
 
     # those fields will be derived from the session-class
@@ -96,16 +97,33 @@ class MinkeSession(models.Model):
         self.start_time = datetime.datetime.now()
         self.save(update_fields=['proc_status', 'start_time'])
 
-    def end(self, proc_status='done'):
+    def end(self, proc_status='succeeded'):
         self.proc_status = proc_status
         self.end_time = datetime.datetime.now()
         self.run_time = self.end_time - self.start_time
-        update_fields = ['proc_status', 'session_status', 'end_time', 'run_time']
-        self.save(update_fields=update_fields)
+        self.task_id = None
+        fields = ['proc_status', 'session_status', 'end_time', 'run_time', 'task_id']
+        self.save(update_fields=fields)
 
     def cancel(self):
-        self.proc_status = 'canceled'
-        self.save(update_fields=['proc_status'])
+        if self.is_waiting:
+            self.proc_status = 'canceled'
+            self.save(update_fields=['proc_status'])
+        elif self.is_running:
+            self.proc_status = 'stopping'
+            self.save(update_fields=['proc_status'])
+
+    @property
+    def is_waiting(self):
+        return self.proc_status == 'initialized'
+
+    @property
+    def is_running(self):
+        return self.proc_status in ['running', 'stopping']
+
+    @property
+    def is_done(self):
+        return self.proc_status in ['succeeded', 'canceled', 'stopped', 'failed']
 
     @property
     def proc_info(self):
