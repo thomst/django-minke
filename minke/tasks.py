@@ -31,8 +31,11 @@ class SessionProcessor:
     """
     Process sessions.
     """
-    def __init__(self, host_id, session_id, fabric_config, task_id):
+    def __init__(self, host_id, session_id, fabric_config, task_id, cleanup):
+        self.task_id = task_id
+        self.cleanup = cleanup
         self.host = Host.objects.get(pk=host_id)
+
         config = MINKE_FABRIC_CONFIG.clone()
         config.load_snakeconfig(fabric_config or dict())
         hostname = self.host.hostname or self.host.name
@@ -40,20 +43,17 @@ class SessionProcessor:
 
         REGISTRY.reload()
         self.minke_session = MinkeSession.objects.get(pk=session_id)
-        self.minke_session.track(task_id)
         session_cls = REGISTRY[self.minke_session.session_name]
         self.session = session_cls(self.con, self.minke_session)
 
     def interrupt(self, signum, frame):
-        self.minke_session.cancel()
         raise TaskInterruption
 
     def run(self):
-        if self.minke_session.is_done:
-            return
         try:
-            self.session.start()
-            self.session.process()
+            started = self.session.start(self.task_id)
+            if not started: return
+            else: self.session.process()
 
         # paramiko- and socket-related exceptions (ssh-layer)
         except (SSHException, GaiError, SocketError):
@@ -82,18 +82,16 @@ class SessionProcessor:
             self.session.set_status(self.session.status or 'success')
             self.session.end()
 
+        # cleanup
+        finally:
+            self.con.close()
+            if self.cleanup:
+                self.host.release_lock()
+
 
 @shared_task(bind=True)
-def process_session(self, host_id, session_id, fabric_config, cleanup=False):
+def process_session(self, host_id, session_id, config, cleanup=False):
     task_id = self.request.id
-    processor = SessionProcessor(host_id, session_id, fabric_config, task_id)
+    processor = SessionProcessor(host_id, session_id, config, task_id, cleanup)
     signal.signal(signal.SIGUSR1, processor.interrupt)
-
-    try:
-        processor.run()
-    except TaskInterruption:
-        pass
-    finally:
-        processor.con.close()
-        if cleanup:
-            processor.host.release_lock()
+    processor.run()

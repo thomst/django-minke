@@ -15,10 +15,8 @@ Including another URLconf
 """
 from django.conf.urls import url
 from .views import SessionListAPI
-from .views import SessionRevokeAPI
 
 
 urlpatterns = [
     url(r'^minkeapi/sessions/', SessionListAPI.as_view(), name='minke_session_api'),
-    url(r'^minkeapi/session/(?P<pk>[0-9]+)/', SessionRevokeAPI.as_view(), name='minke_session_api'),
 ]

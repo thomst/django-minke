@@ -17,7 +17,6 @@ from rest_framework.generics import GenericAPIView
 from rest_framework.filters import BaseFilterBackend
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.exceptions import NotFound
-from celery.task.control import revoke
 
 from minke import settings
 from minke import engine
@@ -153,24 +152,14 @@ class SessionListAPI(ListAPIView):
     filter_backends = (FilterBackend,)
     queryset = MinkeSession.objects.prefetch_related('messages')
 
+    def put(self, request, *arg, **kwargs):
+        queryset = self.filter_queryset(self.get_queryset())
 
-class SessionRevokeAPI(GenericAPIView):
-    """
-    API endpoint to revoke a task a session runs with.
-    """
-    permission_classes = (IsAuthenticated,)
-    serializer_class = SessionSerializer
-    queryset = MinkeSession.objects.prefetch_related('messages')
+        canceled_sessions = list()
+        for session in queryset:
+            if session.proc_status in ['initialized', 'running']:
+                canceled = session.cancel()
+                if canceled: canceled_sessions.append(session)
 
-    def revoke(self, session):
-        if session.task_id:
-            revoke(session.task_id, signal='USR1', terminate=True)
-        else:
-            session.cancel()
-
-    def put(self, request, *args, **kwargs):
-        session = self.get_object()
-        if not session.is_done:
-            self.revoke(session)
-        serializer = self.get_serializer(session)
+        serializer = self.get_serializer(canceled_sessions, many=True)
         return Response(serializer.data)

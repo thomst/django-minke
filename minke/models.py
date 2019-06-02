@@ -5,7 +5,10 @@ import datetime
 from time import time
 from collections import OrderedDict
 
+from celery.task.control import revoke
+
 from django.db import models
+from django.db import transaction
 from django.contrib.auth.models import User
 from django.contrib.contenttypes.fields import GenericForeignKey
 from django.contrib.contenttypes.fields import GenericRelation
@@ -92,10 +95,28 @@ class MinkeSession(models.Model):
         self.task_id = task_id
         self.save(update_fields=['task_id'])
 
-    def start(self):
-        self.proc_status = 'running'
-        self.start_time = datetime.datetime.now()
-        self.save(update_fields=['proc_status', 'start_time'])
+    def start(self, task_id):
+        session = MinkeSession.objects.select_for_update().get(pk=self.id)
+        with transaction.atomic():
+            if session.is_waiting:
+                self.task_id = session.task_id = task_id
+                self.proc_status = session.proc_status = 'running'
+                self.start_time = session.start_time = datetime.datetime.now()
+                session.save(update_fields=['proc_status', 'start_time', 'task_id'])
+                return True
+
+    def cancel(self):
+        session = MinkeSession.objects.select_for_update().get(pk=self.id)
+        with transaction.atomic():
+            if session.is_waiting:
+                self.proc_status = session.proc_status = 'canceled'
+                session.save(update_fields=['proc_status'])
+                return True
+            elif session.proc_status == 'running':
+                self.proc_status = session.proc_status = 'stopping'
+                session.save(update_fields=['proc_status'])
+                revoke(session.task_id, signal='USR1', terminate=True)
+                return True
 
     def end(self, proc_status='succeeded'):
         self.proc_status = proc_status
@@ -104,14 +125,6 @@ class MinkeSession(models.Model):
         self.task_id = None
         fields = ['proc_status', 'session_status', 'end_time', 'run_time', 'task_id']
         self.save(update_fields=fields)
-
-    def cancel(self):
-        if self.is_waiting:
-            self.proc_status = 'canceled'
-            self.save(update_fields=['proc_status'])
-        elif self.is_running:
-            self.proc_status = 'stopping'
-            self.save(update_fields=['proc_status'])
 
     @property
     def is_waiting(self):
