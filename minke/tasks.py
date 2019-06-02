@@ -47,27 +47,29 @@ class SessionProcessor:
         self.session = session_cls(self.con, self.minke_session)
 
     def interrupt(self, signum, frame):
-        raise TaskInterruption
+        if self.minke_session.is_running:
+            raise TaskInterruption
 
     def run(self):
         try:
             started = self.session.start(self.task_id)
             if not started: return
-            else: self.session.process()
+            self.session.process()
+            self.session.end()
 
         # paramiko- and socket-related exceptions (ssh-layer)
         except (SSHException, GaiError, SocketError):
             self.session.add_msg(ExceptionMessage())
-            self.session.end('failed')
+            self.session.fail()
 
         # invoke-related exceptions (shell-layer)
         except (Failure, ThreadException, UnexpectedExit):
             self.session.add_msg(ExceptionMessage())
-            self.session.end('failed')
+            self.session.fail()
 
         # task-interruption
         except TaskInterruption:
-            self.session.end('stopped')
+            self.session.end()
 
         # other exceptions
         except Exception:
@@ -76,11 +78,6 @@ class SessionProcessor:
             if settings.MINKE_DEBUG: self.session.add_msg(exc_msg)
             else: self.session.add_msg(Message('An error occurred.', 'error'))
             self.session.end('failed')
-
-        # success
-        else:
-            self.session.set_status(self.session.status or 'success')
-            self.session.end()
 
         # cleanup
         finally:

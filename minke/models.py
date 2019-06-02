@@ -91,10 +91,6 @@ class MinkeSession(models.Model):
         self.session_data = session_data
         self.save()
 
-    def track(self, task_id):
-        self.task_id = task_id
-        self.save(update_fields=['task_id'])
-
     def start(self, task_id):
         session = MinkeSession.objects.select_for_update().get(pk=self.id)
         with transaction.atomic():
@@ -118,12 +114,28 @@ class MinkeSession(models.Model):
                 revoke(session.task_id, signal='USR1', terminate=True)
                 return True
 
-    def end(self, proc_status='succeeded'):
-        self.proc_status = proc_status
+    def end(self):
+        session = MinkeSession.objects.select_for_update().get(pk=self.id)
+        with transaction.atomic():
+            if session.proc_status == 'running':
+                self.session_status = session.session_status = session.session_status or 'success'
+                self.proc_status = session.proc_status = 'succeeded'
+                fields = ['proc_status', 'session_status', 'end_time', 'run_time', 'task_id']
+            elif session.proc_status == 'stopping':
+                self.proc_status = session.proc_status = 'stopped'
+                fields = ['proc_status', 'end_time', 'run_time', 'task_id']
+            self.end_time = session.end_time = datetime.datetime.now()
+            self.run_time = session.run_time = session.end_time - session.start_time
+            self.task_id = session.task_id = None
+            session.save(update_fields=fields)
+            return True
+
+    def fail(self):
+        self.proc_status = 'failed'
         self.end_time = datetime.datetime.now()
         self.run_time = self.end_time - self.start_time
         self.task_id = None
-        fields = ['proc_status', 'session_status', 'end_time', 'run_time', 'task_id']
+        fields = ['proc_status', 'end_time', 'run_time', 'task_id']
         self.save(update_fields=fields)
 
     @property
