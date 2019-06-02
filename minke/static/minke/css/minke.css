@@ -1,3 +1,16 @@
+#result_list tr.session td {
+    color: #666;
+}
+
+#result_list *[title] {
+    cursor: help;
+}
+
+#result_list ul.messagelist pre {
+    margin: 0;
+    padding: 0;
+}
+
 #result_list ul.messagelist li {
     padding-left: 45px;
     margin: 10px 0 0 0;
@@ -7,15 +20,6 @@
     overflow: auto;
     position: relative;
     left: -8px;
-}
-
-#result_list tr.session td {
-    color: #666;
-}
-
-#result_list ul.messagelist pre {
-    margin: 0;
-    padding: 0;
 }
 
 #result_list tr.minkeobj.initialized  > *,
