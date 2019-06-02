@@ -5,7 +5,7 @@ var interval = 400;
 var error_msg = 'minkeapi-error: ';
 var baseurl = window.location.protocol + '//'
             + window.location.host
-            + '/minkeapi/sessions/'
+            + '/minkeapi/sessions/?id__in=';
 
 class Session {
     constructor(session_el) {
@@ -29,14 +29,13 @@ class Session {
         this.session.data('procStatus', session.proc_status);
         this.session.find('span.session_proc_info').text(session.proc_info)
             .css('fontSize', '110%').animate({fontSize: '100%'}, 'fast');
-        this.minkeobj.removeClass(['initialized', 'running']);
+        this.minkeobj.removeClass(['initialized', 'running', 'stopping']);
         this.minkeobj.addClass(session.proc_status);
-        this.session.removeClass(['initialized', 'running']);
+        this.session.removeClass(['initialized', 'running', 'stopping']);
         this.session.addClass(session.proc_status);
     }
     updateMessages(session) {
         var that = this;
-        // if (this.session.data('msgCount') == 0) addMessageList();
         session.messages.slice(this.session.data('msgCount'))
             .forEach(function(msg) {that.addMessage(msg)});
         this.session.data('msgCount', session.messages.length);
@@ -52,14 +51,26 @@ class Session {
     }
 }
 
+function getJson (url) {
+    $.getJSON(url, processJson).fail(ajaxFail).done(run)
+}
+
 function processJson(json) {
     $.each(json, function(i, session) {sessions[session.id].update(session)})
 }
 
-function getJson (url) {
-    $.getJSON(url, processJson)
-        .fail(function(result) {console.log(error_msg + result.responseJSON.detail)})
-        .done(run)
+function ajaxFail(result) {
+    console.log(error_msg + result.responseJSON.detail)
+}
+
+function stopSession() {
+    var url = baseurl + $(this).parent().parent().next().data('id');
+    $.ajax({url: url, method: 'PUT'}).fail(ajaxFail)
+}
+
+function stopAllSessions() {
+    var url = baseurl + $.map(sessions, function(session, i) {return session.id});
+    $.ajax({url: url, method: 'PUT'}).fail(ajaxFail)
 }
 
 function run() {
@@ -67,7 +78,7 @@ function run() {
     if (session_ids.length) {
         $('#action-toggle').prop('disabled', true);
         $('#result_list').addClass('running');
-        var url = baseurl + '?id__in=' + session_ids;
+        var url = baseurl + session_ids;
         window.setTimeout(getJson, interval, url);
     } else {
         $('#action-toggle').prop('disabled', false);
@@ -76,6 +87,13 @@ function run() {
 }
 
 $(document).ready(function () {
+    // setup header-csrf-token
+    $.ajaxSetup({headers: {'X-CSRFToken': $("[name=csrfmiddlewaretoken]").val()}});
+    // prepare session-stopper...
+    var stop = $('<div></div>').addClass('session_stopper').click(stopSession);
+    var stopall = $('<div></div>').addClass('session_stopper').click(stopAllSessions);
+    $('td.action-checkbox').append(stop);
+    $('th.action-checkbox-column').prepend(stopall);
     // scroll all minke-messages to the bottom...
     $('ul.messagelist > li').each(function (i,e) {$(e).scrollTop($(e)[0].scrollHeight)});
     // initialize session-objects...

@@ -1,21 +1,31 @@
 #result_list ul.messagelist li {
     padding-left: 45px;
-    margin-bottom: 8px;
+    margin: 10px 0 0 0;
     border: 1px solid #eee;
     background-position: 12px 12px;
     max-height: 200px;
     overflow: auto;
+    position: relative;
+    left: -8px;
 }
 
 #result_list tr.session td {
-    border: 0;
-    padding: 8px 8px 0 33px;
     color: #666;
 }
 
 #result_list ul.messagelist pre {
     margin: 0;
     padding: 0;
+}
+
+#result_list tr.minkeobj.initialized  > *,
+#result_list tr.minkeobj.running  > *,
+#result_list tr.minkeobj.stopping  > *,
+#result_list tr.minkeobj.stopped  > *,
+#result_list tr.minkeobj.failed  > *,
+#result_list tr.minkeobj.canceled  > *,
+#result_list tr.minkeobj.succeeded > * {
+    border: 0;
 }
 
 #result_list tr.minkeobj.success {
@@ -48,24 +58,33 @@
     background-color: #fff6f6;
 }
 
-#result_list tr.minkeobj.running td:first-child input,
+#result_list div.session_stopper::after {
+    content: '❎';
+    font-size: 18px;
+    cursor: pointer;
+}
+
+#result_list tr.minkeobj.stopping div.session_stopper::after {
+    content: '⧖';
+    cursor: auto;
+}
+
+#result_list tr.minkeobj.running div.session_stopper,
+#result_list.running th div.session_stopper {
+    color: red;
+}
+
+#result_list div.session_stopper,
 #result_list tr.minkeobj.initialized td:first-child input,
-#result_list.running th:first-child div {
+#result_list tr.minkeobj.running td:first-child input,
+#result_list tr.minkeobj.stopping td:first-child input,
+#result_list.running th:first-child div.text {
     display: none;
 }
 
-#result_list.running th:first-child::after {
-    content: '⧗';
-    font-size: 160%;
-    font-weight: normal;
-}
-
-#result_list tr.minkeobj.running td:first-child::after {
-    content: '⧗';
-    font-size: 140%;
-}
-
-#result_list tr.minkeobj.initialized td:first-child::after {
-    content: '⧖';
-    font-size: 140%;
+#result_list tr.minkeobj.initialized div.session_stopper,
+#result_list tr.minkeobj.running div.session_stopper,
+#result_list tr.minkeobj.stopping div.session_stopper,
+#result_list.running th:first-child div.session_stopper {
+    display: block;
 }
