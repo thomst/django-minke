@@ -54,30 +54,40 @@ class SessionProcessor:
         try:
             started = self.session.start(self.task_id)
             if not started: return
-            self.session.process()
-            self.session.end()
 
-        # paramiko- and socket-related exceptions (ssh-layer)
-        except (SSHException, GaiError, SocketError):
-            self.session.add_msg(ExceptionMessage())
-            self.session.fail()
+            try:
+                self.session.process()
 
-        # invoke-related exceptions (shell-layer)
-        except (Failure, ThreadException, UnexpectedExit):
-            self.session.add_msg(ExceptionMessage())
-            self.session.fail()
+            # Since task-interruption could happen all along between
+            # session.start() and session.end() we handle it in the outer
+            # try-construct.
+            except TaskInterruption:
+                raise
+
+            # paramiko- and socket-related exceptions (ssh-layer)
+            except (SSHException, GaiError, SocketError):
+                self.session.fail()
+                self.session.add_msg(ExceptionMessage())
+
+            # invoke-related exceptions (shell-layer)
+            except (Failure, ThreadException, UnexpectedExit):
+                self.session.fail()
+                self.session.add_msg(ExceptionMessage())
+
+            # other exceptions raised by process (which is user-code)
+            except Exception:
+                self.session.fail()
+                exc_msg = ExceptionMessage(print_tb=True)
+                logger.error(exc_msg.text)
+                if settings.MINKE_DEBUG: self.session.add_msg(exc_msg)
+                else: self.session.add_msg(Message('An error occurred.', 'error'))
+
+            else:
+                self.session.end()
 
         # task-interruption
         except TaskInterruption:
             self.session.end()
-
-        # other exceptions
-        except Exception:
-            exc_msg = ExceptionMessage(print_tb=True)
-            logger.error(exc_msg.text)
-            if settings.MINKE_DEBUG: self.session.add_msg(exc_msg)
-            else: self.session.add_msg(Message('An error occurred.', 'error'))
-            self.session.end('failed')
 
         # cleanup
         finally:
