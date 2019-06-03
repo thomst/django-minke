@@ -121,7 +121,7 @@ class SessionView(PermissionRequiredMixin, View):
                        fabric_config=fabric_config, wait=wait)
 
 
-class FilterBackend(BaseFilterBackend):
+class LookupFilter(BaseFilterBackend):
     """
     Use the url-query as lookup-params.
     """
@@ -143,13 +143,21 @@ class FilterBackend(BaseFilterBackend):
             raise InvalidURLQuery(msg)
 
 
+class UserFilter(BaseFilterBackend):
+    """
+    Filter sessions by user.
+    """
+    def filter_queryset(self, request, queryset, view):
+        return queryset.filter(user=request.user)
+
+
 class SessionListAPI(ListAPIView):
     """
     API endpoint to retrieve sessions.
     """
     permission_classes = (IsAuthenticated,)
     serializer_class = SessionSerializer
-    filter_backends = (FilterBackend,)
+    filter_backends = (LookupFilter, UserFilter)
     queryset = MinkeSession.objects.prefetch_related('messages')
 
     def put(self, request, *arg, **kwargs):
