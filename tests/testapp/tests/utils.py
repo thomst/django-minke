@@ -56,7 +56,7 @@ def create_test_data():
     create_players()
 
 def create_minkesession(minkeobj, session_cls=DummySession, data=None,
-    status='success', user='admin', current=True, proc_status='done'):
+    status='success', user='admin', current=True, proc_status='succeeded'):
     user = User.objects.get(username=user)
     session = MinkeSession()
     session.user = user

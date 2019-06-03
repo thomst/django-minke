@@ -211,7 +211,7 @@ class ViewsTest(TestCase):
             url = baseurl + url_query
             resp = self.client.get(url)
             self.assertEqual(resp.status_code, 200)
-            matches = re.findall('<tr class="row[12] \w+ done">', resp.content.decode('utf-8'))
+            matches = re.findall('<tr class="minkeobj[^"]+succeeded[^"]*">', resp.content.decode('utf-8'))
             self.assertEqual(len(matches), count)
 
         self.client.logout()
@@ -219,13 +219,14 @@ class ViewsTest(TestCase):
     def test_06_session_api(self):
         servers = list(Server.objects.filter(hostname__contains='222'))
         server_ct = ContentType.objects.get_for_model(Server)
+        session_ids = list()
         for server in servers:
             session = create_minkesession(server, user='anyuser')
             session.messages.add(PreMessage('foobär'), bulk=False)
+            session_ids.append(str(session.id))
 
-        url = reverse('minke_session_api', args=['server'])
-        object_ids = [str(s.id) for s in servers]
-        url += '?object_ids=' + ','.join(object_ids)
+        url = reverse('minke_session_api')
+        url += '?id__in=' + ','.join(session_ids)
 
         self.client.force_login(self.anyuser)
         resp = self.client.get(url)
@@ -234,12 +235,12 @@ class ViewsTest(TestCase):
         content = json.loads(resp.content.decode('utf-8'))
         self.assertEqual(len(content), len(servers))
         for session in content:
-            self.assertIn(str(session['minkeobj_id']), object_ids)
+            self.assertIn(str(session['id']), session_ids)
             self.assertEqual(session['session_status'], 'success')
-            self.assertEqual(session['proc_status'], 'done')
-            self.assertIn(DummySession.verbose_name, session['get_html'])
-            self.assertIn('foobär', session['get_html'])
-            self.assertTrue(session['finished'])
+            self.assertEqual(session['proc_status'], 'succeeded')
+            self.assertIn('succeeded in', session['proc_info'])
+            self.assertIn('foobär', session['messages'][0]['html'])
+            self.assertTrue(session['is_done'])
 
         self.client.logout()
 
