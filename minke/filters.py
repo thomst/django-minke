@@ -12,6 +12,9 @@ class StatusFilter(admin.SimpleListFilter):
     def __init__(self, request, params, model, model_admin):
         super().__init__(request, params, model, model_admin)
         self.states = ('success', 'warning', 'error')
+        # unfortunatly it is not possible to get the real changlist-queryset
+        # at this point as it isn't filtered yet. So we just grab all sessions
+        # that belongs to the user and model.
         self.sessions = MinkeSession.objects.get_currents_by_model(request.user, model)
 
     def has_output(self):
@@ -27,7 +30,7 @@ class StatusFilter(admin.SimpleListFilter):
         for status in self.values():
             for session in self.sessions.all():
                 if not session.session_status == status: continue
-                ids.append(session.minkeobj.id)
+                ids.append(session.minkeobj_id)
         return queryset.filter(id__in=ids)
 
     def choices(self, changelist):

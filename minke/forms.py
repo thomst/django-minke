@@ -1,13 +1,14 @@
 # -*- coding: utf-8 -*-
 
 from django import forms
+from django.utils.translation import gettext_lazy as _
 from .utils import prepare_shell_command
 
 
 class MinkeForm(forms.Form):
-    action = forms.CharField(required=True, widget=forms.HiddenInput())
+    session = forms.CharField(required=True, widget=forms.HiddenInput())
     wait = forms.BooleanField(
-        label='Wait till all sessions are processed.',
+        label=_('Wait till all sessions are processed.'),
         required=False)
 
     class Media:
@@ -16,8 +17,8 @@ class MinkeForm(forms.Form):
 
 class PassphraseForm(forms.Form):
     connect_kwargs_passphrase = forms.CharField(
-        label='Passphrase',
-        help_text='Passphrase to decrypt an ssh-private-key.',
+        label=_('Passphrase'),
+        help_text=_('Passphrase to decrypt an ssh-private-key.'),
         max_length=100,
         widget=forms.PasswordInput(attrs={
             'placeholder': 'Passphrase',
@@ -35,6 +36,10 @@ class CommandField(forms.CharField):
 
 class CommandForm(forms.Form):
     cmd = CommandField(
-        label='Command',
-        help_text='Command to execute. Use with care!',
+        label=_('Command'),
+        help_text=_('Command to execute. Use with care!'),
     )
+
+
+class SessionSelectForm(forms.Form):
+    session = forms.ChoiceField(label=_('Sessions:'))

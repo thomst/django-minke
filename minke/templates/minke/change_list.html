@@ -14,6 +14,7 @@
 
 {% block result_list %}
     {% if action_form and actions_on_top and cl.show_admin_actions %}{% admin_actions %}{% endif %}
-    {% minke_result_list cl %}
+    {% minke_session_bar %}
+    {% minke_result_list %}
     {% if action_form and actions_on_bottom and cl.show_admin_actions %}{% admin_actions %}{% endif %}
 {% endblock %}

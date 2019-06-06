@@ -116,16 +116,6 @@ class Session(metaclass=SessionRegistration):
     invoke_config = dict()
 
     @classmethod
-    def as_action(cls):
-        from .views import SessionView
-        def action(modeladmin, request, queryset):
-            session_view = SessionView.as_view()
-            return session_view(request, session_cls=cls, queryset=queryset)
-        action.__name__ = cls.__name__
-        action.short_description = cls.verbose_name
-        return action
-
-    @classmethod
     def get_form(cls):
         return cls.form
 

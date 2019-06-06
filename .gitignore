@@ -3,6 +3,7 @@
 *.backup
 .coverage
 .tox/
+.vscode/
 my.cnf
 /minke.egg-info
 /MANIFEST.in
