@@ -21,7 +21,7 @@ from .exceptions import InvalidMinkeSetup
 from .utils import JSONField
 
 
-class SessionDataQuerySet(models.QuerySet):
+class MinkeSessionQuerySet(models.QuerySet):
     def get_currents(self, user, minkeobjs):
         minkeobj_type = ContentType.objects.get_for_model(minkeobjs.model)
         minkeobj_ids = list(minkeobjs.all().values_list('id', flat=True))
@@ -43,7 +43,7 @@ class SessionDataQuerySet(models.QuerySet):
 
 
 class MinkeSession(models.Model):
-    objects = SessionDataQuerySet.as_manager()
+    objects = MinkeSessionQuerySet.as_manager()
 
     RESULT_STATES = (
         ('success', 0),
