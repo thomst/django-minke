@@ -52,7 +52,7 @@ class CommandGroup(models.Model):
     active = models.BooleanField(default=True)
 
     def get_commands(self):
-        return Command.objects.filter(commands=self).order_by('commandorder__order')
+        return Command.objects.filter(commandgroup=self).order_by('commandorder__order')
 
     def __str__(self):
         return self.label
