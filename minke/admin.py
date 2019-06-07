@@ -1,4 +1,5 @@
 # -*- coding: utf-8 -*-
+from pydoc import locate
 
 from django.contrib.admin.views.main import ChangeList
 from django.contrib.admin import helpers
@@ -164,10 +165,6 @@ class MinkeAdmin(admin.ModelAdmin):
         """
         Extend the modeladmin-changelist_view by session-processing.
         """
-        # some protection needed
-        if not self.has_view_or_change_permission(request):
-            raise PermissionDenied
-
         # Does the request something to do with sessions at all?
         if ('run_sessions' not in request.POST
         and 'clear_sessions' not in request.POST):

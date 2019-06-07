@@ -41,7 +41,8 @@ class ViewsTest(TestCase):
     def test_01_session_view(self):
         url_pattern = 'admin:{}_{}_changelist'
         post_data = dict()
-        post_data['action'] = LeaveAMessageSession.__name__
+        post_data['session'] = LeaveAMessageSession.__name__
+        post_data['run_sessions'] = True
 
         self.client.force_login(self.admin)
 
@@ -66,7 +67,8 @@ class ViewsTest(TestCase):
     def test_02_permissions(self):
         url = reverse('admin:minke_host_changelist')
         post_data = dict()
-        post_data['action'] = LeaveAMessageSession.__name__
+        post_data['session'] = LeaveAMessageSession.__name__
+        post_data['run_sessions'] = True
         post_data['_selected_action'] = self.player_ids[Host][0]
 
         # work with unprivileged user
@@ -96,7 +98,8 @@ class ViewsTest(TestCase):
     def test_03_session_raises_exception(self):
         url = reverse('admin:minke_host_changelist')
         post_data = dict()
-        post_data['action'] = ExceptionSession.__name__
+        post_data['session'] = ExceptionSession.__name__
+        post_data['run_sessions'] = True
         post_data['_selected_action'] = self.player_ids[Host][0]
         self.client.force_login(self.admin)
         old_minke_debug = settings.MINKE_DEBUG
@@ -118,7 +121,8 @@ class ViewsTest(TestCase):
         url = reverse('admin:testapp_anysystem_changelist')
         any_system_id = self.player_ids[AnySystem][0]
         post_data = dict()
-        post_data['action'] = DummySession.__name__
+        post_data['session'] = DummySession.__name__
+        post_data['run_sessions'] = True
         post_data['_selected_action'] = any_system_id
         invalid_form_data = post_data.copy()
         invalid_form_data['minke_form'] = True
