@@ -7,9 +7,14 @@ from .utils import prepare_shell_command
 
 class MinkeForm(forms.Form):
     session = forms.CharField(required=True, widget=forms.HiddenInput())
-    wait = forms.BooleanField(
-        label=_('Wait till all sessions are processed.'),
-        required=False)
+    select_across = forms.BooleanField(
+        widget=forms.HiddenInput(),
+        required=False,
+        initial=False)
+    minke_form = forms.BooleanField(
+        widget=forms.HiddenInput(),
+        required=False,
+        initial=True)
 
     class Media:
         css = {'all': ('minke/css/minke_form.css',)}

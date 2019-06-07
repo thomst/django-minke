@@ -94,11 +94,11 @@ class MinkeAdmin(admin.ModelAdmin):
             REGISTRY.reload()
             return REGISTRY.get(session_name, None)
 
-    def run_sessions(self, request, session_cls, queryset):
+    def run_sessions(self, request, session_cls, queryset, force_confirm=False):
         wait = session_cls.wait_for_execution
+        confirm = force_confirm or session_cls.confirm
         fabric_config = None
         session_data = dict()
-        confirm = session_cls.confirm
         session_form_cls = session_cls.get_form()
         fabric_form_cls = None
         render_params = dict()
@@ -110,52 +110,44 @@ class MinkeAdmin(admin.ModelAdmin):
                 msg = '{} could not be loaded'.format(settings.MINKE_FABRIC_FORM)
                 raise InvalidMinkeSetup(msg)
 
-        # do we have to work with a form?
+        # Do we have to work with a minke-form?
         if confirm or fabric_form_cls or session_form_cls:
 
-            # first time or validation?
+            # Do we come from a minke-form?
             from_form = request.POST.get('minke_form', False)
             if from_form:
-                minke_form = MinkeForm(request.POST)
+                minke_form = MinkeForm(request.POST, auto_id=False)
                 valid = minke_form.is_valid()
                 form_data = [request.POST]
             else:
-                minke_form = MinkeForm(dict(
-                    session=session_cls.__name__,
-                    wait=session_cls.wait_for_execution))
+                minke_form = MinkeForm(initial=request.POST, auto_id=False)
                 valid = False
                 form_data = list()
 
             # initiate fabric-form
             if fabric_form_cls:
-                fabric_form = fabric_form_cls(*form_data)
+                fabric_form = fabric_form_cls(*form_data, auto_id=False)
                 render_params['fabric_form'] = fabric_form
                 valid &= fabric_form.is_valid()
 
             # initiate session-form
             if session_form_cls:
-                session_form = session_cls.form(*form_data)
+                session_form = session_cls.form(*form_data, auto_id=False)
                 render_params['session_form'] = session_form
                 valid &= session_form.is_valid()
 
-            # render minke-form the first time or if form-data where not valid...
-            if not valid:
+            # render minke-form first time or if form-data is invalid
+            if not from_form or not valid:
                 render_params['title'] = session_cls.verbose_name,
                 render_params['minke_form'] = minke_form
                 render_params['objects'] = queryset
                 render_params['object_list'] = confirm
                 return render(request, 'minke/minke_form.html', render_params)
 
-            # get fabric-config from fabric-form...
-            if fabric_form_cls:
-                fabric_config = fabric_form.cleaned_data
-
-            # get session-data from session-form...
-            if session_form_cls:
-                session_data = session_form.cleaned_data
-
-            # update wait-param from minke-form...
-            wait = minke_form.cleaned_data['wait']
+            else:
+                # collect form-data
+                if fabric_form_cls: fabric_config = fabric_form.cleaned_data
+                if session_form_cls: session_data = session_form.cleaned_data
 
         # lets rock...
         engine.process(session_cls, queryset, session_data, request.user,
@@ -170,27 +162,35 @@ class MinkeAdmin(admin.ModelAdmin):
         and 'clear_sessions' not in request.POST):
             return super().changelist_view(request, extra_context)
 
-        # Try to get the changelist-instance. If this fails, we let the
-        # normal changelist_view handle the IncorrectLookupParameters-exception.
+        # setup
+        force_confirm = False
+        selected = request.POST.getlist(helpers.ACTION_CHECKBOX_NAME)
+        select_across = bool(int(request.POST.get('select_across', 0)))
+        session_form = self.get_session_select_form(request, request.POST)
+        redirect_url = request.get_full_path()
+
         try:
             cl = self.get_changelist_instance(request)
         except IncorrectLookupParameters:
-            return HttpResponseRedirect(request.get_full_path())
+            # Since we are coming from a form-subimission our url-query
+            # should be valid. So this shouldn't happen at all.
+            return HttpResponseRedirect(redirect_url)
 
         # Do we have any selected items? Else leave a message and redirect.
-        selected = request.POST.getlist(helpers.ACTION_CHECKBOX_NAME)
         if not selected:
             msg = _("No items selected.")
             self.message_user(request, msg, messages.WARNING)
-            return HttpResponseRedirect(request.get_full_path())
+            return HttpResponseRedirect(redirect_url)
 
-        # TODO: Do we want to support select-across? What do we else?
-        queryset = cl.get_queryset(request).filter(pk__in=selected)
+        # get queryset
+        queryset = cl.get_queryset(request)
+        if not select_across:
+            queryset = queryset.filter(pk__in=selected)
 
         # clear session-infos for selected items
         if 'clear_sessions' in request.POST:
             MinkeSession.objects.clear_currents(request.user, queryset)
-            return HttpResponseRedirect(request.get_full_path())
+            return HttpResponseRedirect(redirect_url)
 
         # run sessions
         elif 'run_sessions' in request.POST:
@@ -202,14 +202,21 @@ class MinkeAdmin(admin.ModelAdmin):
                 REGISTRY.reload()
                 session_cls = REGISTRY[session_name]
             else:
-                msg = _("No session selected that should be run.")
+                msg = _("No session selected.")
                 self.message_user(request, msg, messages.WARNING)
-                return HttpResponseRedirect(request.get_full_path())
+                return HttpResponseRedirect(redirect_url)
 
             # Do the user have permissions to run this session-type?
             if not self.permit_session(request, session_cls):
                 raise PermissionDenied
 
+            # If this is a select-across-request, we force confirmation
+            # and redirect to a show-all-changelist.
+            if select_across:
+                force_confirm = True
+                delimiter = '&' if '?' in redirect_url else '?'
+                redirect_url += delimiter + 'all='
+
             # run_sessions might want to render a minke- or session-form
-            response = self.run_sessions(request, session_cls, queryset)
-            return response or HttpResponseRedirect(request.get_full_path())
+            response = self.run_sessions(request, session_cls, queryset, force_confirm)
+            return response or HttpResponseRedirect(redirect_url)

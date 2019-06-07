@@ -11,7 +11,6 @@
 
     {% csrf_token %}
     {{ minke_form }}
-    <input type="hidden" name="minke_form" value="True">
 
     {% if fabric_form %}
         <fieldset><table>{{ fabric_form.as_table }}</table></fieldset>
