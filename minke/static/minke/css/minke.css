@@ -36,34 +36,29 @@ span.session_bar {
     border: 0;
 }
 
-#result_list tr.minkeobj.success {
-    background-color: #dfd;
-}
-
-#result_list tr.minkeobj.warning {
-    background-color: #ffc;
-}
-
-#result_list tr.minkeobj.error,
-#result_list tr.minkeobj.failed,
-#result_list tr.minkeobj.canceled,
-#result_list tr.minkeobj.stopped {
-    background-color: #ffefef;
-}
-
-#result_list tr.session.success {
+#result_list tr.row1.success,
+#result_list tr.row1 li.info {
     background-color: #e8ffe8;
 }
-
-#result_list tr.session.warning {
+#result_list tr.row2.success,
+#result_list tr.row2 li.info {
+    background-color: #dfd;
+}
+#result_list tr.row1.warning,
+#result_list tr.row1 li.warning {
     background-color: #ffffe6;
 }
-
-#result_list tr.session.error,
-#result_list tr.session.canceled,
-#result_list tr.session.stopped,
-#result_list tr.session.failed {
+#result_list tr.row2.warning,
+#result_list tr.row2 li.warning {
+    background-color: #ffc;
+}
+#result_list tr.row1.error,
+#result_list tr.row1 li.error {
     background-color: #fff6f6;
+}
+#result_list tr.row2.error,
+#result_list tr.row2 li.error {
+    background-color: #ffefef;
 }
 
 #result_list div.session_stopper::after {
