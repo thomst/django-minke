@@ -105,8 +105,9 @@ class MinkeSession(models.Model):
         session = MinkeSession.objects.select_for_update().get(pk=self.id)
         with transaction.atomic():
             if session.is_waiting:
+                self.session_status = session.session_status = 'error'
                 self.proc_status = session.proc_status = 'canceled'
-                session.save(update_fields=['proc_status'])
+                session.save(update_fields=['proc_status', 'session_status'])
                 return True
             elif session.proc_status == 'running':
                 self.proc_status = session.proc_status = 'stopping'
@@ -118,19 +119,22 @@ class MinkeSession(models.Model):
         session = MinkeSession.objects.select_for_update().get(pk=self.id)
         with transaction.atomic():
             if session.proc_status == 'running':
-                self.session_status = session.session_status = session.session_status or 'success'
-                self.proc_status = session.proc_status = 'succeeded'
-                fields = ['proc_status', 'session_status', 'end_time', 'run_time', 'task_id']
+                session_status = self.session_status or 'success'
+                proc_status = 'succeeded'
             elif session.proc_status == 'stopping':
-                self.proc_status = session.proc_status = 'stopped'
-                fields = ['proc_status', 'end_time', 'run_time', 'task_id']
+                session_status = 'error'
+                proc_status = 'stopped'
+            self.session_status = session.session_status = session_status
+            self.proc_status = session.proc_status = proc_status
             self.end_time = session.end_time = datetime.datetime.now()
             self.run_time = session.run_time = session.end_time - session.start_time
             self.task_id = session.task_id = None
+            fields = ['proc_status', 'session_status', 'end_time', 'run_time', 'task_id']
             session.save(update_fields=fields)
             return True
 
     def fail(self):
+        self.session_status = 'error'
         self.proc_status = 'failed'
         self.end_time = datetime.datetime.now()
         self.run_time = self.end_time - self.start_time
