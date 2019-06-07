@@ -63,7 +63,7 @@
 }
 
 #result_list div.session_stopper::after {
-    content: '❎';
+    content: '✕';
     font-size: 18px;
     cursor: pointer;
 }
