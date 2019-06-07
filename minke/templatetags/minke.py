@@ -1,6 +1,7 @@
 # -*- coding: utf-8 -*-
 from django.template import Library
 from django.contrib.admin.templatetags.admin_list import result_list
+from django.contrib.admin.templatetags.admin_list import admin_actions
 
 from ..models import MinkeSession
 from ..utils import item_by_attr
@@ -17,6 +18,10 @@ def minke_result_list(context):
     sorted = [item_by_attr(sessions, 'minkeobj_id', o.id) for o in cl.result_list]
     cxt['results'] = zip(cxt['results'], sorted)
     return cxt
+
+@register.inclusion_tag('minke/admin_actions.html', takes_context=True)
+def minke_admin_actions(context):
+    return admin_actions(context)
 
 @register.inclusion_tag('minke/session_bar.html', takes_context=True)
 def minke_session_bar(context):
