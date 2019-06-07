@@ -1,0 +1,6 @@
+{% extends 'admin/actions.html' %}
+{% load minke %}
+
+{% block actions-form %}
+{% minke_session_bar %}{% for field in action_form %}{% if field.label %}<label>{{ field.label }} {% endif %}{{ field }}{% if field.label %}</label>{% endif %}{% endfor %}
+{% endblock %}

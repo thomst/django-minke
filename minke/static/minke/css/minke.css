@@ -1,3 +1,7 @@
+span.session_bar {
+    margin-right: 18px;
+}
+
 #result_list tr.session td {
     color: #666;
 }
