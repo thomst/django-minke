@@ -13,6 +13,7 @@ from django.utils.text import camel_case_to_spaces
 from .models import Host
 from .models import MinkeModel
 from .models import MinkeSession
+from .models import CommandResult
 from .forms import CommandForm
 from .messages import ExecutionMessage
 from .messages import PreMessage
@@ -121,8 +122,8 @@ class Session(metaclass=SessionRegistration):
     def get_form(cls):
         return cls.form
 
-    def __init__(self, connection, db):
-        self.connection = connection
+    def __init__(self, con, db):
+        self._con = con
         self._db = db
         self._interrupt = None
         self._busy = False
@@ -168,6 +169,7 @@ class Session(metaclass=SessionRegistration):
         raise NotImplementedError('Your session must define a process-method!')
 
     def add_msg(self, msg):
+        # TODO: Choose a msg-class depending on the type ot the msg-argument.
         self._db.messages.add(msg, bulk=False)
 
     def set_status(self, status, alert=True):
@@ -208,37 +210,36 @@ class Session(metaclass=SessionRegistration):
         else:
             return result.ok
 
-    def run(self, cmd, *args, **kwargs):
+    def _run(self, cmd, **kwargs):
         """
-        run a command
+        A wrapper for fabric's Connection.run that returns a CommandResult
+        which is a model-representation of the original result-object.
         """
-        return self.connection.run(cmd, *args, **kwargs)
+        result = CommandResult(self._con.run(cmd, **kwargs))
+        self._db.commands.add(result, bulk=False)
+        return result
 
-    def execute(self, cmd, *args, **kwargs):
+    def run(self, cmd, add_msg=True, set_status=True, **kwargs):
         """
-        Run cmd, leave a message and set session-status.
+        Run cmd, leave a ExecutionMessage and set the session-status.
+        This method is protected from a soft-interruption.
         """
-        # TODO: Since the execute-method implements essential concepts of
-        # running commands, it should be the main-method for calling
-        # self.connection.run.
-        # Probably it would be good to rename it to 'run' itself, and add
-        # some kwargs to control whether a message will be added or a
-        # session-status will be set.
-
         # Set the busy-flag, to protect this code from being interrupted
         # by a soft interruption.
         self._busy = True
 
-        result = self.run(cmd, *args, **kwargs)
+        result = self._run(cmd, **kwargs)
+
         if result.failed:
-            self.add_msg(ExecutionMessage(result, 'error'))
-            self.set_status('error')
+            level = status = 'error'
         elif result.stderr:
-            self.add_msg(ExecutionMessage(result, 'warning'))
-            self.set_status('warning')
+            level = status = 'warning'
         else:
-            self.add_msg(ExecutionMessage(result, 'info'))
-            self.set_status('success')
+            level = 'info'
+            status = 'success'
+
+        if add_msg: self.add_msg(ExecutionMessage(result, level))
+        if set_status: self.set_status(status)
 
         # Were this session canceled in the meantime?
         if self._interrupt:
@@ -246,6 +247,12 @@ class Session(metaclass=SessionRegistration):
 
         self._busy = False
         return result.ok
+
+    def execute(self, *args, **kwargs):
+        """
+        An alias for the run-method (deprecated).
+        """
+        self.run(*args, **kwargs)
 
 
 class UpdateEntriesSession(Session):
@@ -321,7 +328,7 @@ class SessionChain(Session):
 
     def process(self):
         for cls in self.sessions:
-            session = cls(self.connection, self._db)
+            session = cls(self._con, self._db)
             session.process()
             if session.status in self.break_states:
                 break
