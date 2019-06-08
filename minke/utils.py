@@ -11,7 +11,17 @@ def item_by_attr(list, attr, value, default=None):
     return next((i for i in list if hasattr(i, attr) and getattr(i, attr) == value), default)
 
 
+def prepare_shell_command(cmd):
+    # linux-shells need \n as newline
+    return cmd.replace('\r\n', '\n').replace('\r', '\n')
+
+
 class FabricConfig(Config):
+    """
+    A subclass of fabric's Config-class.
+    Add a load_snakeconfig-method, that takes a plain dict and parses its
+    snake-case-keys to fit into the nested default-config-structure.
+    """
     def load_snakeconfig(self, configdict):
         for param, value in configdict.items():
             # prevent overriding existing settings with None...
@@ -52,8 +62,3 @@ class JSONField(models.TextField):
 
     def get_prep_value(self, value):
         return json.dumps(value, cls=DjangoJSONEncoder)
-
-
-def prepare_shell_command(cmd):
-    # linux-shells need \n as newline
-    return cmd.replace('\r\n', '\n').replace('\r', '\n')

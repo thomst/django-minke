@@ -88,7 +88,7 @@ class SessionProcessor:
         except KeyboardInterrupt:
             self.session.end()
 
-        # at least close the connection
+        # at least close the ssh-connection
         finally:
             self.con.close()
 
