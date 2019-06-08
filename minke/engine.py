@@ -1,12 +1,14 @@
 # -*- coding: utf-8 -*-
 
 from celery import chain
+from celery import group
 
 import minke.sessions
 from .messages import Message
 from .messages import ExceptionMessage
 from .models import MinkeSession
 from .tasks import process_session
+from .tasks import cleanup
 
 
 def process(session_cls, queryset, session_data, user,
@@ -52,11 +54,19 @@ def process(session_cls, queryset, session_data, user,
 
     # run celery-tasks to process the sessions...
     results = list()
+    parrallel = session_cls.parrallel_per_host
     for host, sessions in session_groups.items():
-        session_chain = [process_session.si(host.id, s.id, config) for s in sessions[:-1]]
-        session_chain.append(process_session.si(host.id, sessions[-1].id, config, True))
+        # get process_session_signatures for all sessions
+        signatures = [process_session.si(host.id, s.id, config) for s in sessions]
+        # Wrap the session-signatures wihtin a group to support parrallel
+        # execution on a host-bases.
+        # NOTE: mixing groups and chains needs a result-backend supporting
+        # chords (s. celery-docs for canvas and result-backends for details)
+        if session_cls.parrallel_per_host: signatures = [group(*signatures)]
+        # append the cleanup-task
+        signatures.append(cleanup.si(host.id))
         try:
-            result = chain(*session_chain).delay()
+            result = chain(*signatures).delay()
             results.append((result, [s.id for s in sessions]))
 
         # FIXME: celery-4.2.1 fails to raise an exception if rabbitmq is

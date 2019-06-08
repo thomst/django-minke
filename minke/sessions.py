@@ -114,7 +114,8 @@ class Session(metaclass=SessionRegistration):
     wait_for_execution = False
     create_permissions = True
     invoke_config = dict()
-    soft_interruption = True
+    soft_interruption = False
+    parrallel_per_host = False
 
     @classmethod
     def get_form(cls):
@@ -217,6 +218,13 @@ class Session(metaclass=SessionRegistration):
         """
         Run cmd, leave a message and set session-status.
         """
+        # TODO: Since the execute-method implements essential concepts of
+        # running commands, it should be the main-method for calling
+        # self.connection.run.
+        # Probably it would be good to rename it to 'run' itself, and add
+        # some kwargs to control whether a message will be added or a
+        # session-status will be set.
+
         # Set the busy-flag, to protect this code from being interrupted
         # by a soft interruption.
         self._busy = True

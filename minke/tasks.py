@@ -30,9 +30,8 @@ class SessionProcessor:
     """
     Process sessions.
     """
-    def __init__(self, host_id, session_id, fabric_config, task_id, cleanup):
+    def __init__(self, host_id, session_id, fabric_config, task_id):
         self.task_id = task_id
-        self.cleanup = cleanup
         self.host = Host.objects.get(pk=host_id)
 
         config = MINKE_FABRIC_CONFIG.clone()
@@ -89,16 +88,24 @@ class SessionProcessor:
         except KeyboardInterrupt:
             self.session.end()
 
-        # cleanup
+        # at least close the connection
         finally:
             self.con.close()
-            if self.cleanup:
-                self.host.release_lock()
 
 
 @shared_task(bind=True)
-def process_session(self, host_id, session_id, config, cleanup=False):
+def process_session(self, host_id, session_id, config):
+    """
+    Task for session-processing.
+    """
     task_id = self.request.id
-    processor = SessionProcessor(host_id, session_id, config, task_id, cleanup)
+    processor = SessionProcessor(host_id, session_id, config, task_id)
     signal.signal(signal.SIGUSR1, processor.interrupt)
     processor.run()
+
+@shared_task
+def cleanup(host_id):
+    """
+    Task to release the host's lock.
+    """
+    Host.objects.get(pk=host_id).release_lock()
