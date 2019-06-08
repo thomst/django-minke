@@ -139,7 +139,7 @@ class MinkeSession(models.Model):
         self.end_time = datetime.datetime.now()
         self.run_time = self.end_time - self.start_time
         self.task_id = None
-        fields = ['proc_status', 'end_time', 'run_time', 'task_id']
+        fields = ['proc_status', 'session_status', 'end_time', 'run_time', 'task_id']
         self.save(update_fields=fields)
 
     @property
