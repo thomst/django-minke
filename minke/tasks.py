@@ -21,7 +21,6 @@ from .sessions import REGISTRY
 from .messages import Message
 from .messages import ExceptionMessage
 from .settings import MINKE_FABRIC_CONFIG
-from .exceptions import TaskInterruption
 
 
 logger = logging.getLogger(__name__)
@@ -47,8 +46,9 @@ class SessionProcessor:
         self.session = session_cls(self.con, self.minke_session)
 
     def interrupt(self, signum, frame):
+        # only stop a running session.
         if self.minke_session.is_running:
-            raise TaskInterruption
+            self.session.cancel(KeyboardInterrupt)
 
     def run(self):
         try:
@@ -61,7 +61,7 @@ class SessionProcessor:
             # Since task-interruption could happen all along between
             # session.start() and session.end() we handle it in the outer
             # try-construct.
-            except TaskInterruption:
+            except KeyboardInterrupt:
                 raise
 
             # paramiko- and socket-related exceptions (ssh-layer)
@@ -86,7 +86,7 @@ class SessionProcessor:
                 self.session.end()
 
         # task-interruption
-        except TaskInterruption:
+        except KeyboardInterrupt:
             self.session.end()
 
         # cleanup

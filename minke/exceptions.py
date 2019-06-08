@@ -11,7 +11,3 @@ class InvalidURLQuery(APIException):
     status_code = 400
     default_detail = 'Invalid url-query.'
     default_code = 'invalid_urlquery'
-
-
-class TaskInterruption(Exception):
-    pass

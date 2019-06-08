@@ -114,6 +114,7 @@ class Session(metaclass=SessionRegistration):
     wait_for_execution = False
     create_permissions = True
     invoke_config = dict()
+    soft_interruption = True
 
     @classmethod
     def get_form(cls):
@@ -122,9 +123,30 @@ class Session(metaclass=SessionRegistration):
     def __init__(self, connection, db):
         self.connection = connection
         self._db = db
+        self._interrupt = None
+        self._busy = False
         self.start = db.start
         self.end = db.end
         self.fail = db.fail
+
+    def cancel(self, interrupt):
+        """
+        Either raise interrupt instantly, or - in case of a soft-interruption -
+        let execute raise it when its work is done.
+        """
+        # NOTE: It seems that there is no chance to interrupt a shell-process
+        # started by fabric if no pty is in use.
+        # fabric.runners.Remote.send_interrupt says:
+        # > ... in v1, we just reraised the KeyboardInterrupt unless a PTY was
+        # > present; this seems to have been because without a PTY, the
+        # > below escape sequence is ignored, so all we can do is immediately
+        # > terminate on our end...
+        # Therefore it makes most sense to use a soft interruption if the
+        # run.pty-config is False. Otherwise we would instantly quit though
+        # but the shel-proc would run on and we lose its response.
+        self._interrupt = interrupt
+        if not self.soft_interruption or not self._busy:
+            raise self._interrupt
 
     @property
     def status(self):
@@ -195,6 +217,10 @@ class Session(metaclass=SessionRegistration):
         """
         Run cmd, leave a message and set session-status.
         """
+        # Set the busy-flag, to protect this code from being interrupted
+        # by a soft interruption.
+        self._busy = True
+
         result = self.run(cmd, *args, **kwargs)
         if result.failed:
             self.add_msg(ExecutionMessage(result, 'error'))
@@ -206,6 +232,11 @@ class Session(metaclass=SessionRegistration):
             self.add_msg(ExecutionMessage(result, 'info'))
             self.set_status('success')
 
+        # Were this session canceled in the meantime?
+        if self._interrupt:
+            raise self._interrupt
+
+        self._busy = False
         return result.ok
 
 
