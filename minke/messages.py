@@ -14,24 +14,39 @@ class ProxyMixin(object):
 
 
 class Message(ProxyMixin, BaseMessage):
-    def __init__(self, data, level='info'):
+    def __init__(self, data, level=None):
         super().__init__()
         self.text = self.get_text(data)
         self.html = self.get_html(data)
+        self.level = self.get_level(data, level)
 
+    def get_level(self, data, level):
+        """
+        Normalize message-level.
+        """
         levels = dict(self.LEVELS).keys()
-        if type(level) == bool:
-            self.level = 'info' if level else 'error'
-        elif level.lower() in levels:
-            self.level = level.lower()
+        if level is None:
+            # info as default-level
+            return 'info'
+        if isinstance(level, bool):
+            # True as info and False as error
+            return 'info' if level else 'error'
+        elif isinstance(level, str) and level.lower() in levels:
+            # level as it was given
+            return level.lower()
         else:
-            msg = 'message-level must be one of {}'.format(levels)
-            raise InvalidMinkeSetup(msg)
+            raise ValueError('invalid message-level: {}'.format(level))
 
     def get_text(self, data):
+        """
+        Derive message-text from data.
+        """
         return data
 
     def get_html(self, data):
+        """
+        Derive message-html from data.
+        """
         return escape(data)
 
 
@@ -56,6 +71,14 @@ class TableMessage(PreMessage):
 
 
 class ExecutionMessage(PreMessage):
+    def get_level(self, data, level):
+        # if a level-argument was passed just use it
+        if not level is None: return super().get_level(data, level)
+        # otherwise derive the level from result-characteristics
+        elif data.failed: return 'error'
+        elif data.stderr: return 'warning'
+        else: return 'info'
+
     def _get_chunk(self, prefix, lines):
         new_lines = list()
         for line in lines:
