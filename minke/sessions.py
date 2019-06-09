@@ -105,6 +105,23 @@ class SessionRegistration(type):
             cls.permissions += (permission_name,)
 
 
+def protect(method):
+    """
+    Decorator for session-methods to protect them from being interrupted by a
+    soft-interruption.
+    """
+    def wrapper(obj, *args, **kwargs):
+        # soft-interruption respects the busy-flag
+        obj._busy = True
+        result = method(obj, *args, **kwargs)
+        # if interruption was deferred now is the time to raise it
+        if obj._interrupt: raise obj._interrupt
+        obj._busy = False
+        return result
+
+    return wrapper
+
+
 class Session(metaclass=SessionRegistration):
     abstract = True
     verbose_name = None
@@ -219,40 +236,30 @@ class Session(metaclass=SessionRegistration):
         self._db.commands.add(result, bulk=False)
         return result
 
-    def run(self, cmd, add_msg=True, set_status=True, **kwargs):
+    @protect
+    def run(self, cmd, **kwargs):
         """
-        Run cmd, leave a ExecutionMessage and set the session-status.
-        This method is protected from a soft-interruption.
+        Simply run the command and return its resonse.
         """
-        # Set the busy-flag, to protect this code from being interrupted
-        # by a soft interruption.
-        self._busy = True
+        return self._run(cmd, **kwargs)
 
+    @protect
+    def execute(self, cmd, add_msg=True, set_status=True, **kwargs):
+        """
+        Run a command, leave a ExecutionMessage and set the session-status.
+        """
         result = self._run(cmd, **kwargs)
 
-        if result.failed:
-            level = status = 'error'
-        elif result.stderr:
-            level = status = 'warning'
-        else:
-            level = 'info'
-            status = 'success'
+        # choose mgs-level and session-status depending
+        # on result-characteristics
+        if result.failed: level = status = 'error'
+        elif result.stderr: level = status = 'warning'
+        else: level, status = ('info', 'success')
 
         if add_msg: self.add_msg(ExecutionMessage(result, level))
         if set_status: self.set_status(status)
 
-        # Were this session canceled in the meantime?
-        if self._interrupt:
-            raise self._interrupt
-
-        self._busy = False
         return result.ok
-
-    def execute(self, *args, **kwargs):
-        """
-        An alias for the run-method (deprecated).
-        """
-        self.run(*args, **kwargs)
 
 
 class UpdateEntriesSession(Session):
