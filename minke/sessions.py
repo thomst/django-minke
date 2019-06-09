@@ -113,7 +113,9 @@ def protect(method):
     soft-interruption.
     """
     def wrapper(obj, *args, **kwargs):
-        # soft-interruption respects the busy-flag
+        # are we already protected?
+        if obj._busy: return method(obj, *arg, **kwargs)
+        # otherwise protect the method-call by setting the busy-flag
         obj._busy = True
         result = method(obj, *args, **kwargs)
         # if interruption was deferred now is the time to raise it
