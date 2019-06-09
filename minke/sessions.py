@@ -13,10 +13,12 @@ from django.utils.text import camel_case_to_spaces
 from .models import Host
 from .models import MinkeModel
 from .models import MinkeSession
+from .models import BaseMessage
 from .models import CommandResult
 from .forms import CommandForm
-from .messages import ExecutionMessage
 from .messages import PreMessage
+from .messages import TableMessage
+from .messages import ExecutionMessage
 from .exceptions import InvalidMinkeSetup
 
 
@@ -185,8 +187,16 @@ class Session(metaclass=SessionRegistration):
         """
         raise NotImplementedError('Your session must define a process-method!')
 
-    def add_msg(self, msg):
-        # TODO: Choose a msg-class depending on the type ot the msg-argument.
+    def add_msg(self, msg, level=None):
+        """
+        Add a message to the session.
+        You could either pass an instance of a message-class, or any type the
+        message-classes are initiated with (string, tuple or result-object).
+        """
+        if isinstance(msg, str): msg = PreMessage(msg, level)
+        elif isinstance(msg, tuple): msg = TableMessage(msg, level)
+        elif isinstance(msg, Result): msg = ExecutionMessage(msg, level)
+        elif isinstance(msg, BaseMessage): pass
         self._db.messages.add(msg, bulk=False)
 
     def set_status(self, status, alert=True):
@@ -250,13 +260,12 @@ class Session(metaclass=SessionRegistration):
         """
         result = self._run(cmd, **kwargs)
 
-        # choose mgs-level and session-status depending
-        # on result-characteristics
-        if result.failed: level = status = 'error'
-        elif result.stderr: level = status = 'warning'
-        else: level, status = ('info', 'success')
+        # choose session-status depending on result-characteristics
+        if result.failed: status = 'error'
+        elif result.stderr: status = 'warning'
+        else: status = 'success'
 
-        if add_msg: self.add_msg(ExecutionMessage(result, level))
+        if add_msg: self.add_msg(result)
         if set_status: self.set_status(status)
 
         return result.ok
@@ -290,12 +299,12 @@ class UpdateEntriesSession(Session):
 
         # valid but no stdout? Leave a warning...
         elif valid and not result.stdout:
-            self.add_msg(ExecutionMessage(result, 'WARNING'))
+            self.add_msg(result, 'warning')
             value = None
 
         # not valid - error-message...
         else:
-            self.add_msg(ExecutionMessage(result, 'ERROR'))
+            self.add_msg(result, 'error')
             value = None
 
         setattr(self.minkeobj, field, value)
