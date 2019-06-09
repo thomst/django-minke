@@ -5,6 +5,7 @@ import datetime
 from time import time
 from collections import OrderedDict
 
+from fabric2.runners import Result
 from celery.task.control import revoke
 
 from django.db import models
@@ -193,12 +194,12 @@ class MinkeSession(models.Model):
                 print(ul(fg[msg.level](level) + sep + line[:width]) + line[width:])
 
 
-class CommandResult(models.Model):
+class CommandResult(Result, models.Model):
     """
-    A db-representation of fabric's result-object.
+    Add a db-layer to fabric's Result-class.
     """
     command = models.TextField()
-    return_code = models.SmallIntegerField()
+    exited = models.SmallIntegerField()
     stdout = models.TextField(blank=True, null=True)
     stderr = models.TextField(blank=True, null=True)
     shell = models.CharField(max_length=128)
@@ -207,22 +208,11 @@ class CommandResult(models.Model):
     created_time = models.DateTimeField(auto_now_add=True)
     session = models.ForeignKey(MinkeSession, on_delete=models.CASCADE, related_name='commands')
 
-    def __init__(self, result):
-        """
-        Take fabric's result-object as argument and  initiate a
-        CommandResult-object from it.
-        """
+    def __init__(self, **kwargs):
         fields = [f.name for f in self._meta.get_fields()]
-        params = {f: getattr(result, f) for f in fields if hasattr(result, f)}
-        super().__init__(**params)
-
-    @property
-    def ok(self):
-        return self.return_code == 0
-
-    @property
-    def failed(self):
-        return self.return_code != 0
+        params = {f: kwargs.get(f) for f in fields if f in kwargs}
+        models.Model.__init__(self, **params)
+        Result.__init__(self, **kwargs)
 
 
 class BaseMessage(models.Model):
@@ -233,7 +223,6 @@ class BaseMessage(models.Model):
 
     session = models.ForeignKey(MinkeSession, on_delete=models.CASCADE, related_name='messages')
     level = models.CharField(max_length=128, choices=LEVELS)
-
     text = models.TextField()
     html = models.TextField()
 

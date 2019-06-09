@@ -1,10 +1,8 @@
 # -*- coding: utf-8 -*-
 
 import json
-from fabric2.config import Config
 from django.db import models
 from django.core.serializers.json import DjangoJSONEncoder
-from .exceptions import InvalidMinkeSetup
 
 
 def item_by_attr(list, attr, value, default=None):
@@ -14,33 +12,6 @@ def item_by_attr(list, attr, value, default=None):
 def prepare_shell_command(cmd):
     # linux-shells need \n as newline
     return cmd.replace('\r\n', '\n').replace('\r', '\n')
-
-
-class FabricConfig(Config):
-    """
-    A subclass of fabric's Config-class.
-    Add a load_snakeconfig-method, that takes a plain dict and parses its
-    snake-case-keys to fit into the nested default-config-structure.
-    """
-    def load_snakeconfig(self, configdict):
-        for param, value in configdict.items():
-            # prevent overriding existing settings with None...
-            if value == None: return
-
-            # param must start with one of the existing config-keys
-            try:
-                key = next((k for k in self.keys() if param.startswith(k)))
-            except StopIteration:
-                msg = 'Invalid fabric-config-parameter: {}'.format(param)
-                raise InvalidMinkeSetup(msg)
-
-            # add data - one or two level of depth
-            if param == key:
-                self[key] = value
-            else:
-                key2 = param.replace(key + '_', '')
-                if not self[key]: self[key] = dict()
-                self[key][key2] = value
 
 
 class JSONField(models.TextField):

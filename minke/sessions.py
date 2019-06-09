@@ -2,6 +2,7 @@
 
 import re
 from collections import OrderedDict
+from fabric2.runners import Result
 
 from django.db.utils import OperationalError
 from django.db.utils import ProgrammingError
@@ -217,7 +218,6 @@ class Session(metaclass=SessionRegistration):
         if not self.status or not alert or states[self.status] < states[status]:
             self._db.session_status = status
 
-    # helper-methods
     def format_cmd(self, cmd):
         """
         Will format a given command-string using the minkeobj's attributes
@@ -241,17 +241,16 @@ class Session(metaclass=SessionRegistration):
 
     def _run(self, cmd, **kwargs):
         """
-        A wrapper for fabric's Connection.run that returns a CommandResult
-        which is a model-representation of the original result-object.
+        Run a command and save the result.
         """
-        result = CommandResult(self._con.run(cmd, **kwargs))
+        result = self._con.run(cmd, **kwargs)
         self._db.commands.add(result, bulk=False)
         return result
 
     @protect
     def run(self, cmd, **kwargs):
         """
-        Simply run the command and return its resonse.
+        Run a command and return its response.
         """
         return self._run(cmd, **kwargs)
 
