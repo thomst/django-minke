@@ -31,26 +31,10 @@
     {% if result.form.non_field_errors %}
         <tr><td colspan="{{ result|length }}">{{ result.form.non_field_errors }}</td></tr>
     {% endif %}
-    <tr class="minkeobj {% cycle 'row1' 'row2' %} {{ session.session_status }} {{ session.proc_status }}">
+    <tr class="minkeobj {% cycle 'row1' 'row2' as row_cycle %} {{ session.session_status }} {{ session.proc_status }}">
         {% for item in result %}{{ item }}{% endfor %}
     </tr>
-    {% if session %}
-        <tr id="session_{{session.id}}" class="session {% cycle 'row1' 'row2' %} {{session.session_status}} {{ session.proc_status }}" data-id="{{session.id}}" data-minkeobj-id="{{session.minkeobj_id}}" data-proc-status="{{session.proc_status}}" data-msg-count="{{session.messages.all|length}}">
-            <td></td>
-            <td colspan="100">
-                <div>
-                    <b{% if session.session_description %} title="{{session.session_description}}"{% endif %}>
-                    {{session.session_verbose_name}}</b> - [<span class="session_proc_info">{{session.proc_info}}</span>]
-                </div>
-                <ul class="messagelist">
-                {% if session.messages.all %}
-                    {% for msg in session.messages.all %}
-                        <li class="{{msg.level}}">{{msg.html|safe}}</li>
-                    {% endfor %}
-                {% endif %}
-                </ul>
-            </td></tr>
-    {% endif %}
+    {% if session %}{% minke_session %}{% endif %}
 {% endfor %}
 </tbody>
 </table>
