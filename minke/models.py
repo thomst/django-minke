@@ -213,14 +213,12 @@ class CommandResult(Result, models.Model):
         This model could also be initiated as fabric's result-class.
         """
         try:
-            # First we try to initiate the result-object.
-            Result.__init__(self, *args, **kwargs)
-        except TypeError:
-            # If this fails, its a model-class-init-call.
+            # First we try to initiate the model.
             models.Model.__init__(self, *args, **kwargs)
-        else:
-            # If the result-class were initiated its safe to follow the model.
+        except TypeError:
+            # If this fails, its a result-class-initiation.
             models.Model.__init__(self)
+            Result.__init__(self, *args, **kwargs)
 
     def as_message(self):
         # FIXME: messages imports from models and vice versa.
