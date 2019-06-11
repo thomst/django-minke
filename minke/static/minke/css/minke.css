@@ -2,20 +2,29 @@ span.session_bar {
     margin-right: 18px;
 }
 
-#result_list tr.session td {
+table.sessions {
+    width: 100%;
+}
+
+div.session-history-bar a.button {
+    margin: 0 0 0 5px;
+    padding: 8px 15px;
+}
+
+table.sessions tr.session td {
     color: #666;
 }
 
-#result_list *[title] {
+table.sessions *[title] {
     cursor: help;
 }
 
-#result_list ul.messagelist pre {
+table.sessions ul.messagelist pre {
     margin: 0;
     padding: 0;
 }
 
-#result_list ul.messagelist li {
+table.sessions ul.messagelist li {
     padding-left: 45px;
     margin: 10px 0 0 0;
     border: 1px solid #eee;
@@ -26,68 +35,68 @@ span.session_bar {
     left: -8px;
 }
 
-#result_list tr.minkeobj.initialized  > *,
-#result_list tr.minkeobj.running  > *,
-#result_list tr.minkeobj.stopping  > *,
-#result_list tr.minkeobj.stopped  > *,
-#result_list tr.minkeobj.failed  > *,
-#result_list tr.minkeobj.canceled  > *,
-#result_list tr.minkeobj.succeeded > * {
+table.sessions tr.minkeobj.initialized  > *,
+table.sessions tr.minkeobj.running  > *,
+table.sessions tr.minkeobj.stopping  > *,
+table.sessions tr.minkeobj.stopped  > *,
+table.sessions tr.minkeobj.failed  > *,
+table.sessions tr.minkeobj.canceled  > *,
+table.sessions tr.minkeobj.succeeded > * {
     border: 0;
 }
 
-#result_list tr.row1.success,
-#result_list tr.row1 li.info {
+table.sessions tr.row1.success,
+table.sessions tr.row1 li.info {
     background-color: #e8ffe8;
 }
-#result_list tr.row2.success,
-#result_list tr.row2 li.info {
+table.sessions tr.row2.success,
+table.sessions tr.row2 li.info {
     background-color: #dfd;
 }
-#result_list tr.row1.warning,
-#result_list tr.row1 li.warning {
+table.sessions tr.row1.warning,
+table.sessions tr.row1 li.warning {
     background-color: #ffffe6;
 }
-#result_list tr.row2.warning,
-#result_list tr.row2 li.warning {
+table.sessions tr.row2.warning,
+table.sessions tr.row2 li.warning {
     background-color: #ffc;
 }
-#result_list tr.row1.error,
-#result_list tr.row1 li.error {
+table.sessions tr.row1.error,
+table.sessions tr.row1 li.error {
     background-color: #fff6f6;
 }
-#result_list tr.row2.error,
-#result_list tr.row2 li.error {
+table.sessions tr.row2.error,
+table.sessions tr.row2 li.error {
     background-color: #ffefef;
 }
 
-#result_list div.session_stopper::after {
+table.sessions div.session_stopper::after {
     content: '✕';
     font-size: 18px;
     cursor: pointer;
 }
 
-#result_list tr.minkeobj.stopping div.session_stopper::after {
+table.sessions tr.minkeobj.stopping div.session_stopper::after {
     content: '⧖';
     cursor: auto;
 }
 
-#result_list tr.minkeobj.running div.session_stopper,
-#result_list.running th div.session_stopper {
+table.sessions tr.minkeobj.running div.session_stopper,
+table.sessions.running th div.session_stopper {
     color: red;
 }
 
-#result_list div.session_stopper,
-#result_list tr.minkeobj.initialized td:first-child input,
-#result_list tr.minkeobj.running td:first-child input,
-#result_list tr.minkeobj.stopping td:first-child input,
-#result_list.running th:first-child div.text {
+table.sessions div.session_stopper,
+table.sessions tr.minkeobj.initialized td:first-child input,
+table.sessions tr.minkeobj.running td:first-child input,
+table.sessions tr.minkeobj.stopping td:first-child input,
+table.sessions.running th:first-child div.text {
     display: none;
 }
 
-#result_list tr.minkeobj.initialized div.session_stopper,
-#result_list tr.minkeobj.running div.session_stopper,
-#result_list tr.minkeobj.stopping div.session_stopper,
-#result_list.running th:first-child div.session_stopper {
+table.sessions tr.minkeobj.initialized div.session_stopper,
+table.sessions tr.minkeobj.running div.session_stopper,
+table.sessions tr.minkeobj.stopping div.session_stopper,
+table.sessions.running th:first-child div.session_stopper {
     display: block;
 }

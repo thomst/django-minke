@@ -51,3 +51,16 @@ def minke_session(context):
     Render the session-info-row.
     """
     return context
+
+
+@register.simple_tag(takes_context=True)
+def update_url_query(context, key, value=None):
+    """
+    Update the current url-query.
+    """
+    query_dict = context['request'].GET.copy()
+    if value is None and key in query_dict:
+        del query_dict[key]
+    elif value is not None:
+        query_dict[key] = value
+    return '?' + query_dict.urlencode()

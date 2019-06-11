@@ -61,6 +61,9 @@ class MinkeSession(models.Model):
         ('failed', 'failed!'),
     )
 
+    class Meta:
+        ordering = ('minkeobj_type', 'minkeobj_id', '-start_time')
+
     # those fields will be derived from the session-class
     session_name = models.CharField(max_length=128)
     session_verbose_name = models.CharField(max_length=128)

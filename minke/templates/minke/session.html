@@ -1,5 +1,9 @@
 <tr id="session_{{session.id}}" class="session {{row_cycle}} {{session.session_status}} {{ session.proc_status }}" data-id="{{session.id}}" data-minkeobj-id="{{session.minkeobj_id}}" data-proc-status="{{session.proc_status}}" data-msg-count="{{session.messages.all|length}}">
-    <td></td>
+    <td>
+        {% if show_session_date %}
+            {{ session.start_time }}
+        {% endif %}
+    </td>
     <td colspan="100">
         {% if not hide_proc_info %}
             <div>

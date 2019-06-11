@@ -1,6 +1,7 @@
 # -*- coding: utf-8 -*-
 from pydoc import locate
 
+from django.contrib.contenttypes.models import ContentType
 from django.contrib.admin.views.main import ChangeList
 from django.contrib.admin import helpers
 from django.contrib import messages
@@ -19,6 +20,7 @@ from .forms import SessionSelectForm
 
 
 class MinkeAdmin(admin.ModelAdmin):
+    change_form_template = 'minke/change_form.html'
     change_list_template = 'minke/change_list.html'
     session_select_form = SessionSelectForm
 
@@ -220,3 +222,24 @@ class MinkeAdmin(admin.ModelAdmin):
             # run_sessions might want to render a minke- or session-form
             response = self.run_sessions(request, session_cls, queryset, force_confirm)
             return response or HttpResponseRedirect(redirect_url)
+
+    def changeform_view(self, request, object_id=None, form_url='', extra_context=None):
+        """
+        Add session-history-view to the changeform-view.
+        """
+        # Has been asked for a session-history?
+        if 'session_history' in request.GET:
+            ct = ContentType.objects.get_for_model(self.model)
+            sessions = MinkeSession.objects.filter(
+                minkeobj_type=ct,
+                minkeobj_id=object_id,
+                user=request.user,
+                proc_status__in=('succeeded', 'stopped', 'failed')
+                )[:int(request.GET['session_history'])]
+            extra_context = dict(
+                sessions=sessions,
+                use_commands=bool(request.GET.get('use_commands', False)),
+                show_session_date=True)
+
+        # call super-changeform-view with our extra-context
+        return super().changeform_view(request, object_id, form_url, extra_context)
