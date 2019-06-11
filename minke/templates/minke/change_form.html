@@ -8,6 +8,7 @@
 
 {% block submit_buttons_bottom %}
 {% submit_row %}
+{% if object_id %}
     <div class="submit-row session-history-bar">
         {% if sessions %}
             <a class="button" href="{% with count=sessions|length|add:1 %}{% update_url_query 'session_history' count %}{% endwith %}">+1</a>
@@ -32,4 +33,5 @@
             </table>
         </div>
     {% endif %}
+{% endif %}
 {% endblock %}

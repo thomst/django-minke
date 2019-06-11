@@ -228,7 +228,7 @@ class MinkeAdmin(admin.ModelAdmin):
         Add session-history-view to the changeform-view.
         """
         # Has been asked for a session-history?
-        if 'session_history' in request.GET:
+        if object_id and 'session_history' in request.GET:
             ct = ContentType.objects.get_for_model(self.model)
             sessions = MinkeSession.objects.filter(
                 minkeobj_type=ct,
