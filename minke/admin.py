@@ -10,6 +10,7 @@ from django.utils.translation import gettext as _
 from django.http import HttpResponseRedirect
 from django.shortcuts import render
 from django.core.exceptions import PermissionDenied
+from django.db.models import Prefetch
 
 from . import settings
 from . import engine
@@ -19,12 +20,40 @@ from .forms import MinkeForm
 from .forms import SessionSelectForm
 
 
+class MinkeChangeList(ChangeList):
+    """
+    Subclass ChangeList to build the session-list based on the result_list.
+    """
+    def __init__(self, request, *args, **kwargs):
+        super().__init__(request, *args, **kwargs)
+        # We need a plain session-list with the same order as the result_list.
+        # They will be zipped with the results coming from the result_list-templatetag.
+        self.sessions = [(list(o.sessions.all())[0:]+[None])[0] for o in self.result_list]
+        self.session_count = sum(len(o.sessions.all()) for o in self.result_list)
+
+    def get_queryset(self, request):
+        qs = super().get_queryset(request)
+        currents = MinkeSession.objects.filter(current=True, user=request.user)
+        currents = currents.prefetch_related('messages')
+        return qs.prefetch_related(Prefetch('sessions', queryset=currents))
+
+
 class MinkeAdmin(admin.ModelAdmin):
     change_form_template = 'minke/change_form.html'
     change_list_template = 'minke/change_list.html'
     session_select_form = SessionSelectForm
 
+    def get_changelist(self, request, **kwargs):
+        """
+        Use our own ChangeList.
+        """
+        return MinkeChangeList
+
     def get_changelist_instance(self, request):
+        """
+        Normalize the way to get a changelist-instance. Prior django-2.0 the
+        get_changelist_instance-method is missing.
+        """
         try:
             return super().get_changelist_instance(request)
         except AttributeError:
@@ -74,17 +103,6 @@ class MinkeAdmin(admin.ModelAdmin):
         form = self.session_select_form(data or dict())
         form.fields['session'].choices = self.get_session_options(request)
         return form
-
-    def get_current_sessions(self, request):
-        """
-        Return current sessions - those that should be rendered for this request.
-        """
-        # Getting the changelist should work since an IncorrectLookupParameters
-        # would have been already raised.
-        cl = self.get_changelist_instance(request)
-        queryset = cl.get_queryset(request)
-        sessions = MinkeSession.objects.get_currents(request.user, queryset)
-        return sessions.prefetch_related('messages')
 
     def get_session_cls(self, request):
         session_name = request.POST.get('session', None)
@@ -159,7 +177,7 @@ class MinkeAdmin(admin.ModelAdmin):
         """
         Extend the modeladmin-changelist_view by session-processing.
         """
-        # Does the request something to do with sessions at all?
+        # Does this request has something to do with sessions at all?
         if ('run_sessions' not in request.POST
         and 'clear_sessions' not in request.POST):
             return super().changelist_view(request, extra_context)

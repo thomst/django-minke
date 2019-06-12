@@ -327,6 +327,10 @@ class MinkeManager(models.Manager):
 
 class MinkeModel(models.Model):
     objects = MinkeManager()
+    sessions = GenericRelation(MinkeSession,
+        content_type_field='minkeobj_type',
+        object_id_field='minkeobj_id')
+
     HOST_LOOKUP = 'host'
     REVERSE_HOST_LOOKUP = None
 

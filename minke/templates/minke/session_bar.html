@@ -2,5 +2,5 @@
 <span class="session_bar">
     {% for field in session_select_form %}{% if field.label %}<label>{{ field.label }} {% endif %}{{ field }}{% if field.label %}</label>{% endif %}{% endfor %}
     <button type="submit" class="button" name="run_sessions" title="{% trans "Run the selected session" %}">{% trans "Run" %}</button>
-    {% if current_sessions %}<button type="submit" class="button" name="clear_sessions" title="{% trans "Clear session-infos" %}">{% trans "Clear session-infos" %}</button>{% endif %}
+    {% if session_count %}<button type="submit" class="button" name="clear_sessions" title="{% trans "Clear session-infos" %}">{% trans "Clear session-infos" %}</button>{% endif %}
 </span>

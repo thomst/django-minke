@@ -9,19 +9,14 @@ from ..utils import item_by_attr
 register = Library()
 
 
-@register.inclusion_tag('minke/change_list_results.html', takes_context=True)
-def minke_result_list(context):
+@register.inclusion_tag('minke/change_list_results.html')
+def minke_result_list(cl):
     """
-    Replacement of django's result_list-inclusion_tag.
-    We use our own template and pass sessions as context.
+    Zip results and sessions.
     """
-    cl = context['cl']
-    cxt = result_list(cl)
-    sessions = MinkeSession.objects.get_currents(context['user'], cl.result_list)
-    sessions = list(sessions.prefetch_related('messages'))
-    sorted = [item_by_attr(sessions, 'minkeobj_id', o.id) for o in cl.result_list]
-    cxt['results'] = zip(cxt['results'], sorted)
-    return cxt
+    context = result_list(cl)
+    context['results'] = zip(context['results'], cl.sessions)
+    return context
 
 
 @register.inclusion_tag('minke/admin_actions.html', takes_context=True)
@@ -41,7 +36,7 @@ def minke_session_bar(context):
     request = context['request']
     form = cl.model_admin.get_session_select_form(request)
     context['session_select_form'] = form
-    context['current_sessions'] = cl.model_admin.get_current_sessions(request)
+    context['session_count'] = cl.session_count
     return context
 
 
