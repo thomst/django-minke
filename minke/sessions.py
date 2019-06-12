@@ -24,10 +24,16 @@ from .exceptions import InvalidMinkeSetup
 
 
 class REGISTRY(OrderedDict):
+    """
+    A reload-able session-registry.
+    """
     _session_factories = list()
 
     @classmethod
     def add_session_factory(cls, factory):
+        """
+        Add a session-factory (any code that builds session-classes).
+        """
         cls._session_factories.append(factory)
 
     def __init__(self, *args, **kwargs):
@@ -35,6 +41,11 @@ class REGISTRY(OrderedDict):
         self._dict = None
 
     def reload(self):
+        """
+        Reload the registry by running the factories.
+        """
+        # Before running the factories we restore the original registry.
+        # So we are up-to-date without messing up.
         if self._dict:
             self.clear()
             self.update(self._dict)
@@ -52,14 +63,21 @@ class SessionRegistration(type):
     metaclass for Sessions that implements session-registration
     """
     def __new__(cls, name, bases, dct):
+        # Setting the abstract-attr explicitly avoids its inheritance.
         dct['abstract'] = dct.get('abstract', False)
         return super().__new__(cls, name, bases, dct)
 
-    def __init__(cls, classname, bases, attr):
-        super().__init__(classname, bases, attr)
-        if cls.abstract: return
-        if cls.__name__ in REGISTRY: return
+    def __init__(cls, classname, bases, attrs):
+        super().__init__(classname, bases, attrs)
+        print(attrs)
+        if not cls.abstract and not cls.__name__ in REGISTRY:
+            cls.register()
+            if cls.add_permission: cls.create_permission()
 
+    def register(cls):
+        """
+        Register the session-class.
+        """
         # some sanity-checks
         if not cls.work_on:
             msg = 'At least one minke-model must be specified for a session.'
@@ -86,26 +104,43 @@ class SessionRegistration(type):
 
         # set verbose-name if missing
         if not cls.verbose_name:
-            cls.verbose_name = camel_case_to_spaces(classname)
+            cls.verbose_name = camel_case_to_spaces(cls.__name__)
 
         # register session
         REGISTRY[cls.__name__] = cls
 
-        if cls.create_permissions:
-            # create session-permission...
-            # In some contexts get_for_model fails because content_types aren't
-            # setup. This happens when applying migrations but also when testing
-            # with sqlite3.
-            try: content_type = ContentType.objects.get_for_model(MinkeSession)
-            except (OperationalError, ProgrammingError): return
-            codename = 'run_{}'.format(classname.lower())
-            permname = 'Can run {}'.format(camel_case_to_spaces(classname))
-            permission = Permission.objects.get_or_create(
-                codename=codename,
-                content_type=content_type,
-                defaults=dict(name=permname))
-            permission_name = 'minke.{}'.format(codename)
-            cls.permissions += (permission_name,)
+    def _get_permission(cls):
+        codename = 'run_{}'.format(cls.__name__.lower())
+        name = 'Can run {}'.format(camel_case_to_spaces(cls.__name__))
+        lookup = 'minke.{}'.format(codename)
+        return codename, name, lookup
+
+    def create_permission(cls):
+        """
+        Create a run-permission for this session-class.
+        """
+        # create session-permission...
+        # In some contexts get_for_model fails because content_types aren't
+        # setup. This happens when applying migrations but also when testing
+        # with sqlite3.
+        try: content_type = ContentType.objects.get_for_model(MinkeSession)
+        except (OperationalError, ProgrammingError): return
+        codename, name, lookup = cls._get_permission()
+        permission = Permission.objects.get_or_create(
+            codename=codename,
+            content_type=content_type,
+            defaults=dict(name=name))
+        cls.permissions += (lookup,)
+
+    def delete_permission(cls):
+        codename, name, lookup = cls._get_permission()
+        try:
+            Permission.objects.get(codename=codename).delete()
+        except Permission.DoesNotExist:
+            pass
+        else:
+            cls.permissions = tuple(set(cls.permissions) - set((lookup,)))
+
 
 
 def protect(method):
@@ -135,7 +170,7 @@ class Session(metaclass=SessionRegistration):
     form = None
     confirm = False
     wait_for_execution = False
-    create_permissions = True
+    add_permission = True
     invoke_config = dict()
     soft_interruption = False
     parrallel_per_host = False
