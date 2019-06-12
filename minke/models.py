@@ -280,6 +280,9 @@ class Host(models.Model):
     lock = models.CharField(max_length=20, blank=True, null=True)
 
     objects = HostQuerySet.as_manager()
+    sessions = GenericRelation(MinkeSession,
+        content_type_field='minkeobj_type',
+        object_id_field='minkeobj_id')
 
     def get_host(self):
         return self
