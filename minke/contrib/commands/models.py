@@ -1,9 +1,11 @@
 # -*- coding: utf-8 -*-
 
 from django.db import models
+from django.db.models import Prefetch
 from django.contrib.contenttypes.models import ContentType
 from django.contrib.auth.models import Permission
 from django.db.models.signals import pre_delete
+from django.db.models.signals import post_save
 from django.dispatch import receiver
 
 from minke.models import MinkeModel
@@ -21,7 +23,13 @@ def get_minketypes():
     return dict(id__in=minketype_ids)
 
 
+class CommandManager(models.Manager):
+    def get_queryset(self):
+        return super().get_queryset().prefetch_related('minketypes')
+
+
 class Command(models.Model):
+    objects = CommandManager()
     cmd = models.TextField()
     label = models.CharField(max_length=256)
     description = models.TextField(blank=True)
@@ -30,7 +38,7 @@ class Command(models.Model):
 
     def save(self, *args, **kwargs):
         self.cmd = prepare_shell_command(self.cmd)
-        super().save(*args, **kwargs)
+        return super().save(*args, **kwargs)
 
     def __str__(self):
         return self.label
@@ -38,8 +46,9 @@ class Command(models.Model):
 
 class CommandGroupManager(models.Manager):
     def get_queryset(self):
-        queryset = super().get_queryset()
-        return queryset.prefetch_related('commands')
+        qt = super().get_queryset().prefetch_related('minketypes')
+        cmdquery = Command.objects.order_by('commandorder__order')
+        return qt.prefetch_related(Prefetch('commands', queryset=cmdquery))
 
 
 class CommandGroup(models.Model):
@@ -51,18 +60,27 @@ class CommandGroup(models.Model):
     as_options = models.BooleanField(default=False)
     active = models.BooleanField(default=True)
 
-    def get_commands(self):
-        return Command.objects.filter(commandgroup=self).order_by('commandorder__order')
-
     def __str__(self):
         return self.label
 
 
 @receiver(pre_delete)
 def delete_permission(sender, instance, **kwargs):
+    """
+    Delete the run-session-permission.
+    """
     if not sender in (Command, CommandGroup): return
     codename = 'run_%s_%d' % (sender.__name__.lower(), instance.id)
     Permission.objects.get(codename=codename).delete()
+
+
+@receiver(post_save)
+def create_permission(sender, instance, **kwargs):
+    """
+    Create the run-session-permission.
+    """
+    if not sender in (Command, CommandGroup): return
+    # TODO: create permission here
 
 
 class CommandOrder(models.Model):
