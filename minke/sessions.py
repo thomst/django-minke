@@ -69,7 +69,6 @@ class SessionRegistration(type):
 
     def __init__(cls, classname, bases, attrs):
         super().__init__(classname, bases, attrs)
-        print(attrs)
         if not cls.abstract and not cls.__name__ in REGISTRY:
             cls.register()
             if cls.add_permission: cls.create_permission()
