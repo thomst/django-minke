@@ -29,9 +29,9 @@ class Session {
         this.session.data('procStatus', session.proc_status);
         this.session.find('span.session_proc_info').text(session.proc_info)
             .css('fontSize', '110%').animate({fontSize: '100%'}, 'fast');
-        this.minkeobj.removeClass(['initialized', 'running', 'stopping']);
+        this.minkeobj.removeClass('initialized running stopping');
         this.minkeobj.addClass(session.proc_status);
-        this.session.removeClass(['initialized', 'running', 'stopping']);
+        this.session.removeClass('initialized running stopping');
         this.session.addClass(session.proc_status);
     }
     updateMessages(session) {
