@@ -1,4 +1,8 @@
-span.session_bar {
+div.actions {
+    display: inline-block;
+}
+
+div.actions.session_bar {
     margin-right: 18px;
 }
 

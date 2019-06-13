@@ -19,14 +19,6 @@ def minke_result_list(cl):
     return context
 
 
-@register.inclusion_tag('minke/admin_actions.html', takes_context=True)
-def minke_admin_actions(context):
-    """
-    Same as django's admin_action-inclusion_tag but with our own template.
-    """
-    return admin_actions(context)
-
-
 @register.inclusion_tag('minke/session_bar.html', takes_context=True)
 def minke_session_bar(context):
     """
