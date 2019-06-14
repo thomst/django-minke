@@ -17,6 +17,7 @@ from django.contrib.contenttypes.models import ContentType
 from django.core.exceptions import FieldError
 from django.utils.safestring import mark_safe
 from django.template.loader import render_to_string
+from django.utils.translation import gettext
 from django.utils.translation import gettext_lazy as _
 
 from .exceptions import InvalidMinkeSetup
@@ -50,6 +51,9 @@ class MinkeSessionQuerySet(models.QuerySet):
         return self.get_currents(user, minkeobjs).update(current=False)
 
 
+# TODO: Since celery saves its task-results, we could create a OneToOne-relation
+# between task-results and sessions. Since task-results are only created when we
+# are already done with the session, we could implement a post-save- signal-handler.
 class MinkeSession(models.Model):
     """
     The MinkeSession holds the data of any executed session and tracks its process.
@@ -59,9 +63,7 @@ class MinkeSession(models.Model):
     RESULT_STATES = (
         ('success', 0),
         ('warning', 1),
-        ('error', 2),
-    )
-    # TODO: find a way to use lazy-translations with the format-strings.
+        ('error', 2))
     PROC_STATES = (
         ('initialized', 'waiting...'),
         ('running', 'running...'),
@@ -69,8 +71,9 @@ class MinkeSession(models.Model):
         ('stopping', 'stopping...'),
         ('stopped', 'stopped after {0:.1f} seconds'),
         ('canceled', 'canceled!'),
-        ('failed', 'failed!'),
-    )
+        ('failed', 'failed!'))
+    RESULT_CHOICES = ((s[0], _(s[0])) for s in RESULT_STATES)
+    PROC_CHOICES = ((s[0], _(s[0])) for s in PROC_STATES)
 
     class Meta:
         ordering = ('minkeobj_type', 'minkeobj_id', '-created_time')
@@ -79,7 +82,7 @@ class MinkeSession(models.Model):
     session_name = models.CharField(max_length=128)
     session_verbose_name = models.CharField(max_length=128)
     session_description = models.TextField(blank=True, null=True)
-    session_status = models.CharField(max_length=128, choices=RESULT_STATES)
+    session_status = models.CharField(max_length=128, choices=RESULT_CHOICES)
     session_data = JSONField(blank=True, null=True)
 
     # the minkeobj to work on
@@ -90,7 +93,7 @@ class MinkeSession(models.Model):
     # execution-data of the session
     user = models.ForeignKey(User, on_delete=models.CASCADE)
     current = models.BooleanField(default=True)
-    proc_status = models.CharField(max_length=128, choices=PROC_STATES)
+    proc_status = models.CharField(max_length=128, choices=PROC_CHOICES)
     task_id = models.CharField(max_length=128, blank=True, null=True)
     start_time = models.DateTimeField(blank=True, null=True)
     end_time = models.DateTimeField(blank=True, null=True)
@@ -190,9 +193,9 @@ class MinkeSession(models.Model):
         Infos about the session-processing
         that will be rendered within the session-template.
         """
-        info = next((s[1] for s in self.PROC_STATES if s[0] == self.proc_status))
-        if self.run_time: return info.format(self.run_time.total_seconds())
-        else: return info
+        info = next(s[1] for s in self.PROC_STATES if s[0] == self.proc_status)
+        if self.run_time: return gettext(info).format(self.run_time.total_seconds())
+        else: return gettext(info)
 
     def prnt(self):
         """
