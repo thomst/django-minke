@@ -110,75 +110,66 @@ class MinkeSession(models.Model):
         self.session_data = session_data
         self.save()
 
+    @transaction.atomic
     def start(self, task_id):
         """
         Start a session. Update proc_status, start_time and task_id.
         Since the cancel-method is called asynchrouniously to the whole session-
         processing, the start-, end- and cancel-method are each wrapped within a
-        atomic transaction to protect them from interfering.
+        atomic transaction using select_for_update to protect them from interfering.
         """
+        # We use the reloaded session for checks but update and save self.
+        # On the database-level it doesn't make a difference from which object
+        # we call the save-method.
         session = MinkeSession.objects.select_for_update().get(pk=self.id)
-        with transaction.atomic():
-            if session.is_waiting:
-                self.task_id = session.task_id = task_id
-                self.proc_status = session.proc_status = 'running'
-                self.start_time = session.start_time = datetime.datetime.now()
-                session.save(update_fields=['proc_status', 'start_time', 'task_id'])
-                return True
+        if session.is_waiting:
+            self.task_id = task_id
+            self.proc_status = 'running'
+            self.start_time = datetime.datetime.now()
+            self.save(update_fields=['proc_status', 'start_time', 'task_id'])
+            return True
 
+    @transaction.atomic
     def cancel(self):
         """
         Cancel a session. Update proc_- and session_status.
         Since the cancel-method is called asynchrouniously to the whole session-
         processing, the start-, end- and cancel-method are each wrapped within a
-        atomic transaction to protect them from interfering.
+        atomic transaction using select_for_update to protect them from interfering.
         """
         session = MinkeSession.objects.select_for_update().get(pk=self.id)
-        with transaction.atomic():
-            if session.is_waiting:
-                self.session_status = session.session_status = 'error'
-                self.proc_status = session.proc_status = 'canceled'
-                session.save(update_fields=['proc_status', 'session_status'])
-                return True
-            elif session.proc_status == 'running':
-                self.proc_status = session.proc_status = 'stopping'
-                session.save(update_fields=['proc_status'])
-                revoke(session.task_id, signal='USR1', terminate=True)
-                return True
+        if session.is_waiting:
+            self.session_status = 'error'
+            self.proc_status = 'canceled'
+            self.save(update_fields=['proc_status', 'session_status'])
+            return True
+        elif session.proc_status == 'running':
+            self.proc_status = 'stopping'
+            self.save(update_fields=['proc_status'])
+            revoke(session.task_id, signal='USR1', terminate=True)
+            return True
 
-    def end(self):
+    @transaction.atomic
+    def end(self, failure=False):
         """
         End a session. Update proc_- and session_status, end_- and run_time.
         Since the cancel-method is called asynchrouniously to the whole session-
         processing, the start-, end- and cancel-method are each wrapped within a
-        atomic transaction to protect them from interfering.
+        atomic transaction using select_for_update to protect them from interfering.
         """
         session = MinkeSession.objects.select_for_update().get(pk=self.id)
-        with transaction.atomic():
-            if session.proc_status == 'running':
-                session_status = self.session_status or 'success'
-                proc_status = 'completed'
-            elif session.proc_status == 'stopping':
-                session_status = 'error'
-                proc_status = 'stopped'
-            self.session_status = session.session_status = session_status
-            self.proc_status = session.proc_status = proc_status
-            self.end_time = session.end_time = datetime.datetime.now()
-            self.run_time = session.run_time = session.end_time - session.start_time
-            self.task_id = session.task_id = None
-            fields = ['proc_status', 'session_status', 'end_time', 'run_time', 'task_id']
-            session.save(update_fields=fields)
-            return True
-
-    # TODO: The fail-method could be merged into the end-method.
-    # It would be more concise and solid.
-    def fail(self):
-        self.session_status = 'error'
-        self.proc_status = 'failed'
+        if failure:
+            self.session_status = 'error'
+            self.proc_status = 'failed'
+        elif session.proc_status == 'running':
+            self.session_status = self.session_status or 'success'
+            self.proc_status = 'completed'
+        elif session.proc_status == 'stopping':
+            self.session_status = 'error'
+            self.proc_status = 'stopped'
         self.end_time = datetime.datetime.now()
         self.run_time = self.end_time - self.start_time
-        self.task_id = None
-        fields = ['proc_status', 'session_status', 'end_time', 'run_time', 'task_id']
+        fields = ['proc_status', 'session_status', 'end_time', 'run_time']
         self.save(update_fields=fields)
 
     @property

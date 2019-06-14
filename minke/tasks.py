@@ -66,17 +66,17 @@ class SessionProcessor:
 
             # paramiko- and socket-related exceptions (ssh-layer)
             except (SSHException, GaiError, SocketError):
-                self.session.fail()
+                self.session.end(failure=True)
                 self.session.add_msg(ExceptionMessage())
 
             # invoke-related exceptions (shell-layer)
             except (Failure, ThreadException, UnexpectedExit):
-                self.session.fail()
+                self.session.end(failure=True)
                 self.session.add_msg(ExceptionMessage())
 
             # other exceptions raised by process (which is user-code)
             except Exception:
-                self.session.fail()
+                self.session.end(failure=True)
                 exc_msg = ExceptionMessage(print_tb=True)
                 logger.error(exc_msg.text)
                 if settings.MINKE_DEBUG: self.session.add_msg(exc_msg)

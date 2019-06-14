@@ -185,7 +185,6 @@ class Session(metaclass=SessionRegistration):
         self._busy = False
         self.start = db.start
         self.end = db.end
-        self.fail = db.fail
 
     def cancel(self, interrupt):
         """
