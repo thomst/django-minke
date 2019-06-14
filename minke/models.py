@@ -51,9 +51,6 @@ class MinkeSessionQuerySet(models.QuerySet):
         return self.get_currents(user, minkeobjs).update(current=False)
 
 
-# TODO: Since celery saves its task-results, we could create a OneToOne-relation
-# between task-results and sessions. Since task-results are only created when we
-# are already done with the session, we could implement a post-save- signal-handler.
 class MinkeSession(models.Model):
     """
     The MinkeSession holds the data of any executed session and tracks its process.
@@ -77,6 +74,8 @@ class MinkeSession(models.Model):
 
     class Meta:
         ordering = ('minkeobj_type', 'minkeobj_id', '-created_time')
+        verbose_name = _('Minke-Session')
+        verbose_name_plural = _('Minke-Sessions')
 
     # those fields will be derived from the session-class
     session_name = models.CharField(max_length=128)
@@ -249,6 +248,8 @@ class CommandResult(Result, models.Model):
 
     class Meta:
         ordering = ('session', 'created_time')
+        verbose_name = _('Command-Result')
+        verbose_name_plural = _('Command-Results')
 
     def __init__(self, *args, **kwargs):
         """
@@ -291,6 +292,8 @@ class BaseMessage(models.Model):
 
     class Meta:
         ordering = ('session', 'created_time')
+        verbose_name = _('Message')
+        verbose_name_plural = _('Messages')
 
 
 class HostGroup(models.Model):
