@@ -47,4 +47,4 @@ class CommandForm(forms.Form):
 
 
 class SessionSelectForm(forms.Form):
-    session = forms.ChoiceField(label=_('Sessions:'))
+    session = forms.ChoiceField(label=_('Session:'))
