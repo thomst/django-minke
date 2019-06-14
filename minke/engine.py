@@ -13,7 +13,9 @@ from .tasks import cleanup
 
 def process(session_cls, queryset, session_data, user,
             fabric_config=None, wait=False, console=False):
-    """Initiate fabric's session-processing."""
+    """
+    Initiate and run celery-tasks.
+    """
 
     MinkeSession.objects.clear_currents(user, queryset)
     hosts = queryset.get_hosts()
@@ -52,32 +54,37 @@ def process(session_cls, queryset, session_data, user,
     config = session_cls.invoke_config.copy()
     config.update(fabric_config or dict())
 
-    # run celery-tasks to process the sessions...
+
+    # run celery-tasks...
     results = list()
-    parrallel = session_cls.parrallel_per_host
     for host, sessions in session_groups.items():
+
         # get process_session_signatures for all sessions
         signatures = [process_session.si(host.id, s.id, config) for s in sessions]
-        # Wrap the session-signatures wihtin a group to support parrallel
-        # execution on a host-bases.
-        # NOTE: mixing groups and chains needs a result-backend supporting
-        # chords (s. celery-docs for canvas and result-backends for details)
-        if session_cls.parrallel_per_host: signatures = [group(*signatures)]
+
+        # To support parrallel execution per host we wrap the signatures in a group.
+        # NOTE: Since we append the cleanup-task the construct is essentially the
+        # same as a chord which is not supported by all result-backends (s. celery-docs).
+        if session_cls.parrallel_per_host:
+            signatures = [group(*signatures)]
+
         # append the cleanup-task
         signatures.append(cleanup.si(host.id))
+
         try:
             result = chain(*signatures).delay()
-            results.append((result, [s.id for s in sessions]))
 
-        # FIXME: celery-4.2.1 fails to raise an exception if rabbitmq is
+        # NOTE: celery-4.2.1 fails to raise an exception if rabbitmq is
         # down or no celery-worker is running at all... hope for 4.3.x
         except process_session.OperationalError:
             host.release_lock()
             for session in sessions:
-                msg = 'Could not process session.'
                 session.add_msg(ExceptionMessage())
-                session.end('failed')
+                session.cancel()
                 if console: session.prnt(session)
+
+        else:
+            results.append((result, (s.id for s in sessions)))
 
 
     # print sessions in cli-mode as soon as they are ready...
