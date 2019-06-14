@@ -9,7 +9,7 @@ from django.contrib import messages
 from django.contrib import admin
 from django.utils.translation import gettext as _
 from django.http import HttpResponseRedirect
-from django.shortcuts import render
+from django.template.response import TemplateResponse
 from django.core.exceptions import PermissionDenied
 from django.db.models import Prefetch
 
@@ -40,6 +40,9 @@ class MinkeChangeList(ChangeList):
 
 
 class MinkeAdmin(admin.ModelAdmin):
+    """
+    MinkeAdmin is the ModelAdmin-class for all MinkeModels.
+    """
     change_form_template = 'minke/change_form.html'
     change_list_template = 'minke/change_list.html'
     session_select_form = SessionSelectForm
@@ -163,7 +166,7 @@ class MinkeAdmin(admin.ModelAdmin):
                 render_params['minke_form'] = minke_form
                 render_params['objects'] = queryset
                 render_params['object_list'] = confirm
-                return render(request, 'minke/minke_form.html', render_params)
+                return TemplateResponse(request, 'minke/minke_form.html', render_params)
 
             else:
                 # collect form-data
