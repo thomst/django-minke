@@ -31,13 +31,14 @@ class SessionProcessor:
     Process sessions.
     """
     def __init__(self, host_id, session_id, fabric_config, task_id):
+        host = Host.objects.get(pk=host_id)
         self.task_id = task_id
-        self.host = Host.objects.get(pk=host_id)
+        self.host = host
 
         config = MINKE_FABRIC_CONFIG.clone()
         config.load_snakeconfig(fabric_config or dict())
-        hostname = self.host.hostname or self.host.name
-        self.con = Connection(hostname, self.host.username, config=config)
+        hostname = host.hostname or host.name
+        self.con = Connection(hostname, host.username, host.port, config=config)
 
         REGISTRY.reload()
         self.minke_session = MinkeSession.objects.get(pk=session_id)

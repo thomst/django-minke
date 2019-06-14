@@ -17,33 +17,43 @@ from django.contrib.contenttypes.models import ContentType
 from django.core.exceptions import FieldError
 from django.utils.safestring import mark_safe
 from django.template.loader import render_to_string
+from django.utils.translation import gettext_lazy as _
 
 from .exceptions import InvalidMinkeSetup
 from .utils import JSONField
 
 
 class MinkeSessionQuerySet(models.QuerySet):
+    """
+    Working with current sessions.
+    Which are those that are rendered within the changelist.
+    """
     def get_currents(self, user, minkeobjs):
-        minkeobj_type = ContentType.objects.get_for_model(minkeobjs.model)
-        minkeobj_ids = list(minkeobjs.all().values_list('id', flat=True))
-        return self.filter(
-            user=user,
-            minkeobj_type=minkeobj_type,
-            minkeobj_id__in=minkeobj_ids,
-            current=True)
+        """
+        Get all current sessions for a given user and minke-objects.
+        """
+        ct_query = ContentType.objects.filter(model=minkeobjs.model.__name__.lower())[0]
+        qs = self.filter(minkeobj_type=ct_query, minkeobj_id__in=minkeobjs)
+        return qs.filter(user=user, current=True)
 
     def get_currents_by_model(self, user, model):
-        minkeobj_type = ContentType.objects.get_for_model(model)
-        return self.filter(
-            user=user,
-            minkeobj_type=minkeobj_type,
-            current=True)
+        """
+        Get all current sessions for a given user and minkemodel.
+        """
+        ct_query = ContentType.objects.filter(model=model.__name__.lower())[0]
+        return self.filter(user=user, minkeobj_type=ct_query, current=True)
 
     def clear_currents(self, user, minkeobjs):
+        """
+        Clear all current sessions for a given user and minke-objects.
+        """
         return self.get_currents(user, minkeobjs).update(current=False)
 
 
 class MinkeSession(models.Model):
+    """
+    The MinkeSession holds the data of any executed session and tracks its process.
+    """
     objects = MinkeSessionQuerySet.as_manager()
 
     RESULT_STATES = (
@@ -51,10 +61,11 @@ class MinkeSession(models.Model):
         ('warning', 1),
         ('error', 2),
     )
+    # TODO: find a way to use lazy-translations with the format-strings.
     PROC_STATES = (
         ('initialized', 'waiting...'),
         ('running', 'running...'),
-        ('succeeded', 'succeeded in {0:.1f} seconds'),
+        ('completed', 'completed in {0:.1f} seconds'),
         ('stopping', 'stopping...'),
         ('stopped', 'stopped after {0:.1f} seconds'),
         ('canceled', 'canceled!'),
@@ -62,7 +73,7 @@ class MinkeSession(models.Model):
     )
 
     class Meta:
-        ordering = ('minkeobj_type', 'minkeobj_id', '-start_time')
+        ordering = ('minkeobj_type', 'minkeobj_id', '-created_time')
 
     # those fields will be derived from the session-class
     session_name = models.CharField(max_length=128)
@@ -84,8 +95,12 @@ class MinkeSession(models.Model):
     start_time = models.DateTimeField(blank=True, null=True)
     end_time = models.DateTimeField(blank=True, null=True)
     run_time = models.DurationField(blank=True, null=True)
+    created_time = models.DateTimeField(auto_now_add=True)
 
     def init(self, user, minkeobj, session_cls, session_data):
+        """
+        Initialize a session. Setup the session-attributes and save it.
+        """
         self.proc_status = 'initialized'
         self.user = user
         self.minkeobj = minkeobj
@@ -96,6 +111,12 @@ class MinkeSession(models.Model):
         self.save()
 
     def start(self, task_id):
+        """
+        Start a session. Update proc_status, start_time and task_id.
+        Since the cancel-method is called asynchrouniously to the whole session-
+        processing, the start-, end- and cancel-method are each wrapped within a
+        atomic transaction to protect them from interfering.
+        """
         session = MinkeSession.objects.select_for_update().get(pk=self.id)
         with transaction.atomic():
             if session.is_waiting:
@@ -106,6 +127,12 @@ class MinkeSession(models.Model):
                 return True
 
     def cancel(self):
+        """
+        Cancel a session. Update proc_- and session_status.
+        Since the cancel-method is called asynchrouniously to the whole session-
+        processing, the start-, end- and cancel-method are each wrapped within a
+        atomic transaction to protect them from interfering.
+        """
         session = MinkeSession.objects.select_for_update().get(pk=self.id)
         with transaction.atomic():
             if session.is_waiting:
@@ -120,11 +147,17 @@ class MinkeSession(models.Model):
                 return True
 
     def end(self):
+        """
+        End a session. Update proc_- and session_status, end_- and run_time.
+        Since the cancel-method is called asynchrouniously to the whole session-
+        processing, the start-, end- and cancel-method are each wrapped within a
+        atomic transaction to protect them from interfering.
+        """
         session = MinkeSession.objects.select_for_update().get(pk=self.id)
         with transaction.atomic():
             if session.proc_status == 'running':
                 session_status = self.session_status or 'success'
-                proc_status = 'succeeded'
+                proc_status = 'completed'
             elif session.proc_status == 'stopping':
                 session_status = 'error'
                 proc_status = 'stopped'
@@ -137,6 +170,8 @@ class MinkeSession(models.Model):
             session.save(update_fields=fields)
             return True
 
+    # TODO: The fail-method could be merged into the end-method.
+    # It would be more concise and solid.
     def fail(self):
         self.session_status = 'error'
         self.proc_status = 'failed'
@@ -156,15 +191,22 @@ class MinkeSession(models.Model):
 
     @property
     def is_done(self):
-        return self.proc_status in ['succeeded', 'canceled', 'stopped', 'failed']
+        return self.proc_status in ['completed', 'canceled', 'stopped', 'failed']
 
     @property
     def proc_info(self):
+        """
+        Infos about the session-processing
+        that will be rendered within the session-template.
+        """
         info = next((s[1] for s in self.PROC_STATES if s[0] == self.proc_status))
         if self.run_time: return info.format(self.run_time.total_seconds())
         else: return info
 
     def prnt(self):
+        """
+        Print a session and its messages.
+        """
         width = 60
         pre_width = 7
         sep = ': '
@@ -211,6 +253,9 @@ class CommandResult(Result, models.Model):
     created_time = models.DateTimeField(auto_now_add=True)
     session = models.ForeignKey(MinkeSession, on_delete=models.CASCADE, related_name='commands')
 
+    class Meta:
+        ordering = ('session', 'created_time')
+
     def __init__(self, *args, **kwargs):
         """
         This model could also be initiated as fabric's result-class.
@@ -224,6 +269,9 @@ class CommandResult(Result, models.Model):
             Result.__init__(self, *args, **kwargs)
 
     def as_message(self):
+        """
+        Return this instance as an ExecutionMessage.
+        """
         # FIXME: messages imports from models and vice versa.
         # We should find another solution here. Maybe define message-proxies
         # right here in the models-module?
@@ -232,6 +280,10 @@ class CommandResult(Result, models.Model):
 
 
 class BaseMessage(models.Model):
+    """
+    This is the database-layer for all messages. Proxies of this model are defined
+    within the messages-module.
+    """
     LEVELS = (
         ('info', 'info'),
         ('warning', 'warning'),
@@ -241,21 +293,36 @@ class BaseMessage(models.Model):
     level = models.CharField(max_length=128, choices=LEVELS)
     text = models.TextField()
     html = models.TextField()
+    created_time = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ('session', 'created_time')
 
 
 class HostGroup(models.Model):
+    """
+    A Group of hosts. (Not sure if this is practical.)
+    """
     name = models.CharField(max_length=255, unique=True)
     comment = models.TextField(blank=True, null=True)
 
     class Meta:
         ordering = ['name']
+        verbose_name = _('Hostgroup')
+        verbose_name_plural = _('Hostgroups')
 
     def __str__(self):
         return self.name
 
 
 class HostQuerySet(models.QuerySet):
+    """
+    Besides the get_lock-method this is an imitation of the minkemodel-queryset-api.
+    """
     def get_lock(self):
+        """
+        Set a lock on all selected hosts.
+        """
         # The most atomic way to get a lock is a update-query.
         # We use a timestamp to be able to identify the updated objects.
         timestamp = repr(time())
@@ -263,17 +330,36 @@ class HostQuerySet(models.QuerySet):
         return timestamp
 
     def get_hosts(self):
+        """
+        Return itself (minkemodel-api).
+        """
         return self
 
     def host_filter(self, hosts):
+        """
+        Return an intersection of itself and the given hosts (minkemodel-api).
+        """
         return self & hosts
+
+    def select_related_hosts(self):
+        """
+        Return itself (minkemodel-api).
+        """
+        return self
 
 
 class Host(models.Model):
+    """
+    This model is mainly a ssh-config.
+    Each host represents an unique ssh-connection.
+    It also imitates the minkemodel-api to normalize the way the engine the engine
+    runs sessions on them.
+    """
     name = models.SlugField(max_length=128, unique=True)
     verbose_name = models.CharField(max_length=255, blank=True, null=True)
     hostname = models.CharField(max_length=255, blank=True, null=True)
     username = models.CharField(max_length=255, blank=True, null=True)
+    port = models.IntegerField(blank=True, null=True)
     comment = models.TextField(blank=True, null=True)
     group = models.ForeignKey(HostGroup, blank=True, null=True, on_delete=models.SET_NULL)
     disabled = models.BooleanField(default=False)
@@ -285,51 +371,70 @@ class Host(models.Model):
         object_id_field='minkeobj_id')
 
     def get_host(self):
+        """
+        Return itself (minkemodel-api).
+        """
         return self
 
     def release_lock(self):
+        """
+        Release the host's lock.
+        """
         self.lock = None
         self.save(update_fields=['lock'])
 
     class Meta:
         ordering = ['name']
+        verbose_name = _('Host')
+        verbose_name_plural = _('Hosts')
 
     def __str__(self):
         return self.name
 
 
 class MinkeQuerySet(models.QuerySet):
+    """
+    A queryset-api to work with related hosts.
+    This api is mainly used by the engine-module.
+    """
     def get_hosts(self):
-        lookup = self.model.get_reverse_host_lookup() + '__id__in'
-        ids = self.values_list('id', flat=True)
+        """
+        Get all hosts related to the objects of this queryset.
+        """
+        lookup = self.model.get_reverse_host_lookup() + '__in'
         try:
-            return Host.objects.filter(**{lookup:ids})
+            return Host.objects.filter(**{lookup:self})
         except FieldError:
             msg = "Invalid reverse-host-lookup: {}".format(lookup)
             raise InvalidMinkeSetup(msg)
 
     def host_filter(self, hosts):
-        lookup = self.model.HOST_LOOKUP + '__id__in'
-        ids = hosts.values_list('id', flat=True)
+        """
+        Get all objects related to the given hosts.
+        """
+        lookup = self.model.HOST_LOOKUP + '__in'
         try:
-            return self.filter(**{lookup:ids})
+            return self.filter(**{lookup:hosts})
         except FieldError:
             msg = "Invalid host-lookup: {}".format(lookup)
             raise InvalidMinkeSetup(msg)
 
-
-class MinkeManager(models.Manager):
-    def get_queryset(self):
-        queryset = MinkeQuerySet(self.model, using=self._db)
+    def select_related_hosts(self):
+        """
+        Return a queryset which selects related hosts.
+        """
         try:
-            return queryset.select_related(self.model.HOST_LOOKUP)
+            return self.select_related(self.model.HOST_LOOKUP)
         except FieldError:
             msg = "Invalid host-lookup: {}".format(self.model.HOST_LOOKUP)
             raise InvalidMinkeSetup(msg)
 
 
 class MinkeModel(models.Model):
-    objects = MinkeManager()
+    """
+    An abstract baseclass for all models on which sessions should be run.
+    """
+    objects = MinkeQuerySet.as_manager()
     sessions = GenericRelation(MinkeSession,
         content_type_field='minkeobj_type',
         object_id_field='minkeobj_id')
@@ -342,6 +447,9 @@ class MinkeModel(models.Model):
 
     @classmethod
     def get_reverse_host_lookup(cls):
+        """
+        Derive a reverse lookup-term from HOST_LOOKUP.
+        """
         if cls.REVERSE_HOST_LOOKUP:
             lookup = self.REVERSE_HOST_LOOKUP
         else:
@@ -352,6 +460,9 @@ class MinkeModel(models.Model):
         return lookup
 
     def get_host(self):
+        """
+        Return the related host-instance.
+        """
         host = self
         for attr in self.HOST_LOOKUP.split('__'):
             host = getattr(host, attr, None)

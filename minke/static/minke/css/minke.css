@@ -45,7 +45,7 @@ table.sessions tr.minkeobj.stopping  > *,
 table.sessions tr.minkeobj.stopped  > *,
 table.sessions tr.minkeobj.failed  > *,
 table.sessions tr.minkeobj.canceled  > *,
-table.sessions tr.minkeobj.succeeded > * {
+table.sessions tr.minkeobj.completed > * {
     border: 0;
 }
 

@@ -8,6 +8,7 @@ from minke.messages import PreMessage
 from minke.messages import TableMessage
 from minke.messages import ExecutionMessage
 from minke.messages import ExceptionMessage
+from minke.models import CommandResult
 
 
 class MessageTest(SimpleTestCase):
@@ -22,13 +23,13 @@ class MessageTest(SimpleTestCase):
         self.assertEqual(message.text, 'foobär')
         self.assertRegex(message.html, 'foobär')
 
-        class dummy_result(object):
-            return_code = 1
-            command = 'foobär'
-            stdout = 'foobär-out'
-            stderr = str()
+        result = CommandResult(
+            exited=1,
+            command='foobär',
+            stdout='foobär-out',
+            stderr=str())
 
-        message = ExecutionMessage(dummy_result)
+        message = ExecutionMessage(result)
         self.assertRegex(message.text, 'foobär')
         self.assertRegex(message.html, 'foobär')
 

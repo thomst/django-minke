@@ -136,9 +136,9 @@ class ViewsTest(TestCase):
         valid_form_data['two'] = 2
 
         old_minke_password_form = settings.MINKE_FABRIC_FORM
-        indicator_action_form = '<input type="hidden" name="minke_form" value="True">'
+        indicator_action_form = '<input type="hidden" name="minke_form" value="True"'
         indicator_password = '<input type="password" name="connect_kwargs_passphrase"'
-        indicator_confirm = 'type="checkbox" name="_selected_action" value="%d" checked>' % any_system_id
+        indicator_confirm = 'type="checkbox" name="_selected_action" value="%d" checked' % any_system_id
         indicator_testform = '<input type="number" name="one"'
 
         get_test = lambda b: self.assertIn if bool(b) else self.assertNotIn
@@ -215,7 +215,7 @@ class ViewsTest(TestCase):
             url = baseurl + url_query
             resp = self.client.get(url)
             self.assertEqual(resp.status_code, 200)
-            matches = re.findall('<tr class="minkeobj[^"]+succeeded[^"]*">', resp.content.decode('utf-8'))
+            matches = re.findall('<tr class="minkeobj[^"]+completed[^"]*">', resp.content.decode('utf-8'))
             self.assertEqual(len(matches), count)
 
         self.client.logout()
@@ -241,8 +241,8 @@ class ViewsTest(TestCase):
         for session in content:
             self.assertIn(str(session['id']), session_ids)
             self.assertEqual(session['session_status'], 'success')
-            self.assertEqual(session['proc_status'], 'succeeded')
-            self.assertIn('succeeded in', session['proc_info'])
+            self.assertEqual(session['proc_status'], 'completed')
+            self.assertIn('completed in', session['proc_info'])
             self.assertIn('foobär', session['messages'][0]['html'])
             self.assertTrue(session['is_done'])
 

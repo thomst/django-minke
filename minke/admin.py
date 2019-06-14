@@ -249,11 +249,12 @@ class MinkeAdmin(admin.ModelAdmin):
         # Has been asked for a session-history?
         if object_id and 'session_history' in request.GET:
             ct = ContentType.objects.get_for_model(self.model)
+            # TODO: prefetch related messages or commandresults
             sessions = MinkeSession.objects.filter(
                 minkeobj_type=ct,
                 minkeobj_id=object_id,
                 user=request.user,
-                proc_status__in=('succeeded', 'stopped', 'failed')
+                proc_status__in=('completed', 'stopped', 'failed')
                 )[:int(request.GET['session_history'])]
             extra_context = dict(
                 sessions=sessions,

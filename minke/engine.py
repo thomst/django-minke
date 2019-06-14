@@ -21,7 +21,7 @@ def process(session_cls, queryset, session_data, user,
 
     # group sessions by hosts
     session_groups = dict()
-    for minkeobj in queryset.all():
+    for minkeobj in queryset.select_related_hosts():
         host = minkeobj.get_host()
 
         session = MinkeSession()
