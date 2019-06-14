@@ -6,12 +6,15 @@ from .models import MinkeSession
 
 
 class StatusFilter(admin.SimpleListFilter):
-    title = _('Minke-Status')
+    """
+    Filter objects by the session-status of their current sessions.
+    """
+    title = _('Session-Status')
     parameter_name = 'minkestatus'
 
     def __init__(self, request, params, model, model_admin):
         super().__init__(request, params, model, model_admin)
-        self.states = ('success', 'warning', 'error')
+        self.states = (s[0] for s in MinkeSession.SESSION_STATES)
         # unfortunatly it is not possible to get the real changlist-queryset
         # at this point as it isn't filtered yet. So we just grab all sessions
         # that belongs to the user and model.

@@ -239,13 +239,13 @@ class Session(metaclass=SessionRegistration):
         """
         Set session-status. Pass a valid session-status or a boolean.
         """
-        states = dict(self._db.RESULT_STATES)
+        states = dict(self._db.SESSION_STATES)
         if type(status) == bool:
             status = 'success' if status else 'error'
         elif status.lower() in states.keys():
             status = status.lower()
         else:
-            msg = 'session-status must be one of {}'.format(states)
+            msg = 'session-status must be one of {}'.format(states.keys())
             raise InvalidMinkeSetup(msg)
 
         if not self.status or not alert or states[self.status] < states[status]:

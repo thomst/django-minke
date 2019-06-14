@@ -57,7 +57,7 @@ class MinkeSession(models.Model):
     """
     objects = MinkeSessionQuerySet.as_manager()
 
-    RESULT_STATES = (
+    SESSION_STATES = (
         ('success', 0),
         ('warning', 1),
         ('error', 2))
@@ -69,7 +69,7 @@ class MinkeSession(models.Model):
         ('stopped', 'stopped after {0:.1f} seconds'),
         ('canceled', 'canceled!'),
         ('failed', 'failed!'))
-    RESULT_CHOICES = ((s[0], _(s[0])) for s in RESULT_STATES)
+    SESSION_CHOICES = ((s[0], _(s[0])) for s in SESSION_STATES)
     PROC_CHOICES = ((s[0], _(s[0])) for s in PROC_STATES)
 
     class Meta:
@@ -81,7 +81,7 @@ class MinkeSession(models.Model):
     session_name = models.CharField(max_length=128)
     session_verbose_name = models.CharField(max_length=128)
     session_description = models.TextField(blank=True, null=True)
-    session_status = models.CharField(max_length=128, choices=RESULT_CHOICES)
+    session_status = models.CharField(max_length=128, choices=SESSION_CHOICES)
     session_data = JSONField(blank=True, null=True)
 
     # the minkeobj to work on
