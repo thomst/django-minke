@@ -1,6 +1,7 @@
 # -*- coding: utf-8 -*-
 from pydoc import locate
 
+from django.contrib.admin.options import IncorrectLookupParameters
 from django.contrib.contenttypes.models import ContentType
 from django.contrib.admin.views.main import ChangeList
 from django.contrib.admin import helpers
