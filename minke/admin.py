@@ -47,6 +47,9 @@ class MinkeAdmin(admin.ModelAdmin):
     change_list_template = 'minke/change_list.html'
     session_select_form = SessionSelectForm
 
+    class Media:
+        css = dict(all=('minke/css/minke.css',))
+
     def get_changelist(self, request, **kwargs):
         """
         Use our own ChangeList.
