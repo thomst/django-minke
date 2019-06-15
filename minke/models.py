@@ -71,11 +71,26 @@ class MinkeSession(models.Model):
         verbose_name_plural = _('Minke-Sessions')
 
     # those fields will be derived from the session-class
-    session_name = models.CharField(max_length=128)
-    session_verbose_name = models.CharField(max_length=128)
-    session_description = models.TextField(blank=True, null=True)
-    session_status = models.CharField(max_length=128, choices=SESSION_CHOICES)
-    session_data = JSONField(blank=True, null=True)
+    session_name = models.CharField(
+        max_length=128,
+        verbose_name=_('Session-name'),
+        help_text=_('Class-name of the session-class.'))
+    session_verbose_name = models.CharField(
+        max_length=128,
+        verbose_name=_("Session's verbose-name"),
+        help_text=_('Verbose-name-attribute of the session-class.'))
+    session_description = models.TextField(
+        blank=True, null=True, max_length=128,
+        verbose_name=_("Session's description"),
+        help_text=_('Doc-string of the session-class.'))
+    session_status = models.CharField(
+        max_length=128, choices=SESSION_CHOICES,
+        verbose_name=_("Session-status"),
+        help_text=_('Mostly set by the session-code itself.'))
+    session_data = JSONField(
+        blank=True, null=True,
+        verbose_name=_("Session's extra-data"),
+        help_text=_('Data coming from a session-form.'))
 
     # the minkeobj to work on
     minkeobj_type = models.ForeignKey(ContentType, on_delete=models.CASCADE)
@@ -83,14 +98,35 @@ class MinkeSession(models.Model):
     minkeobj = GenericForeignKey('minkeobj_type', 'minkeobj_id')
 
     # execution-data of the session
-    user = models.ForeignKey(User, on_delete=models.CASCADE)
+    user = models.ForeignKey(
+        User, on_delete=models.CASCADE,
+        verbose_name=_("User"),
+        help_text=_('User that run this session.'))
+    proc_status = models.CharField(
+        max_length=128, choices=PROC_CHOICES,
+        verbose_name=_("Process-status"),
+        help_text=_('Status of session-processing.'))
+    task_id = models.CharField(
+        max_length=128, blank=True, null=True,
+        verbose_name=_("Task-ID"),
+        help_text=_('ID of the celery-task that run the session.'))
+    start_time = models.DateTimeField(
+        blank=True, null=True,
+        verbose_name=_("Start-time"),
+        help_text=_('Time the session has been started.'))
+    end_time = models.DateTimeField(
+        blank=True, null=True,
+        verbose_name=_("End-time"),
+        help_text=_('Time the session finished.'))
+    run_time = models.DurationField(
+        blank=True, null=True,
+        verbose_name=_("Run-time"),
+        help_text=_("Session's runtime."))
+    created_time = models.DateTimeField(
+        auto_now_add=True,
+        verbose_name=_("Created-time"),
+        help_text=_('Time the session has been initiated.'))
     current = models.BooleanField(default=True)
-    proc_status = models.CharField(max_length=128, choices=PROC_CHOICES)
-    task_id = models.CharField(max_length=128, blank=True, null=True)
-    start_time = models.DateTimeField(blank=True, null=True)
-    end_time = models.DateTimeField(blank=True, null=True)
-    run_time = models.DurationField(blank=True, null=True)
-    created_time = models.DateTimeField(auto_now_add=True)
 
     def init(self, user, minkeobj, session_cls, session_data):
         """
@@ -420,6 +456,8 @@ class MinkeQuerySet(models.QuerySet):
             raise InvalidMinkeSetup(msg)
 
 
+# TODO: implement a post-delete-signal-handler to cleanup sessions on deleting
+# a minkeobject.
 class MinkeModel(models.Model):
     """
     An abstract baseclass for all models on which sessions should be run.

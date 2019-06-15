@@ -12,6 +12,9 @@ from django.http import HttpResponseRedirect
 from django.template.response import TemplateResponse
 from django.core.exceptions import PermissionDenied
 from django.db.models import Prefetch
+from django.utils.safestring import mark_safe
+from django.urls import reverse
+from django.contrib.admin.filters import RelatedOnlyFieldListFilter
 
 from . import settings
 from . import engine
@@ -19,6 +22,72 @@ from .sessions import REGISTRY
 from .models import MinkeSession
 from .forms import MinkeForm
 from .forms import SessionSelectForm
+
+
+@admin.register(MinkeSession)
+class SessionAdmin(admin.ModelAdmin):
+    model = MinkeSession
+    date_hierarchy = 'created_time'
+    search_fields = ('session_name',)
+    list_display = (
+        'session_verbose_name',
+        'minkeobj_view',
+        'minkeobj_type',
+        'session_status',
+        'proc_status',
+        'start_time',
+        'run_time')
+    list_filter = (
+        'session_name',
+        'session_status',
+        'proc_status',
+        ('minkeobj_type', RelatedOnlyFieldListFilter),
+        'user')
+    fieldsets = (
+        (None, {
+            'fields': (
+                'minkeobj_view',
+                'minkeobj_type',
+                'user',
+            ),
+            'classes': ('extrapretty', 'wide')
+        }),
+        (_('Session'), {
+            'fields': (
+                'session_name',
+                'session_verbose_name',
+                'session_status',
+                'session_description',
+                'session_data',
+            ),
+            'classes': ('extrapretty', 'wide')
+        }),
+        (_('Processing'), {
+            'fields': (
+                'proc_status',
+                'task_id',
+                'created_time',
+                'start_time',
+                'end_time',
+                'run_time',
+            ),
+            'classes': ('extrapretty', 'wide')
+        }),
+    )
+    readonly_fields = fieldsets[0][1]['fields'] + fieldsets[1][1]['fields'] + fieldsets[2][1]['fields']
+
+    def minkeobj_view(self, obj):
+        model = obj.minkeobj_type.model_class()
+        try:
+            minkeobj = model.objects.get(pk=obj.minkeobj_id)
+        except model.DoesNotExist:
+            return '{} [{}] (deleted)'.format(obj.minkeobj_type, obj.minkeobj_id)
+        else:
+            opts = minkeobj._meta
+            lookup = "admin:{}_{}_change".format(opts.app_label, opts.model_name)
+            href = reverse(lookup, args=(minkeobj.id,))
+            return mark_safe('<a href="{}">{}</a>'.format(href, minkeobj))
+    minkeobj_view.short_description = 'Minke-object'
 
 
 class MinkeChangeList(ChangeList):
@@ -41,7 +110,8 @@ class MinkeChangeList(ChangeList):
 
 class MinkeAdmin(admin.ModelAdmin):
     """
-    MinkeAdmin is the ModelAdmin-class for all MinkeModels.
+    MinkeAdmin is the ModelAdmin-baseclass for MinkeModels.
+    It allows to run sessions from the changelist-view.
     """
     session_history_on_top = True
     session_history_on_bottom = False
