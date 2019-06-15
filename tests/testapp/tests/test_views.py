@@ -57,7 +57,8 @@ class ViewsTest(TestCase):
             self.assertEqual(resp.status_code, 200)
             self.assertIn(LeaveAMessageSession.MSG, resp.content.decode('utf-8'))
             user = resp.context['user']
-            current_sessions = MinkeSession.objects.get_currents_by_model(user, model)
+            ct = ContentType.objects.get_for_model(model)
+            current_sessions = MinkeSession.objects.filter(minkeobj_type=ct)
             object_ids = list(current_sessions.values_list('minkeobj_id', flat=True))
             self.assertEqual(sorted(object_ids), sorted(player_ids))
         else:

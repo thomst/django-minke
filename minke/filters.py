@@ -15,10 +15,8 @@ class StatusFilter(admin.SimpleListFilter):
     def __init__(self, request, params, model, model_admin):
         super().__init__(request, params, model, model_admin)
         self.states = (s[0] for s in MinkeSession.SESSION_STATES)
-        # unfortunatly it is not possible to get the real changlist-queryset
-        # at this point as it isn't filtered yet. So we just grab all sessions
-        # that belongs to the user and model.
-        self.sessions = MinkeSession.objects.get_currents_by_model(request.user, model)
+        qs = model_admin.get_queryset(request)
+        self.sessions = MinkeSession.objects.get_currents(request.user, qs)
 
     def has_output(self):
         return bool(self.sessions)

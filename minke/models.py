@@ -37,13 +37,6 @@ class MinkeSessionQuerySet(models.QuerySet):
         qs = self.filter(minkeobj_type=ct_query, minkeobj_id__in=minkeobjs)
         return qs.filter(user=user, current=True)
 
-    def get_currents_by_model(self, user, model):
-        """
-        Get all current sessions for a given user and minkemodel.
-        """
-        ct_query = ContentType.objects.filter(model=model.__name__.lower())[0]
-        return self.filter(user=user, minkeobj_type=ct_query, current=True)
-
     def clear_currents(self, user, minkeobjs):
         """
         Clear all current sessions for a given user and minke-objects.
