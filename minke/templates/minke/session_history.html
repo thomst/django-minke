@@ -1,0 +1,27 @@
+{% load i18n static minke %}
+{% block session_history %}
+    <div class="submit-row session-history-bar">
+        {% if sessions %}
+            <a class="button" href="{% with count=sessions|length|add:1 %}{% update_url_query 'session_history' count %}{% endwith %}">+1</a>
+            <a class="button" href="{% with count=sessions|length|add:-1 %}{% update_url_query 'session_history' count %}{% endwith %}">-1</a>
+            {% if use_commands %}
+                <a class="button" href="{% update_url_query 'use_commands' %}">{% trans 'list messages' %}</a>
+            {% else %}
+                <a class="button" href="{% update_url_query 'use_commands' 1 %}">{% trans 'list commands' %}</a>
+            {% endif %}
+            <a class='button' href="?">{% trans 'Hide session-history' %}</a>
+        {% else %}
+            <a class='button' href="{% update_url_query 'session_history' 3 %}">{% trans 'Show session-history' %}</a>
+        {% endif %}
+    </div>
+    {% if sessions %}
+        <div class="form-row session-history">
+            <table class="sessions">
+                {% for session in sessions %}
+                    {% cycle 'row1' 'row2' as row_cycle silent %}
+                    {% minke_session %}
+                {% endfor %}
+            </table>
+        </div>
+    {% endif %}
+{% endblock %}

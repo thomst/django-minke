@@ -40,6 +40,14 @@ def minke_session(context):
     return context
 
 
+@register.inclusion_tag('minke/session_history.html', takes_context=True)
+def minke_session_history(context):
+    """
+    Render the session-history-table.
+    """
+    return context
+
+
 @register.simple_tag(takes_context=True)
 def update_url_query(context, key, value=None):
     """
