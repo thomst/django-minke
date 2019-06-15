@@ -43,6 +43,8 @@ class MinkeAdmin(admin.ModelAdmin):
     """
     MinkeAdmin is the ModelAdmin-class for all MinkeModels.
     """
+    session_history_on_top = True
+    session_history_on_bottom = False
     change_form_template = 'minke/change_form.html'
     change_list_template = 'minke/change_list.html'
     session_select_form = SessionSelectForm
@@ -252,6 +254,9 @@ class MinkeAdmin(admin.ModelAdmin):
         """
         Add session-history-view to the changeform-view.
         """
+        extra_context = extra_context or dict()
+        extra_context['session_history_on_top'] = self.session_history_on_top
+        extra_context['session_history_on_bottom'] = self.session_history_on_bottom
         # Has been asked for a session-history?
         if object_id and 'session_history' in request.GET:
             ct = ContentType.objects.get_for_model(self.model)
@@ -262,10 +267,9 @@ class MinkeAdmin(admin.ModelAdmin):
                 user=request.user,
                 proc_status__in=('completed', 'stopped', 'failed')
                 )[:int(request.GET['session_history'])]
-            extra_context = dict(
-                sessions=sessions,
-                use_commands=bool(request.GET.get('use_commands', False)),
-                show_session_date=True)
+            extra_context['sessions'] = sessions
+            extra_context['use_commands'] = bool(request.GET.get('use_commands', False))
+            extra_context['show_session_date'] = True
 
         # call super-changeform-view with our extra-context
         return super().changeform_view(request, object_id, form_url, extra_context)
