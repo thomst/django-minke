@@ -2,8 +2,12 @@ div.actions {
     display: inline-block;
 }
 
-div.actions.session_bar {
+div.actions.session_select {
     margin-right: 18px;
+}
+
+div.session_switch {
+    margin-top: 10px;
 }
 
 table.sessions {
@@ -13,6 +17,10 @@ table.sessions {
 div.session-history-bar a.button {
     margin: 0 0 0 5px;
     padding: 8px 15px;
+}
+
+table.sessions div.session_proc_info {
+    margin-bottom: 10px;
 }
 
 table.sessions tr.session td {
@@ -30,13 +38,16 @@ table.sessions ul.messagelist pre {
 
 table.sessions ul.messagelist li {
     padding-left: 45px;
-    margin: 10px 0 0 0;
     border: 1px solid #eee;
     background-position: 12px 12px;
     max-height: 200px;
     overflow: auto;
     position: relative;
     left: -8px;
+}
+
+table.sessions ul.messagelist li:last-child {
+    margin: 0;
 }
 
 table.sessions tr.minkeobj.initialized  > *,

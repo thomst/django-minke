@@ -27,7 +27,7 @@ class Session {
     }
     updateProcStatus(session) {
         this.session.data('procStatus', session.proc_status);
-        this.session.find('span.session_proc_info').hide()
+        this.session.find('div.session_proc_info > span').hide()
                     .text(session.proc_info).fadeIn();
         this.minkeobj.removeClass('initialized running stopping');
         this.minkeobj.addClass(session.proc_status);

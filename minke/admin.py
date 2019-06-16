@@ -24,9 +24,31 @@ from .forms import MinkeForm
 from .forms import SessionSelectForm
 
 
+class SessionChangeList(ChangeList):
+    """
+    A changelist to make our get-params valid.
+    """
+    def get_filters_params(self, params=None):
+        params = super().get_filters_params(params)
+        for key in ('display_messages', 'display_commands'):
+            if key in params: del params[key]
+        return params
+
+
 @admin.register(MinkeSession)
 class SessionAdmin(admin.ModelAdmin):
     model = MinkeSession
+    change_list_template = 'minke/change_list.html'
+
+    def get_changelist(self, request, **kwargs):
+        """
+        Use our own ChangeList.
+        """
+        return SessionChangeList
+
+    class Media:
+        css = dict(all=('minke/css/minke.css',))
+
     date_hierarchy = 'created_time'
     search_fields = ('session_name',)
     list_display = (
@@ -88,6 +110,15 @@ class SessionAdmin(admin.ModelAdmin):
             href = reverse(lookup, args=(minkeobj.id,))
             return mark_safe('<a href="{}">{}</a>'.format(href, minkeobj))
     minkeobj_view.short_description = 'Minke-object'
+
+    def changelist_view(self, request, extra_context=None):
+        display_messages = bool(int(request.GET.get('display_messages', 0)))
+        display_commands = bool(int(request.GET.get('display_commands', 0)))
+        extra_context = extra_context or dict()
+        extra_context['display_session_switch'] = True
+        extra_context['display_session_info'] = display_messages or display_commands
+        extra_context['commands_instead_of_messages'] = display_commands
+        return super().changelist_view(request, extra_context)
 
 
 class MinkeChangeList(ChangeList):
@@ -256,6 +287,11 @@ class MinkeAdmin(admin.ModelAdmin):
         """
         Extend the modeladmin-changelist_view by session-processing.
         """
+        extra_context = extra_context or dict()
+        extra_context['display_session_select'] = True
+        extra_context['display_session_info'] = True
+        extra_context['display_session_proc_info'] = True
+
         # Does this request has something to do with sessions at all?
         if ('run_sessions' not in request.POST
         and 'clear_sessions' not in request.POST):
@@ -338,8 +374,8 @@ class MinkeAdmin(admin.ModelAdmin):
                 proc_status__in=('completed', 'stopped', 'failed')
                 )[:int(request.GET['session_history'])]
             extra_context['sessions'] = sessions
-            extra_context['use_commands'] = bool(request.GET.get('use_commands', False))
-            extra_context['show_session_date'] = True
+            extra_context['commands_instead_of_messages'] = bool(request.GET.get('use_commands', False))
+            extra_context['display_session_date'] = True
 
         # call super-changeform-view with our extra-context
         return super().changeform_view(request, object_id, form_url, extra_context)

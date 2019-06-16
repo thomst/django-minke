@@ -1,29 +1,26 @@
 <tr id="session_{{session.id}}" class="session {{row_cycle}} {{session.session_status}} {{ session.proc_status }}" data-id="{{session.id}}" data-minkeobj-id="{{session.minkeobj_id}}" data-proc-status="{{session.proc_status}}" data-msg-count="{{session.messages.all|length}}">
     <td>
-        {% if show_session_date %}
+        {% if display_session_date %}
             {{ session.start_time }}
         {% endif %}
     </td>
     <td colspan="100">
-        {% if not hide_proc_info %}
-            <div>
+        {% if display_session_proc_info %}
+            <div class="session_proc_info">
                 <b{% if session.session_description %} title="{{session.session_description}}"{% endif %}>
-                {{session.session_verbose_name}}</b> - [<span class="session_proc_info">{{session.proc_info}}</span>]
+                    {{session.session_verbose_name}}
+                </b> - [<span>{{session.proc_info}}</span>]
             </div>
         {% endif %}
         <ul class="messagelist">
-        {% if not use_commands %}
-            {% if session.messages.all %}
-                {% for msg in session.messages.all %}
-                    <li class="{{msg.level}}">{{msg.html|safe}}</li>
-                {% endfor %}
-            {% endif %}
+        {% if commands_instead_of_messages %}
+            {% for cmd in session.commands.all %}
+                <li class="{{cmd.as_message.level}}">{{cmd.as_message.html|safe}}</li>
+            {% endfor %}
         {% else %}
-            {% if session.commands.all %}
-                {% for cmd in session.commands.all %}
-                    <li class="{{cmd.as_message.level}}">{{cmd.as_message.html|safe}}</li>
-                {% endfor %}
-            {% endif %}
+            {% for msg in session.messages.all %}
+                <li class="{{msg.level}}">{{msg.html|safe}}</li>
+            {% endfor %}
         {% endif %}
         </ul>
     </td>
