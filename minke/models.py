@@ -44,6 +44,7 @@ class MinkeSessionQuerySet(models.QuerySet):
         return self.get_currents(user, minkeobjs).update(current=False)
 
 
+# TODO: Add indexes for sessions, messages and commandresults!
 class MinkeSession(models.Model):
     """
     The MinkeSession holds the data of any executed session and tracks its process.

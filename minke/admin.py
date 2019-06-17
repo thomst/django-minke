@@ -347,6 +347,8 @@ class MinkeAdmin(admin.ModelAdmin):
 
             # If this is a select-across-request, we force confirmation
             # and redirect to a show-all-changelist.
+            # FIXME: select-across should be limited at least to the value of
+            # list_max_show_all.
             if select_across:
                 force_confirm = True
                 delimiter = '&' if '?' in redirect_url else '?'
