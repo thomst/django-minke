@@ -34,6 +34,12 @@ class SessionChangeList(ChangeList):
             if key in params: del params[key]
         return params
 
+    def get_queryset(self, request):
+        use_cmds = 'display_commands' in request.GET
+        related = 'commands' if use_cmds else 'messages'
+        qs = super().get_queryset(request).prefetch_related(related)
+        return qs
+
 
 @admin.register(MinkeSession)
 class SessionAdmin(admin.ModelAdmin):
@@ -99,16 +105,10 @@ class SessionAdmin(admin.ModelAdmin):
     readonly_fields = fieldsets[0][1]['fields'] + fieldsets[1][1]['fields'] + fieldsets[2][1]['fields']
 
     def minkeobj_view(self, obj):
-        model = obj.minkeobj_type.model_class()
-        try:
-            minkeobj = model.objects.get(pk=obj.minkeobj_id)
-        except model.DoesNotExist:
-            return '{} [{}] (deleted)'.format(obj.minkeobj_type, obj.minkeobj_id)
-        else:
-            opts = minkeobj._meta
-            lookup = "admin:{}_{}_change".format(opts.app_label, opts.model_name)
-            href = reverse(lookup, args=(minkeobj.id,))
-            return mark_safe('<a href="{}">{}</a>'.format(href, minkeobj))
+        opts = obj.minkeobj._meta
+        lookup = "admin:{}_{}_change".format(opts.app_label, opts.model_name)
+        href = reverse(lookup, args=(obj.minkeobj.id,))
+        return mark_safe('<a href="{}">{}</a>'.format(href, obj.minkeobj))
     minkeobj_view.short_description = 'Minke-object'
 
     def changelist_view(self, request, extra_context=None):
@@ -367,16 +367,18 @@ class MinkeAdmin(admin.ModelAdmin):
         extra_context['session_history_on_bottom'] = self.session_history_on_bottom
         # Has been asked for a session-history?
         if object_id and 'session_history' in request.GET:
+            use_cmds = 'use_commands' in request.GET
+            related = 'commands' if use_cmds else 'messages'
             ct = ContentType.objects.get_for_model(self.model)
-            # TODO: prefetch related messages or commandresults
-            sessions = MinkeSession.objects.filter(
+            sessions = MinkeSession.objects.prefetch_related(related)
+            sessions = sessions.filter(
                 minkeobj_type=ct,
                 minkeobj_id=object_id,
                 user=request.user,
-                proc_status__in=('completed', 'stopped', 'failed')
-                )[:int(request.GET['session_history'])]
+                proc_status__in=('completed', 'stopped', 'failed'))
+            sessions = sessions[:int(request.GET['session_history'])]
             extra_context['sessions'] = sessions
-            extra_context['commands_instead_of_messages'] = bool(request.GET.get('use_commands', False))
+            extra_context['commands_instead_of_messages'] = use_cmds
             extra_context['display_session_date'] = True
 
         # call super-changeform-view with our extra-context

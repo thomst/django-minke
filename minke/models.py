@@ -67,9 +67,9 @@ class MinkeSession(models.Model):
     PROC_CHOICES = ((s[0], _(s[0])) for s in PROC_STATES)
 
     class Meta:
-        ordering = ('minkeobj_type', 'minkeobj_id', '-created_time')
-        verbose_name = _('Minke-Session')
-        verbose_name_plural = _('Minke-Sessions')
+        ordering = ('minkeobj_type_id', 'minkeobj_id', '-created_time')
+        verbose_name = _('Session')
+        verbose_name_plural = _('Sessions')
 
     # those fields will be derived from the session-class
     session_name = models.CharField(
@@ -128,6 +128,9 @@ class MinkeSession(models.Model):
         verbose_name=_("Created-time"),
         help_text=_('Time the session has been initiated.'))
     current = models.BooleanField(default=True)
+
+    def __str__(self):
+        return '{} on {}'.format(self.session_name, self.minkeobj)
 
     def init(self, user, minkeobj, session_cls, session_data):
         """
@@ -277,7 +280,7 @@ class CommandResult(Result, models.Model):
     session = models.ForeignKey(MinkeSession, on_delete=models.CASCADE, related_name='commands')
 
     class Meta:
-        ordering = ('session', 'created_time')
+        ordering = ('session_id', 'created_time')
         verbose_name = _('Command-Result')
         verbose_name_plural = _('Command-Results')
 
@@ -321,7 +324,7 @@ class BaseMessage(models.Model):
     created_time = models.DateTimeField(auto_now_add=True)
 
     class Meta:
-        ordering = ('session', 'created_time')
+        ordering = ('session_id', 'created_time')
         verbose_name = _('Message')
         verbose_name_plural = _('Messages')
 
