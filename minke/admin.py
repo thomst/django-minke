@@ -37,8 +37,7 @@ class SessionChangeList(ChangeList):
     def get_queryset(self, request):
         use_cmds = 'display_commands' in request.GET
         related = 'commands' if use_cmds else 'messages'
-        qs = super().get_queryset(request).prefetch_related(related)
-        return qs
+        return super().get_queryset(request).prefetch_related(related)
 
 
 @admin.register(MinkeSession)

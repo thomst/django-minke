@@ -269,15 +269,42 @@ class CommandResult(Result, models.Model):
     """
     Add a db-layer to fabric's Result-class.
     """
-    command = models.TextField()
-    exited = models.SmallIntegerField()
-    stdout = models.TextField(blank=True, null=True)
-    stderr = models.TextField(blank=True, null=True)
-    shell = models.CharField(max_length=128)
-    encoding = models.CharField(max_length=128)
-    pty = models.BooleanField()
-    created_time = models.DateTimeField(auto_now_add=True)
-    session = models.ForeignKey(MinkeSession, on_delete=models.CASCADE, related_name='commands')
+    command = models.TextField(
+        verbose_name=_('Command'),
+        help_text=_('The command which was executed.'))
+    exited = models.SmallIntegerField(
+        verbose_name=_('Exit-status'),
+        help_text=_('Exit-status returned by the command.'))
+    stdout = models.TextField(
+        blank=True, null=True,
+        verbose_name=_('Stdout'),
+        help_text=_('Standard-output of the command.'))
+    stderr = models.TextField(
+        blank=True, null=True,
+        verbose_name=_('Stderr'),
+        help_text=_('Standard-error of the command. '
+                    '(unless the process was invoked via a pty, '
+                    'in which case stderr and stdout are merged into stdout)'))
+    shell = models.CharField(
+        max_length=128,
+        verbose_name=_('Shell'),
+        help_text=_('The shell binary used for execution.'))
+    encoding = models.CharField(
+        max_length=128,
+        verbose_name=_('Encoding'),
+        help_text=_('The string encoding used by the local shell environment.'))
+    pty = models.BooleanField(
+        verbose_name=_('Pty'),
+        help_text=_('A boolean describing whether the command was invoked with a pty or not'))
+    created_time = models.DateTimeField(
+        auto_now_add=True,
+        verbose_name=_('Time of creation'),
+        help_text=_('The datetime this command-result were added.'))
+    session = models.ForeignKey(MinkeSession,
+        on_delete=models.CASCADE,
+        related_name='commands',
+        verbose_name=_('Session'),
+        help_text=_('Session whereas this command where executed.'))
 
     class Meta:
         ordering = ('session_id', 'created_time')
@@ -317,11 +344,25 @@ class BaseMessage(models.Model):
         ('warning', 'warning'),
         ('error', 'error'))
 
-    session = models.ForeignKey(MinkeSession, on_delete=models.CASCADE, related_name='messages')
-    level = models.CharField(max_length=128, choices=LEVELS)
-    text = models.TextField()
-    html = models.TextField()
-    created_time = models.DateTimeField(auto_now_add=True)
+    session = models.ForeignKey(MinkeSession,
+        on_delete=models.CASCADE,
+        related_name='messages',
+        verbose_name=_('Session'),
+        help_text=_('Session the message belongs to.'))
+    level = models.CharField(
+        max_length=128, choices=LEVELS,
+        verbose_name=_('Message-level'),
+        help_text=_('Level with which the message were added.'))
+    text = models.TextField(
+        verbose_name=_('Text'),
+        help_text=_('Message-Text'))
+    html = models.TextField(
+        verbose_name=_('HTML'),
+        help_text=_('Message as HTML'))
+    created_time = models.DateTimeField(
+        auto_now_add=True,
+        verbose_name=_('Time of creation'),
+        help_text=_('The datetime this message were added.'))
 
     class Meta:
         ordering = ('session_id', 'created_time')
@@ -333,13 +374,19 @@ class HostGroup(models.Model):
     """
     A Group of hosts. (Not sure if this is practical.)
     """
-    name = models.CharField(max_length=255, unique=True)
-    comment = models.TextField(blank=True, null=True)
+    name = models.CharField(
+        max_length=255, unique=True,
+        verbose_name=_('Group-Name'),
+        help_text=_('Unique group-name.'))
+    comment = models.TextField(
+        blank=True, null=True,
+        verbose_name=_('Comment'),
+        help_text=_('Something about the group.'))
 
     class Meta:
         ordering = ['name']
-        verbose_name = _('Hostgroup')
-        verbose_name_plural = _('Hostgroups')
+        verbose_name = _('Group of hosts')
+        verbose_name_plural = _('Groups of hosts')
 
     def __str__(self):
         return self.name
@@ -385,15 +432,48 @@ class Host(models.Model):
     It also imitates the minkemodel-api to normalize the way the engine the engine
     runs sessions on them.
     """
-    name = models.SlugField(max_length=128, unique=True)
-    verbose_name = models.CharField(max_length=255, blank=True, null=True)
-    hostname = models.CharField(max_length=255, blank=True, null=True)
-    username = models.CharField(max_length=255, blank=True, null=True)
-    port = models.IntegerField(blank=True, null=True)
-    comment = models.TextField(blank=True, null=True)
-    group = models.ForeignKey(HostGroup, blank=True, null=True, on_delete=models.SET_NULL)
-    disabled = models.BooleanField(default=False)
-    lock = models.CharField(max_length=20, blank=True, null=True)
+    name = models.SlugField(
+        max_length=128, unique=True,
+        verbose_name=_('Name'),
+        help_text=_('Unique name of the host. If Hostname is not specified fabric\'s '
+                    'Connection-class will be initialized with this Name instead. '
+                    'Specifying a Name only could be a sufficient Host-setup '
+                    'if there is a valid ssh_config for it as lookup-pattern.'))
+    verbose_name = models.CharField(
+        max_length=255, blank=True, null=True,
+        verbose_name=_('Verbose Name'),
+        help_text=_('Verbose Host-Name.'))
+    hostname = models.CharField(
+        max_length=255, blank=True, null=True,
+        verbose_name=_('HostName'),
+        help_text=_('HostName could be either a ssh-config-lookup-pattern or a '
+                    'real hostname to log into.'))
+    username = models.CharField(
+        max_length=255, blank=True, null=True,
+        verbose_name=_('User'),
+        help_text=_('User to login as.'))
+    port = models.IntegerField(
+        blank=True, null=True,
+        verbose_name=_('Port number.'),
+        help_text=_('Port number to connect on the remote host.'))
+    comment = models.TextField(
+        blank=True, null=True,
+        verbose_name=_('Comment'),
+        help_text=_('Something about the host.'))
+    group = models.ForeignKey(HostGroup,
+        blank=True, null=True, on_delete=models.SET_NULL,
+        verbose_name=_('Hostgroup'),
+        help_text=_('The group this host belongs to.'))
+    disabled = models.BooleanField(
+        default=False,
+        verbose_name=_('Disabled'),
+        help_text=_('Disabled hosts won\'t be accessed by minke.'))
+    lock = models.CharField(
+        max_length=20, blank=True, null=True,
+        verbose_name=_('Lock'),
+        help_text=_('Locked hosts won\'t be accessed by minke.'
+                    'To prevent intersection a host will be locked '
+                    'while sessions are executed on it.'))
 
     objects = HostQuerySet.as_manager()
     sessions = GenericRelation(MinkeSession,
