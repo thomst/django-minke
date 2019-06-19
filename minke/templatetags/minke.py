@@ -15,9 +15,12 @@ def minke_result_list(context, cl):
     Support rendering of session-info-rows for changelist-results.
     """
     sessions = cl.sessions if hasattr(cl, 'sessions') else cl.result_list
-    context.update(result_list(cl))
-    context['results'] = zip(context['results'], sessions)
-    return context
+    cntxt = result_list(cl)
+    # django1 has problems with RequestConext together with forloop, cycle and
+    # nested inclusion-tags.So we use the context as dictonary.
+    cntxt.update(context.flatten())
+    cntxt['results'] = zip(cntxt['results'], sessions)
+    return cntxt
 
 
 @register.inclusion_tag('minke/session_select.html', takes_context=True)
@@ -54,7 +57,9 @@ def minke_session_history(context):
     """
     Render the session-history-table.
     """
-    return context
+    # django1 has problems with RequestConext together with forloop, cycle and
+    # nested inclusion-tags.So we use the context as dictonary.
+    return context.flatten()
 
 
 @register.simple_tag(takes_context=True)
