@@ -15,23 +15,29 @@ class FabricConfig(Config):
     """
     def load_snakeconfig(self, configdict):
         for param, value in configdict.items():
-            # prevent overriding existing settings with None...
-            if value == None: return
+            # We support two level of recursive config-keys. That means
+            # something like 'connect_kwargs_my_special_key' will be applied as
+            # 'config.connect_kwargs.my_special_key'. The key on the first level
+            # must already exist. Otherwise we raise InvalidMinkeSetup.
+            snippets = param.split('_')
+            key1 = key2 = None
 
-            # param must start with one of the existing config-keys
-            try:
-                key = next((k for k in self.keys() if param.startswith(k)))
-            except StopIteration:
+            for i, key in enumerate(snippets):
+                if '_'.join(snippets[:i+1]) in self:
+                    key1 = '_'.join(snippets[:i+1])
+                    key2 = '_'.join(snippets[i+1:])
+                    break
+
+            if not key1:
                 msg = 'Invalid fabric-config-parameter: {}'.format(param)
                 raise InvalidMinkeSetup(msg)
 
-            # add data - one or two level of depth
-            if param == key:
-                self[key] = value
+            # apply config-data
+            if not key2:
+                self[key1] = value
             else:
-                key2 = param.replace(key + '_', '')
-                if not self[key]: self[key] = dict()
-                self[key][key2] = value
+                if not self[key1]: self[key1] = dict()
+                self[key1][key2] = value
 
 
 class FabricRemote(Remote):
