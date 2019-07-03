@@ -1,27 +1,35 @@
 # -*- coding: utf-8 -*-
 from pydoc import locate
 
+from django import forms
 from django.contrib.admin.options import IncorrectLookupParameters
 from django.contrib.contenttypes.models import ContentType
 from django.contrib.admin.views.main import ChangeList
+from django.contrib.admin.filters import RelatedOnlyFieldListFilter
 from django.contrib.admin import helpers
 from django.contrib import messages
 from django.contrib import admin
+from django.utils.text import Truncator
+from django.utils.html import escape
 from django.utils.translation import gettext as _
-from django.http import HttpResponseRedirect
+from django.utils.safestring import mark_safe
 from django.template.response import TemplateResponse
 from django.core.exceptions import PermissionDenied
 from django.db.models import Prefetch
-from django.utils.safestring import mark_safe
 from django.urls import reverse
-from django.contrib.admin.filters import RelatedOnlyFieldListFilter
+from django.http import HttpResponseRedirect
 
 from . import settings
 from . import engine
 from .sessions import REGISTRY
 from .models import MinkeSession
+from .models import Host
+from .models import HostGroup
+from .models import CommandResult
+from .models import BaseMessage
 from .forms import MinkeForm
 from .forms import SessionSelectForm
+from .filters import StatusFilter
 
 
 class SessionChangeList(ChangeList):
@@ -37,7 +45,8 @@ class SessionChangeList(ChangeList):
     def get_queryset(self, request):
         use_cmds = 'display_commands' in request.GET
         related = 'commands' if use_cmds else 'messages'
-        return super().get_queryset(request).prefetch_related(related)
+        qs = super().get_queryset(request).prefetch_related(related)
+        return qs.prefetch_related('minkeobj')
 
 
 @admin.register(MinkeSession)
@@ -109,6 +118,7 @@ class SessionAdmin(admin.ModelAdmin):
         href = reverse(lookup, args=(obj.minkeobj.id,))
         return mark_safe('<a href="{}">{}</a>'.format(href, obj.minkeobj))
     minkeobj_view.short_description = 'Minke-object'
+    minkeobj_view.admin_order_field = 'minkeobj_id'
 
     def changelist_view(self, request, extra_context=None):
         display_messages = bool(int(request.GET.get('display_messages', 0)))
@@ -382,3 +392,85 @@ class MinkeAdmin(admin.ModelAdmin):
 
         # call super-changeform-view with our extra-context
         return super().changeform_view(request, object_id, form_url, extra_context)
+
+
+def get_ssh_options():
+    choices = ((None, '---------'),)
+    choices += tuple(((k, k) for k in settings.MINKE_HOST_CONFIG.keys()))
+    return choices
+
+
+class HostAdminForm(forms.ModelForm):
+    class Meta:
+        model = Host
+        exclude = tuple()
+        widgets = dict(config=forms.Select(choices=get_ssh_options()))
+
+
+class HostGroupAdminForm(forms.ModelForm):
+    class Meta:
+        model = HostGroup
+        exclude = tuple()
+        widgets = dict(config=forms.Select(choices=get_ssh_options()))
+
+
+@admin.register(Host)
+class HostAdmin(MinkeAdmin):
+    model = Host
+    form = HostAdminForm
+    list_display = ('name', 'verbose_name', 'username', 'hostname', 'port')
+    search_fields = ('name', 'hostname')
+    ordering = ('name',)
+    list_filter = (StatusFilter,)
+
+
+@admin.register(HostGroup)
+class HostGroupAdmin(admin.ModelAdmin):
+    model = HostGroup
+    form = HostGroupAdminForm
+    list_display = ('name',)
+    search_fields = ('name',)
+    ordering = ('name',)
+
+
+class CommandResultAdmin(admin.ModelAdmin):
+    model = CommandResult
+    list_display = ('command', 'session', 'exited', 'stdout_view', 'stderr_view', 'shell', 'pty', 'encoding', 'created_time')
+    readonly_fields = list_display
+    search_fields = ('session', 'command')
+    ordering = ('session', 'created_time')
+
+    def stdout_view(self, obj):
+        if not obj.stdout: return
+        abbr = escape(Truncator(obj.stdout).words(3))
+        html = '<span title="{}">{}</span>'.format(escape(obj.stdout), abbr)
+        return mark_safe(html)
+    stdout_view.short_description = 'stdout'
+
+    def stderr_view(self, obj):
+        if not obj.stderr: return
+        abbr = escape(Truncator(obj.stderr).words(3))
+        html = '<span title="{}">{}</span>'.format(escape(obj.stderr), abbr)
+        return mark_safe(html)
+    stderr_view.short_description = 'stderr'
+
+
+class BaseMessageAdmin(admin.ModelAdmin):
+    model = BaseMessage
+    list_display = ('text_view', 'html_view', 'level', 'session', 'created_time')
+    search_fields = ('text',)
+    ordering = ('session', 'created_time')
+
+    def text_view(self, obj):
+        if not obj.text: return
+        abbr = escape(Truncator(obj.text).words(3))
+        html = '<span title="{}">{}</span>'.format(escape(obj.text), abbr)
+        return mark_safe(html)
+    text_view.short_description = 'text'
+
+    def html_view(self, obj):
+        if not obj.html: return
+        abbr = escape(Truncator(obj.html).words(3))
+        html = '<span title="{}">{}</span>'.format(escape(obj.html), abbr)
+        return mark_safe(html)
+    html_view.short_description = 'html'

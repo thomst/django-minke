@@ -3,17 +3,8 @@
 from django.contrib import admin
 
 from minke.admin import MinkeAdmin
-from minke.models import Host
 from minke.filters import StatusFilter
 from .models import Server, AnySystem
-
-
-@admin.register(Host)
-class HostAdmin(MinkeAdmin):
-    list_filter = ('name', 'hostname')
-    search_fields = ('name',)
-    ordering = ('name',)
-    list_filter = (StatusFilter,)
 
 
 @admin.register(Server)

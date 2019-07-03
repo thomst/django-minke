@@ -20,6 +20,7 @@ from .models import MinkeSession
 from .sessions import REGISTRY
 from .messages import Message
 from .messages import ExceptionMessage
+from .settings import MINKE_HOST_CONFIG
 from .settings import MINKE_FABRIC_CONFIG
 
 
@@ -30,16 +31,29 @@ class SessionProcessor:
     """
     Process sessions.
     """
-    def __init__(self, host_id, session_id, fabric_config, task_id):
-        host = Host.objects.get(pk=host_id)
+    def __init__(self, host_id, session_id, session_config, task_id):
+        host = Host.objects.select_related('group').get(pk=host_id)
+        hostname = host.hostname or host.name
+        config = MINKE_FABRIC_CONFIG.clone()
         self.task_id = task_id
         self.host = host
 
-        config = MINKE_FABRIC_CONFIG.clone()
-        config.load_snakeconfig(fabric_config or dict())
-        hostname = host.hostname or host.name
+        # At first try to load the hostgroup- and host-config...
+        for obj in (host.group, host):
+            if not obj or not obj.config: continue
+            if obj.config in MINKE_HOST_CONFIG:
+                config.load_snakeconfig(MINKE_HOST_CONFIG[obj.config])
+            else:
+                msg = 'Invalid MINKE_HOST_CONFIG for {}'.format(obj)
+                logger.warning(msg)
+
+        # At least load the session-config...
+        config.load_snakeconfig(session_config or dict())
+
+        # Initialize the connection...
         self.con = Connection(hostname, host.username, host.port, config=config)
 
+        # Initialize the session...
         REGISTRY.reload()
         self.minke_session = MinkeSession.objects.get(pk=session_id)
         session_cls = REGISTRY[self.minke_session.session_name]

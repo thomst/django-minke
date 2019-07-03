@@ -9,6 +9,7 @@ MINKE_DEBUG = getattr(settings, 'MINKE_DEBUG', False)
 MINKE_FABRIC_FORM = getattr(settings, 'MINKE_FABRIC_FORM', None)
 MINKE_CLI_USER = getattr(settings, 'MINKE_CLI_USER', 'admin')
 MINKE_FABRIC_CONFIG = getattr(settings, 'MINKE_FABRIC_CONFIG', FabricConfig())
+MINKE_HOST_CONFIG = getattr(settings, 'MINKE_HOST_CONFIG', dict())
 
 # set defaults for fabric-/invoke-config
 MINKE_FABRIC_CONFIG.runners.remote = FabricRemote

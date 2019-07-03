@@ -1,6 +1,4 @@
 * add modeladmins for hosts, hostgroups, sessions, results and messages
-* make fabric-settings a dictonary of settings, which keys can be choosen by
-  a select-widget and are saved with the hosts and hostgroups
 * upload-helper-method for sessions
 * more tests
 * documentation

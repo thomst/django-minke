@@ -32,7 +32,7 @@ class REGISTRY(OrderedDict):
     @classmethod
     def add_session_factory(cls, factory):
         """
-        Add a session-factory (any code that builds session-classes).
+        Add a session-factory (any callable that declares session-classes).
         """
         cls._session_factories.append(factory)
 

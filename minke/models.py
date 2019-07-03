@@ -382,11 +382,15 @@ class HostGroup(models.Model):
         blank=True, null=True,
         verbose_name=_('Comment'),
         help_text=_('Something about the group.'))
+    config = models.CharField(
+        max_length=255, blank=True, null=True,
+        verbose_name=_('Fabric-/Invoke-config'),
+        help_text=_('Use config as specified in MINKE_HOST_CONFIG.'))
 
     class Meta:
         ordering = ['name']
-        verbose_name = _('Group of hosts')
-        verbose_name_plural = _('Groups of hosts')
+        verbose_name = _('Host-Group')
+        verbose_name_plural = _('Host-Groups')
 
     def __str__(self):
         return self.name
@@ -429,7 +433,7 @@ class Host(models.Model):
     """
     This model is mainly a ssh-config.
     Each host represents an unique ssh-connection.
-    It also imitates the minkemodel-api to normalize the way the engine the engine
+    It also imitates the minkemodel-api to normalize the way the engine
     runs sessions on them.
     """
     name = models.SlugField(
@@ -464,6 +468,10 @@ class Host(models.Model):
         blank=True, null=True, on_delete=models.SET_NULL,
         verbose_name=_('Hostgroup'),
         help_text=_('The group this host belongs to.'))
+    config = models.CharField(
+        max_length=255, blank=True, null=True,
+        verbose_name=_('Fabric-/Invoke-config'),
+        help_text=_('Use config as specified in MINKE_HOST_CONFIG.'))
     disabled = models.BooleanField(
         default=False,
         verbose_name=_('Disabled'),
