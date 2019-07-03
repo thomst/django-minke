@@ -1,11 +1,14 @@
-====================================================================
-Minke - A framework for server- and configuration-management-systems
-====================================================================
+=====
+Minke
+=====
+############################################################
+A framework for server- and configuration-management-systems
+############################################################
 
 Minke is a framework that combines the full power of djangos admin-interface
 with the reliability and configurability of fabric2. A pure open-source- and
-pure python-solution to realize the most different szenarios concerning server-
-and configuration-managment-systems.
+pure python-solution to realize the most different szenarios concerning remote-
+control and configuration-managment.
 
 Guess you just need to setup some managment-commands for a handful of servers -
 you can do that with minke. Guess you have lots of servers with different
@@ -21,6 +24,6 @@ Minke features:
 
 * parrallel ssh-connections and code-execution using celery
 
-* asynchronous browser-sessions for realtime monitoring of executed tasks
+* realtime monitoring of executed tasks
 
 * extensive support of fabric2- and invoke-configurations
