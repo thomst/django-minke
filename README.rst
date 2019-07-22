@@ -1,9 +1,9 @@
 =====
 Minke
 =====
-############################################################
-A framework for server- and configuration-management-systems
-############################################################
+####################################################################
+A framework for remote-control- and configuration-management-systems
+####################################################################
 
 Minke is a framework that combines the full power of djangos admin-interface
 with the reliability and configurability of fabric2. A pure open-source- and

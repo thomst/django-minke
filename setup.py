@@ -7,16 +7,23 @@ from setuptools import find_packages
 
 def read(filename):
     path = os.path.join(os.path.dirname(__file__), filename)
-    with open(path, encoding="utf-8") as handle:
-        return handle.read()
+    with open(path, encoding="utf-8") as file:
+        return file.read()
 
 
 version = __import__("minke").__version__
+if '-dev' in version:
+    dev_status = 'Development Status :: 3 - Alpha'
+elif '-beta' in version:
+    dev_status = 'Development Status :: 4 - Beta'
+else:
+    dev_status = 'Development Status :: 5 - Production/Stable'
+
 
 setup(
-    name="minke",
+    name="django-minke",
     version=version,
-    description="Django- and fabric-based building toolkit for server- and configuration-management-systems.",
+    description="Django- and fabric-based building toolkit for remote-control- and configuration-management-systems.",
     long_description=read("README.rst"),
     author="Thomas Leichtfuß",
     author_email="thomas.leichtfuss@posteo.de",
@@ -31,10 +38,11 @@ setup(
         "djangorestframework>=3.9.2",
     ],
     classifiers=[
-        "Environment :: Web Environment",
+        dev_status,
         "Framework :: Django",
+        "Environment :: Web Environment",
         "Intended Audience :: Developers",
-        "Intendet Audience :: SystemAdministrators",
+        "Intended Audience :: System Administrators",
         "License :: OSI Approved :: BSD License",
         "Operating System :: OS Independent",
         "Programming Language :: Python",

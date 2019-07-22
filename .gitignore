@@ -6,4 +6,7 @@
 .vscode/
 my.cnf
 /minke.egg-info
+/django_minke.egg-info
 /MANIFEST.in
+/build/
+/dist/

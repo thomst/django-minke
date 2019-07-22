@@ -1,5 +1,6 @@
-* add modeladmins for hosts, hostgroups, sessions, results and messages
 * upload-helper-method for sessions
 * more tests
 * documentation
 * commentings
+* trigger registry-reload via broadcasting signal
+* changelist-summarybar for sessions
