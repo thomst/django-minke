@@ -297,9 +297,9 @@ class MinkeAdmin(admin.ModelAdmin):
         Extend the modeladmin-changelist_view by session-processing.
         """
         extra_context = extra_context or dict()
-        extra_context['display_session_select'] = True
-        extra_context['display_session_info'] = True
-        extra_context['display_session_proc_info'] = True
+        extra_context['display_session_select'] = extra_context.get('display_session_select', True)
+        extra_context['display_session_info'] = extra_context.get('display_session_info', True)
+        extra_context['display_session_proc_info'] = extra_context.get('display_session_proc_info', True)
 
         # Does this request has something to do with sessions at all?
         if ('run_sessions' not in request.POST
