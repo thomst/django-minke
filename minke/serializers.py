@@ -12,10 +12,17 @@ class MessageSerializer(serializers.ModelSerializer):
         fields = ('level', 'html')
 
 
+class CmdMessageSerializer(serializers.Serializer):
+    level = serializers.CharField()
+    html = serializers.CharField()
+
+
 class SessionSerializer(serializers.ModelSerializer):
     messages = MessageSerializer(many=True, read_only=True)
+    cmd_messages = CmdMessageSerializer(many=True, read_only=True)
 
     class Meta:
         model = MinkeSession
-        fields = ('id', 'minkeobj_id', 'session_status', 'proc_status', 'proc_info', 'messages', 'is_done')
+        fields = ('id', 'minkeobj_id', 'session_status', 'proc_status', \
+                  'proc_info', 'messages', 'cmd_messages', 'is_done')
         read_only_fields = fields

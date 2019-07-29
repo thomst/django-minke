@@ -1,4 +1,6 @@
-<tr id="session_{{session.id}}" class="session {{row_cycle}} {{session.session_status}} {{ session.proc_status }}" data-id="{{session.id}}" data-minkeobj-id="{{session.minkeobj_id}}" data-proc-status="{{session.proc_status}}" data-msg-count="{{session.messages.all|length}}">
+<tr id="session_{{session.id}}" class="session {{row_cycle}} {{session.session_status}} {{ session.proc_status }}"
+    data-id="{{session.id}}" data-minkeobj-id="{{session.minkeobj_id}}" data-proc-status="{{session.proc_status}}"
+    data-msg-count="{{session.messages.all|length}}" data-cmd-count="{{session.commands.all|length}}">
     <td></td>
     <td colspan="100">
         {% if display_session_proc_info %}
