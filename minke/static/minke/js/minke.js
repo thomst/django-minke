@@ -1,6 +1,6 @@
 (function($) {
 
-sessions = {};
+var sessions = {};
 var interval = 400;
 var error_msg = 'minkeapi-error: ';
 var baseurl = window.location.protocol + '//'
