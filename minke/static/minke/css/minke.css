@@ -14,11 +14,6 @@ table.sessions {
     width: 100%;
 }
 
-div.session-history-bar a.button {
-    margin: 0 0 0 5px;
-    padding: 8px 15px;
-}
-
 table.sessions div.session_proc_info {
     margin-bottom: 10px;
 }

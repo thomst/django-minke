@@ -2,13 +2,13 @@
 <div class="session_switch xfull">
     <ul class="toplinks">
         <li>
-            {% if not display_session_info or commands_instead_of_messages %}
+            {% if not display_session_info or display_commands %}
                 <a href="{% update_url_query 'display_messages' 1 '-display_commands' %}">{% trans 'List messages' %}</a>
             {% else %}
                 <a href="{% update_url_query '-display_messages' %}">{% trans 'Hide messages' %}</a>
             {% endif %}
         </li><li>
-            {% if not display_session_info or not commands_instead_of_messages %}
+            {% if not display_session_info or display_messages %}
                 <a href="{% update_url_query 'display_commands' 1 '-display_messages' %}">{% trans 'List commands' %}</a>
             {% else %}
                 <a href="{% update_url_query '-display_commands' %}">{% trans 'Hide commands' %}</a>

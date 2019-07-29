@@ -126,7 +126,8 @@ class SessionAdmin(admin.ModelAdmin):
         extra_context = extra_context or dict()
         extra_context['display_session_switch'] = True
         extra_context['display_session_info'] = display_messages or display_commands
-        extra_context['commands_instead_of_messages'] = display_commands
+        extra_context['display_messages'] = display_messages
+        extra_context['display_commands'] = display_commands
         return super().changelist_view(request, extra_context)
 
 
@@ -153,8 +154,6 @@ class MinkeAdmin(admin.ModelAdmin):
     MinkeAdmin is the ModelAdmin-baseclass for MinkeModels.
     It allows to run sessions from the changelist-view.
     """
-    session_history_on_top = True
-    session_history_on_bottom = False
     change_form_template = 'minke/change_form.html'
     change_list_template = 'minke/change_list.html'
     session_select_form = SessionSelectForm
@@ -300,6 +299,8 @@ class MinkeAdmin(admin.ModelAdmin):
         extra_context['display_session_select'] = extra_context.get('display_session_select', True)
         extra_context['display_session_info'] = extra_context.get('display_session_info', True)
         extra_context['display_session_proc_info'] = extra_context.get('display_session_proc_info', True)
+        extra_context['display_messages'] = extra_context.get('display_messages', True)
+        extra_context['display_commands'] = extra_context.get('display_commands', False)
 
         # Does this request has something to do with sessions at all?
         if ('run_sessions' not in request.POST
@@ -366,32 +367,6 @@ class MinkeAdmin(admin.ModelAdmin):
             # run_sessions might want to render a minke- or session-form
             response = self.run_sessions(request, session_cls, queryset, force_confirm)
             return response or HttpResponseRedirect(redirect_url)
-
-    def changeform_view(self, request, object_id=None, form_url='', extra_context=None):
-        """
-        Add session-history-view to the changeform-view.
-        """
-        extra_context = extra_context or dict()
-        extra_context['session_history_on_top'] = self.session_history_on_top
-        extra_context['session_history_on_bottom'] = self.session_history_on_bottom
-        # Has been asked for a session-history?
-        if object_id and 'session_history' in request.GET:
-            use_cmds = 'use_commands' in request.GET
-            related = 'commands' if use_cmds else 'messages'
-            ct = ContentType.objects.get_for_model(self.model)
-            sessions = MinkeSession.objects.prefetch_related(related)
-            sessions = sessions.filter(
-                minkeobj_type=ct,
-                minkeobj_id=object_id,
-                user=request.user,
-                proc_status__in=('completed', 'stopped', 'failed'))
-            sessions = sessions[:int(request.GET['session_history'])]
-            extra_context['sessions'] = sessions
-            extra_context['commands_instead_of_messages'] = use_cmds
-            extra_context['display_session_date'] = True
-
-        # call super-changeform-view with our extra-context
-        return super().changeform_view(request, object_id, form_url, extra_context)
 
 
 def get_ssh_options():

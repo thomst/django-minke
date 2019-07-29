@@ -4,19 +4,9 @@
 {% block object-tools-items %}
 {% if object_id %}
     {% url 'admin:minke_minkesession_changelist' as session_log_url %}
-    <li><a href="{{ session_log_url }}?minkeobj_type__id__exact={{ content_type_id }}&minkeobj_id={{ object_id }}&display_messages=1" class="historylink">
+    <li><a href="{{ session_log_url }}?minkeobj_type__id__exact={{ content_type_id }}&minkeobj_id={{ object_id }}">
         {% trans "session-log" %}
     </a></li>
 {% endif %}
 {{ block.super }}
-{% endblock %}
-
-{% block object-tools %}
-{{ block.super }}
-{% if object_id and session_history_on_top %}{% minke_session_history%}{% endif %}
-{% endblock %}
-
-{% block submit_buttons_bottom %}
-{{ block.super }}
-{% if object_id and session_history_on_bottom %}{% minke_session_history%}{% endif %}
 {% endblock %}
