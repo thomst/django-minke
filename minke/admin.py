@@ -34,7 +34,7 @@ from .filters import StatusFilter
 
 class SessionChangeList(ChangeList):
     """
-    A changelist to make our get-params valid.
+    A changelist to support additional get-parameters.
     """
     def get_filters_params(self, params=None):
         params = super().get_filters_params(params)
@@ -43,10 +43,8 @@ class SessionChangeList(ChangeList):
         return params
 
     def get_queryset(self, request):
-        use_cmds = 'display_commands' in request.GET
-        related = 'commands' if use_cmds else 'messages'
-        qs = super().get_queryset(request).prefetch_related(related)
-        return qs.prefetch_related('minkeobj')
+        queryset = super().get_queryset(request)
+        return queryset.prefetch_related('messages', 'commands', 'minkeobj')
 
 
 @admin.register(MinkeSession)
@@ -56,7 +54,7 @@ class SessionAdmin(admin.ModelAdmin):
 
     def get_changelist(self, request, **kwargs):
         """
-        Use our own ChangeList.
+        Use the SessionChangeList to support additional get-parameters.
         """
         return SessionChangeList
 
@@ -145,7 +143,7 @@ class MinkeChangeList(ChangeList):
     def get_queryset(self, request):
         qs = super().get_queryset(request)
         currents = MinkeSession.objects.filter(current=True, user=request.user)
-        currents = currents.prefetch_related('messages')
+        currents = currents.prefetch_related('messages', 'commands')
         return qs.prefetch_related(Prefetch('sessions', queryset=currents))
 
 
