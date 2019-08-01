@@ -79,6 +79,18 @@ function stopAllSessions() {
     $.ajax({url: url, method: 'PUT'}).fail(ajaxFail)
 }
 
+function toggleMessages() {
+    var msglists = $('.messagelist');
+    var button = $(this);
+    if (button.text() == button.data('show')) {
+        msglists.slideDown('fast');
+        button.text(button.data('hide'));
+    } else {
+        msglists.slideUp('fast');
+        button.text(button.data('show'));
+    }
+}
+
 function run() {
     // get session-ids
     var session_ids = $.map(sessions, function(session, i) {return session.id});
@@ -94,6 +106,10 @@ function run() {
 }
 
 $(document).ready(function () {
+
+    // initiate message-toggle
+    $('a.message-toggle').click(toggleMessages);
+
     // scroll all minke-messages to the bottom...
     $('ul.messagelist > li').each(function (i,e) {$(e).scrollTop($(e)[0].scrollHeight)});
 
