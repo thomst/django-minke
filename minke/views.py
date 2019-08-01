@@ -50,20 +50,7 @@ class SessionListAPI(ListAPIView):
     permission_classes = (IsAuthenticated,)
     serializer_class = SessionSerializer
     filter_backends = (LookupFilter, UserFilter)
-    queryset = MinkeSession.objects.prefetch_related('messages', 'commands')
-
-    def list(self, request, *arg, **kwargs):
-        """
-        Before passing the queryset to the serializer we need to convert
-        commands into execution-messages.
-        """
-        sessions = list(self.filter_queryset(self.get_queryset()))
-
-        for session in sessions:
-            session.cmd_messages = [c.as_message() for c in session.commands.all()]
-
-        serializer = self.get_serializer(sessions, many=True)
-        return Response(serializer.data)
+    queryset = MinkeSession.objects.prefetch_related('messages')
 
     def put(self, request, *arg, **kwargs):
         """
