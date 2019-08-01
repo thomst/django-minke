@@ -3,6 +3,7 @@
 var sessions = {};
 var interval = 400;
 var error_msg = 'minkeapi-error: ';
+var summary_url = null;
 var baseurl = window.location.protocol + '//'
             + window.location.host
             + '/minkeapi/sessions/?id__in=';
@@ -51,8 +52,13 @@ class Session {
     }
 }
 
+function updateSummary() {
+    var updateSum = function(html){$('span.session-summary').replaceWith(html)}
+    $.getJSON(summary_url, updateSum).fail(ajaxFail)
+}
+
 function getJson (url) {
-    $.getJSON(url, processJson).fail(ajaxFail).done(run)
+    $.getJSON(url, processJson).fail(ajaxFail).done(updateSummary).done(run)
 }
 
 function processJson(json) {
@@ -74,10 +80,11 @@ function stopAllSessions() {
 }
 
 function run() {
+    // get session-ids
     var session_ids = $.map(sessions, function(session, i) {return session.id});
+
+    // if we have sessions left... process
     if (session_ids.length) {
-        $('#action-toggle').prop('disabled', true);
-        $('#result_list').addClass('running');
         var url = baseurl + session_ids;
         window.setTimeout(getJson, interval, url);
     } else {
@@ -87,19 +94,38 @@ function run() {
 }
 
 $(document).ready(function () {
-    // setup header-csrf-token
-    $.ajaxSetup({headers: {'X-CSRFToken': $("[name=csrfmiddlewaretoken]").val()}});
-    // prepare session-stopper...
-    var stop = $('<div></div>').addClass('session_stopper').click(stopSession);
-    var stopall = $('<div></div>').addClass('session_stopper').click(stopAllSessions);
-    $('td.action-checkbox').append(stop);
-    $('th.action-checkbox-column').prepend(stopall);
     // scroll all minke-messages to the bottom...
     $('ul.messagelist > li').each(function (i,e) {$(e).scrollTop($(e)[0].scrollHeight)});
+
     // initialize session-objects...
     $('tr.session.initialized,tr.session.running,tr.session.stopping').each(function(i, e) {sessions[$(e).data('id')] = new Session(e)});
-    // run...
-    run();
+
+    // do we work with sessions?
+    if (!$.isEmptyObject(sessions)) {
+
+        // setup header-csrf-token - to get it work with django-rest-framework
+        $.ajaxSetup({headers: {'X-CSRFToken': $("[name=csrfmiddlewaretoken]").val()}});
+
+        // prepare session-stopper...
+        var stop = $('<div></div>').addClass('session_stopper').click(stopSession);
+        var stopall = $('<div></div>').addClass('session_stopper').click(stopAllSessions);
+        $('td.action-checkbox').append(stop);
+        $('th.action-checkbox-column').prepend(stopall);
+
+        // deactivate action-toggle and add running-class
+        $('#action-toggle').prop('disabled', true);
+        $('#result_list').addClass('running');
+
+        // get all session-ids
+        var session_ids = [];
+        $('tr.session').each(function(i, e) {session_ids.push($(e).data('id'))});
+
+        // build the summary-url
+        summary_url = baseurl + session_ids + '&summary=1';
+
+        // start processing
+        run();
+    }
 });
 
 })(django.jQuery);

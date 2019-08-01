@@ -12,7 +12,13 @@
 {% endblock %}
 
 {% block result_list %}
-    {% if action_form and actions_on_top and cl.show_admin_actions %}{% if display_session_select %}{% minke_session_select %}{% endif %}{% admin_actions %}{% endif %}
+    {% if action_form and actions_on_top and cl.show_admin_actions %}
+        {% admin_actions %}
+        {% if display_session_select %}{% minke_session_select %}{% endif %}
+    {% endif %}
     {% if display_session_info %}{% minke_result_list cl %}{% else %}{% result_list cl %}{% endif %}
-    {% if action_form and actions_on_bottom and cl.show_admin_actions %}{% if display_session_select %}{% minke_session_select %}{% endif %}{% admin_actions %}{% endif %}
+    {% if action_form and actions_on_bottom and cl.show_admin_actions %}
+        {% admin_actions %}
+        {% if display_session_select %}{% minke_session_select %}{% endif %}
+    {% endif %}
 {% endblock %}

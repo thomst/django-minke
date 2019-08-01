@@ -33,3 +33,18 @@ class JSONField(models.TextField):
 
     def get_prep_value(self, value):
         return json.dumps(value, cls=DjangoJSONEncoder)
+
+
+def get_session_summary(sessions):
+    """
+    Takes a list of sessions and extract a summary-dictonary.
+    """
+    summary = dict()
+    summary['all'] = len(sessions)
+    summary['waiting'] = len([s for s in sessions if s.proc_status == 'initialized'])
+    summary['running'] = len([s for s in sessions if s.proc_status in ('running', 'stopping')])
+    summary['done'] = len([s for s in sessions if s.proc_status in ('completed', 'stopped', 'canceled', 'failed')])
+    summary['success'] = len([s for s in sessions if s.session_status == 'success'])
+    summary['warning'] = len([s for s in sessions if s.session_status == 'warning'])
+    summary['error'] = len([s for s in sessions if s.session_status == 'error'])
+    return summary

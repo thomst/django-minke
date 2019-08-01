@@ -30,6 +30,7 @@ from .models import BaseMessage
 from .forms import MinkeForm
 from .forms import SessionSelectForm
 from .filters import StatusFilter
+from .utils import get_session_summary
 
 
 class SessionChangeList(ChangeList):
@@ -137,8 +138,9 @@ class MinkeChangeList(ChangeList):
         super().__init__(request, *args, **kwargs)
         # We need a plain session-list with the same order as the result_list.
         # They will be zipped with the results coming from the result_list-templatetag.
-        self.sessions = [(list(o.sessions.all())[0:]+[None])[0] for o in self.result_list]
-        self.session_count = sum(len(o.sessions.all()) for o in self.result_list)
+        sessions = [(list(o.sessions.all())+[None])[0] for o in self.result_list]
+        self.sessions = sessions
+        self.session_count = get_session_summary([s for s in sessions if not s is None])
 
     def get_queryset(self, request):
         qs = super().get_queryset(request)

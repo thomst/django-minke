@@ -1,9 +1,10 @@
-div.actions {
+/* div.actions {
     display: inline-block;
-}
+} */
 
-div.actions.session_select {
-    margin-right: 18px;
+div.session_select span.session-summary span {
+    margin-left: 8px;
+    font-size: 13px;
 }
 
 div.session_switch {

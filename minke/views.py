@@ -1,6 +1,7 @@
 # -*- coding: utf-8 -*-
 
 from django.core.exceptions import FieldError
+from django.template.loader import render_to_string
 
 from rest_framework.response import Response
 from rest_framework.generics import ListAPIView
@@ -9,8 +10,8 @@ from rest_framework.permissions import IsAuthenticated
 
 from .serializers import SessionSerializer
 from .exceptions import InvalidURLQuery
-
-from minke.models import MinkeSession
+from .models import MinkeSession
+from .utils import get_session_summary
 
 
 class LookupFilter(BaseFilterBackend):
@@ -20,10 +21,9 @@ class LookupFilter(BaseFilterBackend):
     def get_lookup_params(self, request):
         params = dict()
         for k, v in request.GET.items():
-            if k.endswith('__in'):
-                params[k] = v.split(',')
-            else:
-                params[k] = v
+            if k == 'summary': continue
+            elif k.endswith('__in'): params[k] = v.split(',')
+            else: params[k] = v
         return params
 
     def filter_queryset(self, request, queryset, view):
@@ -51,6 +51,19 @@ class SessionListAPI(ListAPIView):
     serializer_class = SessionSerializer
     filter_backends = (LookupFilter, UserFilter)
     queryset = MinkeSession.objects.prefetch_related('messages')
+
+    def list(self, request, *arg, **kwargs):
+        """
+        Either return json-formatted sessions or a html-summary-snippet.
+        """
+        if 'summary' in request.GET:
+            sessions = list(self.filter_queryset(self.get_queryset()))
+            summary = get_session_summary(sessions)
+            context = dict(session_count=summary)
+            summary_html = render_to_string('minke/session_summary.html', context)
+            return Response(summary_html)
+        else:
+            return super().list(request, *arg, **kwargs)
 
     def put(self, request, *arg, **kwargs):
         """

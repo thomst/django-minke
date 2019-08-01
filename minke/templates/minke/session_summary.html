@@ -1,0 +1,7 @@
+{% load i18n %}
+<span class="session-summary">
+    <span>{% trans "success/warning/error" %}: {{ session_count.success }}/{{ session_count.warning }}/{{ session_count.error }}</span>
+    {% if session_count.waiting or session_count.running %}
+        <span>{% trans "waiting/running/done" %}: {{ session_count.waiting }}/{{ session_count.running }}/{{ session_count.done }}</span>
+    {% endif %}
+</span>
