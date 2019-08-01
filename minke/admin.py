@@ -391,7 +391,8 @@ class HostGroupAdminForm(forms.ModelForm):
 class HostAdmin(MinkeAdmin):
     model = Host
     form = HostAdminForm
-    list_display = ('name', 'verbose_name', 'username', 'hostname', 'port')
+    list_display = ('name', 'verbose_name', 'username', 'hostname', 'port', 'disabled')
+    list_editable = ('disabled',)
     search_fields = ('name', 'hostname')
     ordering = ('name',)
     list_filter = (StatusFilter,)
