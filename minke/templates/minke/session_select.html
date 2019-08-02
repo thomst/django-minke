@@ -7,6 +7,8 @@
     {% if session_count.all %}
         <button type="submit" class="button" name="clear_sessions" title="{% trans "Clear session-infos" %}">{% trans "Clear session-infos" %}</button>
     {% endif %}
-    {% if session_count.all %}{% include "minke/session_summary.html" %}{% endif %}
-    <a class='message-toggle' data-show='{% trans "show messages" %}' data-hide='{% trans "hide messages" %}'>{% trans "hide messages" %}</a>
+    {% if session_count.all %}
+        {% include "minke/session_summary.html" %}
+        <a class='message-toggle' data-show='{% trans "show messages" %}' data-hide='{% trans "hide messages" %}'>{% trans "hide messages" %}</a>
+    {% endif %}
 </div>

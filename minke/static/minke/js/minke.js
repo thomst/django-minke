@@ -80,7 +80,7 @@ function stopAllSessions() {
 }
 
 function toggleMessages() {
-    var msglists = $('.messagelist');
+    var msglists = $('tr.session ul.messagelist');
     var button = $(this);
     if (button.text() == button.data('show')) {
         msglists.slideDown('fast');
@@ -108,10 +108,10 @@ function run() {
 $(document).ready(function () {
 
     // initiate message-toggle
-    $('a.message-toggle').click(toggleMessages);
+    $('div.session_select a.message-toggle').click(toggleMessages);
 
     // scroll all minke-messages to the bottom...
-    $('ul.messagelist > li').each(function (i,e) {$(e).scrollTop($(e)[0].scrollHeight)});
+    $('tr.session ul.messagelist > li').each(function (i,e) {$(e).scrollTop($(e)[0].scrollHeight)});
 
     // initialize session-objects...
     $('tr.session.initialized,tr.session.running,tr.session.stopping').each(function(i, e) {sessions[$(e).data('id')] = new Session(e)});
