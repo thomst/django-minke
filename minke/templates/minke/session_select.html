@@ -9,6 +9,6 @@
     {% endif %}
     {% if session_count.all %}
         {% include "minke/session_summary.html" %}
-        <a class='message-toggle' data-show='{% trans "show messages" %}' data-hide='{% trans "hide messages" %}'>{% trans "hide messages" %}</a>
+        {% include "minke/message_toggle.html" %}
     {% endif %}
 </div>

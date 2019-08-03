@@ -7,7 +7,8 @@ div.session_select span.session-summary span {
     font-size: 13px;
 }
 
-div.session_select a.message-toggle {
+div.session_select a.message-toggle,
+tr.session a.message-toggle {
     font-size: 13px;
     float: right;
     cursor: pointer;
@@ -31,6 +32,10 @@ table.sessions tr.session td {
 
 table.sessions *[title] {
     cursor: help;
+}
+
+table.sessions ul.messagelist {
+    display: none;
 }
 
 table.sessions ul.messagelist pre {

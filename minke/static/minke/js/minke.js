@@ -79,14 +79,29 @@ function stopAllSessions() {
     $.ajax({url: url, method: 'PUT'}).fail(ajaxFail)
 }
 
-function toggleMessages() {
+function toggleAllMessageLists() {
     var msglists = $('tr.session ul.messagelist');
+    var msgtoggles = $('tr.session a.message-toggle');
     var button = $(this);
     if (button.text() == button.data('show')) {
         msglists.slideDown('fast');
         button.text(button.data('hide'));
+        msgtoggles.text(button.data('hide'))
     } else {
         msglists.slideUp('fast');
+        button.text(button.data('show'));
+        msgtoggles.text(button.data('show'))
+    }
+}
+
+function toggleMessageList() {
+    var button = $(this);
+    var msglist = $(this).parent().next('ul.messagelist');
+    if (button.text() == button.data('show')) {
+        msglist.slideDown('fast');
+        button.text(button.data('hide'));
+    } else {
+        msglist.slideUp('fast');
         button.text(button.data('show'));
     }
 }
@@ -107,8 +122,9 @@ function run() {
 
 $(document).ready(function () {
 
-    // initiate message-toggle
-    $('div.session_select a.message-toggle').click(toggleMessages);
+    // initiate message-toggles
+    $('div.session_select a.message-toggle').click(toggleAllMessageLists);
+    $('tr.session a.message-toggle').click(toggleMessageList);
 
     // scroll all minke-messages to the bottom...
     $('tr.session ul.messagelist > li').each(function (i,e) {$(e).scrollTop($(e)[0].scrollHeight)});

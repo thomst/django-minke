@@ -8,6 +8,7 @@
                 <b{% if session.session_description %} title="{{session.session_description}}"{% endif %}>
                     {{session.session_verbose_name}}
                 </b> - [<span>{{session.proc_info}}</span>]
+                {% include "minke/message_toggle.html" %}
             </div>
         {% endif %}
         <ul class="messagelist">
