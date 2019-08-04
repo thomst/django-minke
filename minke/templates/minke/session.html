@@ -8,10 +8,10 @@
                 <b{% if session.session_description %} title="{{session.session_description}}"{% endif %}>
                     {{session.session_verbose_name}}
                 </b> - [<span>{{session.proc_info}}</span>]
-                {% include "minke/message_toggle.html" %}
+                {% if display_messages %}{% include "minke/message_toggle.html" %}{% endif %}
             </div>
         {% endif %}
-        <ul class="messagelist">
+        <ul class="messagelist {% if display_session_proc_info %}hide{% endif %}">
         {% if display_messages %}
             {% for msg in session.messages.all %}
                 <li class="{{msg.level}}">{{msg.html|safe}}</li>

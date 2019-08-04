@@ -15,10 +15,10 @@ class Session {
         this.minkeobj = $(session_el).prev('tr');
     }
     update(session) {
-        if (session.proc_status != this.session.data('procStatus')) {
+        if (session.proc_status != this.session.attr('data-proc-status')) {
             this.updateProcStatus(session);
         }
-        if (session.messages.length > this.session.data('msgCount')) {
+        if (session.messages.length > this.session.attr('data-msg-count')) {
             this.updateMessages(session);
         }
         if (session.is_done) {
@@ -27,7 +27,7 @@ class Session {
         }
     }
     updateProcStatus(session) {
-        this.session.data('procStatus', session.proc_status);
+        this.session.attr('data-proc-status', session.proc_status);
         this.session.find('div.session_proc_info > span').hide()
                     .text(session.proc_info).fadeIn();
         this.minkeobj.removeClass('initialized running stopping');
@@ -37,9 +37,9 @@ class Session {
     }
     updateMessages(session) {
         var that = this;
-        session.messages.slice(this.session.data('msgCount'))
+        session.messages.slice(this.session.attr('data-msg-count'))
             .forEach(function(msg) {that.addMessage(msg)});
-        this.session.data('msgCount', session.messages.length);
+        this.session.attr('data-msg-count', session.messages.length);
     }
     addMessage(msg) {
         var li = $('<li>' + msg.html + '</li>').addClass(msg.level).hide();

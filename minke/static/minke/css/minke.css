@@ -12,6 +12,7 @@ tr.session a.message-toggle {
     font-size: 13px;
     float: right;
     cursor: pointer;
+    color: #999;
 }
 
 div.session_switch {
@@ -34,7 +35,11 @@ table.sessions *[title] {
     cursor: help;
 }
 
-table.sessions ul.messagelist {
+table.sessions tr.session[data-msg-count="0"] a.message-toggle {
+    display: none;
+}
+
+table.sessions ul.messagelist.hide {
     display: none;
 }
 
