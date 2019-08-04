@@ -126,9 +126,6 @@ $(document).ready(function () {
     $('div.session_select a.message-toggle').click(toggleAllMessageLists);
     $('tr.session a.message-toggle').click(toggleMessageList);
 
-    // scroll all minke-messages to the bottom...
-    $('tr.session ul.messagelist > li').each(function (i,e) {$(e).scrollTop($(e)[0].scrollHeight)});
-
     // initialize session-objects...
     $('tr.session.initialized,tr.session.running,tr.session.stopping').each(function(i, e) {sessions[$(e).data('id')] = new Session(e)});
 

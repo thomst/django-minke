@@ -47,7 +47,7 @@ table.sessions ul.messagelist li {
     padding-left: 45px;
     border: 1px solid #eee;
     background-position: 12px 12px;
-    max-height: 200px;
+    /* max-height: 200px; */
     overflow: auto;
     position: relative;
     left: -8px;
