@@ -23,6 +23,12 @@ from .messages import ExecutionMessage
 from .exceptions import InvalidMinkeSetup
 
 
+# FIXME: Session-factories are expensive since reloading always happens when
+# the REGISTRY is requested. This means in every single celery-Task, if it is
+# using a dyn-session or not.
+# Another approach could be to store the dyn-session in an extra dict, that is
+# only reloaded when a dyn-session is actually requested. We could use
+# decorators to check the availability of a requested session.
 class REGISTRY(OrderedDict):
     """
     A reload-able session-registry.
@@ -168,9 +174,15 @@ class Session(metaclass=SessionRegistration):
     permissions = tuple()
     form = None
     confirm = False
+    # FIXME: Do we want that as an option at all?
     wait_for_execution = False
+    # FIXME: Do we need this option? Preventing the creation of a permission
+    # could be achieved by declaring an abstract session-class and use the
+    # register-class-method explicitly.
     add_permission = True
     invoke_config = dict()
+    # FIXME: Using soft-interruption should be a non-configurable standard for
+    # sessions running with a pty=False-config.
     soft_interruption = False
     parrallel_per_host = False
 
@@ -201,6 +213,8 @@ class Session(metaclass=SessionRegistration):
         # Therefore it makes most sense to use a soft interruption if the
         # run.pty-config is False. Otherwise we would instantly quit though
         # but the shel-proc would run on and we lose its response.
+        # FIXME: It might be a reasonable approach to automatically defer
+        # interruption if no pty is in use.
         self._interrupt = interrupt
         if not self.soft_interruption or not self._busy:
             raise self._interrupt
