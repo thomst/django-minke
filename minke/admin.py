@@ -233,7 +233,6 @@ class MinkeAdmin(admin.ModelAdmin):
             return REGISTRY.get(session_name, None)
 
     def run_sessions(self, request, session_cls, queryset, force_confirm=False):
-        wait = session_cls.wait_for_execution
         confirm = force_confirm or session_cls.confirm
         fabric_config = None
         session_data = dict()
@@ -289,7 +288,7 @@ class MinkeAdmin(admin.ModelAdmin):
 
         # lets rock...
         engine.process(session_cls, queryset, session_data, request.user,
-                       fabric_config=fabric_config, wait=wait)
+                       fabric_config=fabric_config)
 
     def changelist_view(self, request, extra_context=None):
         """

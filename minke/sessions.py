@@ -77,7 +77,7 @@ class SessionRegistration(type):
         super().__init__(classname, bases, attrs)
         if not cls.abstract and not cls.__name__ in REGISTRY:
             cls.register()
-            if cls.add_permission: cls.create_permission()
+            cls.create_permission()
 
     def register(cls):
         """
@@ -174,12 +174,6 @@ class Session(metaclass=SessionRegistration):
     permissions = tuple()
     form = None
     confirm = False
-    # FIXME: Do we want that as an option at all?
-    wait_for_execution = False
-    # FIXME: Do we need this option? Preventing the creation of a permission
-    # could be achieved by declaring an abstract session-class and use the
-    # register-class-method explicitly.
-    add_permission = True
     invoke_config = dict()
     parrallel_per_host = False
 
