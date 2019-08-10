@@ -31,11 +31,10 @@ class SessionProcessor:
     """
     Process sessions.
     """
-    def __init__(self, host_id, session_id, session_config, task_id):
+    def __init__(self, host_id, session_id, session_config):
         host = Host.objects.select_related('group').get(pk=host_id)
         hostname = host.hostname or host.name
         config = MINKE_FABRIC_CONFIG.clone()
-        self.task_id = task_id
         self.host = host
 
         # At first try to load the hostgroup- and host-config...
@@ -62,11 +61,11 @@ class SessionProcessor:
     def interrupt(self, signum, frame):
         # only stop a running session.
         if self.minke_session.is_running:
-            self.session.cancel(KeyboardInterrupt)
+            self.session.cancel()
 
     def run(self):
         try:
-            started = self.session.start(self.task_id)
+            started = self.session.start()
             if not started: return
 
             try:
@@ -109,12 +108,11 @@ class SessionProcessor:
 
 
 @shared_task(bind=True)
-def process_session(self, host_id, session_id, config):
+def process_session(task, host_id, session_id, config):
     """
     Task for session-processing.
     """
-    task_id = self.request.id
-    processor = SessionProcessor(host_id, session_id, config, task_id)
+    processor = SessionProcessor(host_id, session_id, config)
     signal.signal(signal.SIGUSR1, processor.interrupt)
     processor.run()
 

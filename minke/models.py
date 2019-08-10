@@ -1,7 +1,6 @@
 # -*- coding: utf-8 -*-
 
-import re
-import datetime
+import re, os, signal, datetime
 from time import time
 from collections import OrderedDict
 
@@ -107,10 +106,10 @@ class MinkeSession(models.Model):
         max_length=128, choices=PROC_CHOICES,
         verbose_name=_("Process-status"),
         help_text=_('Status of session-processing.'))
-    task_id = models.CharField(
-        max_length=128, blank=True, null=True,
-        verbose_name=_("Task-ID"),
-        help_text=_('ID of the celery-task that run the session.'))
+    pid = models.IntegerField(
+        blank=True, null=True,
+        verbose_name=_("PID"),
+        help_text=_('Process-ID of the celery-task that run the session.'))
     start_time = models.DateTimeField(
         blank=True, null=True,
         verbose_name=_("Start-time"),
@@ -146,9 +145,9 @@ class MinkeSession(models.Model):
         self.save()
 
     @transaction.atomic
-    def start(self, task_id):
+    def start(self):
         """
-        Start a session. Update proc_status, start_time and task_id.
+        Start a session. Update proc_status, start_time and pid.
         Since the cancel-method is called asynchrouniously to the whole session-
         processing, the start-, end- and cancel-method are each wrapped within a
         atomic transaction using select_for_update to protect them from interfering.
@@ -158,10 +157,10 @@ class MinkeSession(models.Model):
         # we call the save-method.
         session = MinkeSession.objects.select_for_update().get(pk=self.id)
         if session.is_waiting:
-            self.task_id = task_id
+            self.pid = os.getpid()
             self.proc_status = 'running'
             self.start_time = datetime.datetime.now()
-            self.save(update_fields=['proc_status', 'start_time', 'task_id'])
+            self.save(update_fields=['proc_status', 'start_time', 'pid'])
             return True
 
     @transaction.atomic
@@ -171,18 +170,23 @@ class MinkeSession(models.Model):
         Since the cancel-method is called asynchrouniously to the whole session-
         processing, the start-, end- and cancel-method are each wrapped within a
         atomic transaction using select_for_update to protect them from interfering.
+        This method is called by the api-view.
         """
         session = MinkeSession.objects.select_for_update().get(pk=self.id)
         if session.is_waiting:
             self.session_status = 'error'
             self.proc_status = 'canceled'
             self.save(update_fields=['proc_status', 'session_status'])
-            return True
         elif session.proc_status == 'running':
             self.proc_status = 'stopping'
             self.save(update_fields=['proc_status'])
-            revoke(session.task_id, signal='USR1', terminate=True)
-            return True
+            os.kill(session.pid, signal.SIGUSR1)
+        elif session.proc_status == 'stopping':
+            # TODO: use a proc-status 'killed'
+            # self.proc_status = 'killed'
+            # self.save(update_fields=['proc_status'])
+            # TODO: What about just sending a SIGTERM?
+            os.kill(session.pid, signal.SIGUSR1)
 
     @transaction.atomic
     def end(self, failure=False):

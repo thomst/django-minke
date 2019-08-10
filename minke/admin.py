@@ -100,7 +100,7 @@ class SessionAdmin(admin.ModelAdmin):
         (_('Processing'), {
             'fields': (
                 'proc_status',
-                'task_id',
+                'pid',
                 'created_time',
                 'start_time',
                 'end_time',

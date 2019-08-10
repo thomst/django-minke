@@ -70,12 +70,9 @@ class SessionListAPI(ListAPIView):
         The put-apicall is used to cancel initialized or running sessions.
         """
         queryset = self.filter_queryset(self.get_queryset())
-
-        canceled_sessions = list()
         for session in queryset:
-            if session.proc_status in ['initialized', 'running']:
-                canceled = session.cancel()
-                if canceled: canceled_sessions.append(session)
+            if not session.is_done:
+                session.cancel()
 
-        serializer = self.get_serializer(canceled_sessions, many=True)
+        serializer = self.get_serializer(queryset, many=True)
         return Response(serializer.data)

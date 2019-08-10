@@ -1,12 +1,20 @@
-/* div.actions {
-    display: inline-block;
-} */
+/*
+CSS for changelist of minke-objects.
+It is also used by the session's changelist itself.
+ */
 
+/* session-switch (session's changlist only) */
+div.session_switch {
+    margin-top: 10px;
+}
+
+/* session-summary (minke-objects' changlists only) */
 div.session_select span.session-summary span {
     margin-left: 8px;
     font-size: 13px;
 }
 
+/* message-toggle (minke-objects' changlists only) */
 div.session_select a.message-toggle,
 tr.session a.message-toggle {
     font-size: 13px;
@@ -15,15 +23,8 @@ tr.session a.message-toggle {
     color: #999;
 }
 
-div.session_switch {
-    margin-top: 10px;
-}
-
-table.sessions {
-    width: 100%;
-}
-
-table.sessions div.session_proc_info {
+/* session-info-row */
+table.sessions tr.session div.session_proc_info {
     margin-bottom: 10px;
 }
 
@@ -31,10 +32,21 @@ table.sessions tr.session td {
     color: #666;
 }
 
-table.sessions *[title] {
+table.sessions tr.session *[title] {
     cursor: help;
 }
 
+table.sessions tr.minkeobj.initialized  > *,
+table.sessions tr.minkeobj.running  > *,
+table.sessions tr.minkeobj.stopping  > *,
+table.sessions tr.minkeobj.stopped  > *,
+table.sessions tr.minkeobj.failed  > *,
+table.sessions tr.minkeobj.canceled  > *,
+table.sessions tr.minkeobj.completed > * {
+    border: 0;
+}
+
+/* message-list-css */
 table.sessions tr.session[data-msg-count="0"] a.message-toggle {
     display: none;
 }
@@ -52,26 +64,17 @@ table.sessions ul.messagelist li {
     padding-left: 45px;
     border: 1px solid #eee;
     background-position: 12px 12px;
-    /* max-height: 200px; */
     overflow: auto;
     position: relative;
     left: -8px;
+    /* max-height: 200px; */
 }
 
 table.sessions ul.messagelist li:last-child {
     margin: 0;
 }
 
-table.sessions tr.minkeobj.initialized  > *,
-table.sessions tr.minkeobj.running  > *,
-table.sessions tr.minkeobj.stopping  > *,
-table.sessions tr.minkeobj.stopped  > *,
-table.sessions tr.minkeobj.failed  > *,
-table.sessions tr.minkeobj.canceled  > *,
-table.sessions tr.minkeobj.completed > * {
-    border: 0;
-}
-
+/* background-color for sessions and messages */
 table.sessions tr.row1.success,
 table.sessions tr.row1 li.info {
     background-color: #e8ffe8;
@@ -97,18 +100,21 @@ table.sessions tr.row2 li.error {
     background-color: #ffefef;
 }
 
+/* Session-stopper css (minke-objects' changlists only) */
 table.sessions div.session_stopper::after {
     content: '✕';
     font-size: 18px;
+    font-weight: normal;
     cursor: pointer;
 }
 
-table.sessions tr.minkeobj.stopping div.session_stopper::after {
-    content: '⧖';
-    cursor: auto;
+table.sessions tr.minkeobj.stopping div.session_stopper::after,
+table.sessions.stopping th:first-child div.session_stopper::after {
+    font-weight: bold;
 }
 
 table.sessions tr.minkeobj.running div.session_stopper,
+table.sessions tr.minkeobj.stopping div.session_stopper,
 table.sessions.running th div.session_stopper {
     color: red;
 }

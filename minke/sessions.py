@@ -181,9 +181,6 @@ class Session(metaclass=SessionRegistration):
     # register-class-method explicitly.
     add_permission = True
     invoke_config = dict()
-    # FIXME: Using soft-interruption should be a non-configurable standard for
-    # sessions running with a pty=False-config.
-    soft_interruption = False
     parrallel_per_host = False
 
     @classmethod
@@ -198,26 +195,32 @@ class Session(metaclass=SessionRegistration):
         self.start = db.start
         self.end = db.end
 
-    def cancel(self, interrupt):
+    def cancel(self):
         """
-        Either raise interrupt instantly, or - in case of a soft-interruption -
-        let execute raise it when its work is done.
+        This method could be called twice. The first time it will initiate a
+        soft interruption which means a current remote-process won't be
+        interrupted. The session will be stopped subsequently.
+        If it is called meanwhile a second time, the session will be killed
+        immediately.
+
+        NOTE
+        ----
+        It seems that there is no chance to interrupt a shell-process
+        started by fabric if no pty is in use.
+        fabric.runners.Remote.send_interrupt says::
+
+            ... in v1, we just reraised the KeyboardInterrupt unless a PTY was
+            present; this seems to have been because without a PTY, the
+            below escape sequence is ignored, so all we can do is immediately
+            terminate on our end...
+
+        Thus killing a session makes most sense if it has the run.pty-config
+        in use. Otherwise you just will be disconnected from the remote-process.
         """
-        # NOTE: It seems that there is no chance to interrupt a shell-process
-        # started by fabric if no pty is in use.
-        # fabric.runners.Remote.send_interrupt says:
-        # > ... in v1, we just reraised the KeyboardInterrupt unless a PTY was
-        # > present; this seems to have been because without a PTY, the
-        # > below escape sequence is ignored, so all we can do is immediately
-        # > terminate on our end...
-        # Therefore it makes most sense to use a soft interruption if the
-        # run.pty-config is False. Otherwise we would instantly quit though
-        # but the shel-proc would run on and we lose its response.
-        # FIXME: It might be a reasonable approach to automatically defer
-        # interruption if no pty is in use.
-        self._interrupt = interrupt
-        if not self.soft_interruption or not self._busy:
+        if not self._busy or self._interrupt:
             raise self._interrupt
+        else:
+            self._interrupt = KeyboardInterrupt
 
     @property
     def status(self):

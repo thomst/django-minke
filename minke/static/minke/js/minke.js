@@ -76,6 +76,7 @@ function stopSession() {
 
 function stopAllSessions() {
     var url = baseurl + $.map(sessions, function(session, i) {return session.id});
+    $('table.sessions').addClass('stopping');
     $.ajax({url: url, method: 'PUT'}).fail(ajaxFail)
 }
 
@@ -116,7 +117,7 @@ function run() {
         window.setTimeout(getJson, interval, url);
     } else {
         $('#action-toggle').prop('disabled', false);
-        $('#result_list').removeClass('running');
+        $('#result_list').removeClass('running', 'stopping');
     }
 }
 
