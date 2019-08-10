@@ -36,13 +36,7 @@ table.sessions tr.session *[title] {
     cursor: help;
 }
 
-table.sessions tr.minkeobj.initialized  > *,
-table.sessions tr.minkeobj.running  > *,
-table.sessions tr.minkeobj.stopping  > *,
-table.sessions tr.minkeobj.stopped  > *,
-table.sessions tr.minkeobj.failed  > *,
-table.sessions tr.minkeobj.canceled  > *,
-table.sessions tr.minkeobj.completed > * {
+table.sessions tr.minkeobj.session-info > * {
     border: 0;
 }
 
@@ -108,15 +102,15 @@ table.sessions div.session_stopper::after {
     cursor: pointer;
 }
 
-table.sessions tr.minkeobj.stopping div.session_stopper::after,
-table.sessions.stopping th:first-child div.session_stopper::after {
-    font-weight: bold;
-}
-
 table.sessions tr.minkeobj.running div.session_stopper,
 table.sessions tr.minkeobj.stopping div.session_stopper,
 table.sessions.running th div.session_stopper {
     color: red;
+}
+
+table.sessions tr.minkeobj.stopping div.session_stopper::after,
+table.sessions.stopping th:first-child div.session_stopper::after {
+    font-weight: bold;
 }
 
 table.sessions div.session_stopper,

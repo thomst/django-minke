@@ -32,7 +32,7 @@
         <tr><td colspan="{{ result|length }}">{{ result.form.non_field_errors }}</td></tr>
     {% endif %}
     {% if display_session_info and session %}
-        <tr class="minkeobj {% cycle 'row1' 'row2' as row_cycle %} {{ session.session_status }} {{ session.proc_status }}">
+        <tr class="minkeobj {% cycle 'row1' 'row2' as row_cycle %} session-info {{ session.session_status }} {{ session.proc_status }}">
             {% for item in result %}{{ item }}{% endfor %}
         </tr>
         {% if display_session_proc_info or display_messages and session.messages.all or display_commands and session.commands.all %}{% minke_session %}{% endif %}
