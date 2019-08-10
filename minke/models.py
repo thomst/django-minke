@@ -185,7 +185,6 @@ class MinkeSession(models.Model):
             # TODO: use a proc-status 'killed'
             # self.proc_status = 'killed'
             # self.save(update_fields=['proc_status'])
-            # TODO: What about just sending a SIGTERM?
             os.kill(session.pid, signal.SIGUSR1)
 
     @transaction.atomic

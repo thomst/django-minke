@@ -2,5 +2,6 @@
 * more tests
 * documentation
 * commentings
-* trigger registry-reload via broadcasting signal
-* changelist-summarybar for sessions
+* cleanup template and css:
+  make a clearer distinction between the changelists of minkeobjects and sessions.
+* refactor session-registry's reloading
