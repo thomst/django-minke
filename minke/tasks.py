@@ -53,8 +53,8 @@ class SessionProcessor:
         self.con = Connection(hostname, host.username, host.port, config=config)
 
         # Initialize the session...
-        REGISTRY.reload()
         self.minke_session = MinkeSession.objects.get(pk=session_id)
+        REGISTRY.reload(self.minke_session.session_name)
         session_cls = REGISTRY[self.minke_session.session_name]
         self.session = session_cls(self.con, self.minke_session)
 

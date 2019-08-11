@@ -1,6 +1,10 @@
 # -*- coding: utf-8 -*-
 
+import re
+
 from django.contrib.contenttypes.models import ContentType
+from django.dispatch import receiver
+
 from minke.sessions import CommandFormSession
 from minke.sessions import SingleCommandSession
 from minke.sessions import CommandChainSession
@@ -11,7 +15,6 @@ from .forms import CommandForm
 
 
 class BaseCommandSession(SingleCommandSession):
-    add_permission = False
     abstract = True
     model = None
     model_id = None
@@ -23,7 +26,6 @@ class BaseCommandSession(SingleCommandSession):
 
 
 class BaseCommandChainSession(CommandChainSession):
-    add_permission = False
     abstract = True
     model = None
     model_id = None
@@ -35,7 +37,6 @@ class BaseCommandChainSession(CommandChainSession):
 
 
 class BaseCommandChoiceSession(CommandFormSession):
-    add_permission = False
     abstract = True
     model = None
     model_id = None
@@ -52,17 +53,35 @@ class BaseCommandChoiceSession(CommandFormSession):
         cmd_obj = self.model.commands.get(pk=self.data['cmd'])
         return super().format_cmd(cmd_obj.cmd)
 
+@receiver(REGISTRY.reload_sessions)
+def session_factory(sender, **kwargs):
 
-def session_factory():
+    # FIXME: Prevent those inline-imports!
     from .models import Command
     from .models import CommandGroup
-    for obj in Command.objects.filter(active=True):
-        session = obj.as_session()
+
+    # do we have a session-name and does it match our regex?
+    session_name = kwargs.get('session_name', None)
+    pattern = r'^(Command|CommandGroup)_(\d+)'
+    match = re.match(pattern, session_name or '')
+
+    # if we have no session-name, register all command-sessions
+    if not session_name:
+        for obj in Command.objects.filter(active=True):
+            session = obj.as_session()
+            session.register()
+            session.create_permission()
+
+        for obj in CommandGroup.objects.filter(active=True):
+            session = obj.as_session()
+            session.register()
+            session.create_permission()
+
+    # if we have a session-name that matches, register this session only
+    elif match:
+        clsname, id = match.groups()
+        cls = Command if clsname == 'Command' else CommandGroup
+        cmd = cls.objects.get(pk=id)
+        session = cmd.as_session()
         session.register()
-
-    for obj in CommandGroup.objects.filter(active=True):
-        session = obj.as_session()
-        session.register()
-
-
-REGISTRY.add_session_factory(session_factory)
+        session.create_permission()

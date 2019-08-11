@@ -205,7 +205,6 @@ class MinkeAdmin(admin.ModelAdmin):
         Get sessions  valid for the user and model of this request.
         Return a list of tuples like with session-name and -verbose-name.
         """
-        REGISTRY.reload()
         sessions = [(None, '---------')]
 
         # filter sessions in respect to their permissions- and work_on-attrs
@@ -301,6 +300,10 @@ class MinkeAdmin(admin.ModelAdmin):
         extra_context['display_messages'] = extra_context.get('display_messages', True)
         extra_context['display_commands'] = extra_context.get('display_commands', False)
 
+        # We perform one registry-reload per request. GET- and POST-request
+        # will need it alike.
+        REGISTRY.reload()
+
         # Does this request has something to do with sessions at all?
         if ('run_sessions' not in request.POST
         and 'clear_sessions' not in request.POST):
@@ -343,7 +346,6 @@ class MinkeAdmin(admin.ModelAdmin):
             session_form = self.get_session_select_form(request, request.POST)
             if session_form.is_valid():
                 session_name = session_form.cleaned_data['session']
-                REGISTRY.reload()
                 session_cls = REGISTRY[session_name]
             else:
                 msg = _("No session selected.")

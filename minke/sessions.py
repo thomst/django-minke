@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 
-import re
+import re, logging
 from collections import OrderedDict
 from fabric2.runners import Result
 
@@ -10,6 +10,7 @@ from django.core.exceptions import FieldDoesNotExist
 from django.contrib.auth.models import Permission
 from django.contrib.contenttypes.models import ContentType
 from django.utils.text import camel_case_to_spaces
+from django.dispatch import Signal
 
 from .models import Host
 from .models import MinkeModel
@@ -23,42 +24,52 @@ from .messages import ExecutionMessage
 from .exceptions import InvalidMinkeSetup
 
 
-# FIXME: Session-factories are expensive since reloading always happens when
-# the REGISTRY is requested. This means in every single celery-Task, if it is
-# using a dyn-session or not.
-# Another approach could be to store the dyn-session in an extra dict, that is
-# only reloaded when a dyn-session is actually requested. We could use
-# decorators to check the availability of a requested session.
+logger = logging.getLogger(__name__)
+
+
+class SessionReloadError(Exception):
+    # TODO: Work out the error-message - containing the original_exception.
+    def __init__(self, original_exception, session=None):
+        self.original_exception = original_exception
+        self.session = session
+
+
 class REGISTRY(OrderedDict):
     """
     A reload-able session-registry.
     """
-    _session_factories = list()
-
-    @classmethod
-    def add_session_factory(cls, factory):
-        """
-        Add a session-factory (any callable that declares session-classes).
-        """
-        cls._session_factories.append(factory)
+    reload_sessions = Signal(providing_args=['session_name'])
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        self._dict = None
+        self._static_sessions = None
 
-    def reload(self):
+    def reload(self, session_name=None):
         """
         Reload the registry by running the factories.
         """
-        # Before running the factories we restore the original registry.
-        # So we are up-to-date without messing up.
-        if self._dict:
+        # We backup the static-sessions and reset the registry before each
+        # reload. This way the reload algorithms doesn't have to unregister
+        # obsolete sessions.
+        if self._static_sessions:
             self.clear()
-            self.update(self._dict)
+            self.update(self._static_sessions)
         else:
-            self._dict = self.copy()
-        for factory in self._session_factories:
-            factory()
+            self._static_sessions = self.copy()
+
+        # no reloading needed for static sessions
+        if session_name in self._static_sessions:
+            return
+
+        # trigger the reload signal
+        try:
+            self.reload_sessions.send(sender=self.__class__, session_name=session_name)
+        except Exception as exc:
+            # TODO: Workout print-version of SessionReloadError that will be
+            # logged.
+            exception = SessionReloadError(exc, session_name)
+            logger.error(exception)
+            raise exception
 
 
 REGISTRY = REGISTRY()
