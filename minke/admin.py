@@ -221,16 +221,6 @@ class MinkeAdmin(admin.ModelAdmin):
         form.fields['session'].choices = self.get_session_options(request)
         return form
 
-    def get_session_cls(self, request):
-        session_name = request.POST.get('session', None)
-        if not session_name:
-            msg = _("No session were selected that should be run.")
-            self.message_user(request, msg, messages.WARNING)
-            return None
-        else:
-            REGISTRY.reload()
-            return REGISTRY.get(session_name, None)
-
     def run_sessions(self, request, session_cls, queryset, force_confirm=False):
         confirm = force_confirm or session_cls.confirm
         fabric_config = None
@@ -313,7 +303,6 @@ class MinkeAdmin(admin.ModelAdmin):
         force_confirm = False
         selected = request.POST.getlist(helpers.ACTION_CHECKBOX_NAME)
         select_across = bool(int(request.POST.get('select_across', 0)))
-        session_form = self.get_session_select_form(request, request.POST)
         redirect_url = request.get_full_path()
 
         try:
@@ -343,6 +332,8 @@ class MinkeAdmin(admin.ModelAdmin):
         elif 'run_sessions' in request.POST:
 
             # get session_cls.
+            # NOTE: Get the session from the session-form means that the
+            # permisssion-check for the session is already done. We are save.
             session_form = self.get_session_select_form(request, request.POST)
             if session_form.is_valid():
                 session_name = session_form.cleaned_data['session']
@@ -351,10 +342,6 @@ class MinkeAdmin(admin.ModelAdmin):
                 msg = _("No session selected.")
                 self.message_user(request, msg, messages.WARNING)
                 return HttpResponseRedirect(redirect_url)
-
-            # Do the user have permissions to run this session-type?
-            if not self.permit_session(request, session_cls):
-                raise PermissionDenied
 
             # If this is a select-across-request, we force confirmation
             # and redirect to a show-all-changelist.
