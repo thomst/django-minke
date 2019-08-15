@@ -1,9 +1,10 @@
 # -*- coding: utf-8 -*-
 
-import sys
-import traceback
+import sys, traceback, textwrap
+
 from django.utils.html import escape
 from .models import BaseMessage
+from .settings import MINKE_MESSAGE_WRAP
 
 
 # We declare the Meta-class whithin a mixin.
@@ -52,7 +53,11 @@ class Message(ProxyMixin, BaseMessage):
 
 class PreMessage(Message):
     def get_html(self, data):
-        return '<pre>{}</pre>'.format(escape(self.get_text(data)))
+        data = self.get_text(data)
+        wrapped = list()
+        for line in data.splitlines():
+            wrapped += textwrap.wrap(line, MINKE_MESSAGE_WRAP)
+        return '<pre>{}</pre>'.format(escape('\n'.join(wrapped)))
 
 
 class TableMessage(PreMessage):
@@ -80,16 +85,19 @@ class ExecutionMessage(PreMessage):
         else: return 'info'
 
     def _get_chunk(self, prefix, lines):
-        new_lines = list()
+        wrapped = list()
+        prefixed = list()
         for line in lines:
-            new_lines.append(prefix.ljust(10) + line)
+            wrapped += textwrap.wrap(line, MINKE_MESSAGE_WRAP - 10)
+        for line in wrapped:
+            prefixed.append(prefix.ljust(10) + line)
             prefix = str()
-        return new_lines
+        return prefixed
 
     def get_text(self, data):
         lines = list()
         prefix = 'code[{}]'.format(data.return_code)
-        lines += self._get_chunk(prefix, data.command.split('\n'))
+        lines += self._get_chunk(prefix, data.command.splitlines())
         lines += self._get_chunk('stdout:', data.stdout.splitlines())
         lines += self._get_chunk('stderr:', data.stderr.splitlines())
         return '\n'.join(lines)
