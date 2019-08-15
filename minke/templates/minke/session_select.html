@@ -5,7 +5,7 @@
     {% endfor %}
     <button type="submit" class="button" name="run_sessions" title="{% trans "Run the selected session" %}">{% trans "Run" %}</button>
     {% if session_count.all %}
-        <button type="submit" class="button" name="clear_sessions" title="{% trans "Clear session-infos" %}">{% trans "Clear session-infos" %}</button>
+        <button type="submit" class="button" name="clear_sessions" title="{% trans "Clear informations about sessions" %}">{% trans "Clear" %}</button>
     {% endif %}
     {% if session_count.all %}
         {% include "minke/session_summary.html" %}
