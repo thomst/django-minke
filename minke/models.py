@@ -228,9 +228,11 @@ class MinkeSession(models.Model):
         Infos about the session-processing
         that will be rendered within the session-template.
         """
-        info = next(s[1] for s in self.PROC_STATES if s[0] == self.proc_status)
-        if self.run_time: return gettext(info).format(self.run_time.total_seconds())
-        else: return gettext(info)
+        info = dict(self.PROC_STATES)[self.proc_status]
+        if self.run_time:
+            return gettext(info).format(self.run_time.total_seconds())
+        else:
+            return gettext(info)
 
     def prnt(self):
         """
