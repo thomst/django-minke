@@ -179,14 +179,66 @@ def protect(method):
 
 
 class Session(metaclass=SessionRegistration):
+    """Base-class for all session-classes.
+
+    All session-classes must inherit from Session. By defining a subclass of
+    Session the subclass will be implicitly registered as session-class and also
+    will a run-permission be created for it. To prevent this behavior use an
+    abstract session. Abstract session-classes can be registered manually by
+    using the register-classmethod::
+
+        MySession.register()
+
+    This way the session will be registered, but no run-permission will be
+    created for it.
+    """
+
     abstract = True
+    """An abstract session-class won't be registered by itself.
+    Use abstract session-classes as base-classes for other sessions."""
+
     verbose_name = None
+    """Display-name for sessions."""
+
     work_on = tuple()
+    """Tuple of minke-models. Models the session can be used with."""
+
     permissions = tuple()
+    """Tuple of permission-strings. To be able to run a session a user must have
+    all the permissions listed. The strings should have the following format:
+    "<app-label>.<permission's-codename>""""
+
     form = None
+    """An optional form that will be rendered before the session will be
+    processed. The form-data will be accessible within the session as the
+    data-property. Use it if the session's processing depends on additional
+    user-input-data."""
+
     confirm = False
+    """If confirm is true, the admin-site asks for a user-confirmation before
+    processing a session, which also allows to review the objects the session
+    was revoked with."""
+
     invoke_config = dict()
+    """Additional fabric- and invoke-configuration-parameters. The keys must be
+    formatted in a way that is accepted by the load_snakeconfig-method of the
+    FabricConfig."""
+
     parrallel_per_host = False
+    """Allow parrallel processing of multiple celery-tasks on a single host.
+    If multiple minke-objects are associated with the same host all tasks
+    running on them would be processed in a serial manner by default. This is
+    to protect the ressources of the host-system. If you want to allow parrallel
+    processing of multiple celery-tasks on a single host set parrallel_per_host
+    to True.
+
+    Note
+    ----
+    To perform parrallel task-execution on a single host we make use of celery's
+    chords-primitive, which needs a functioning result-backend to be configured.
+    Please see the `celery-documentation <https://docs.celeryproject.org/en/latest/userguide/canvas.html#chord-important-notes>`_
+    for more details.
+    """
 
     @classmethod
     def get_form(cls):
@@ -208,7 +260,7 @@ class Session(metaclass=SessionRegistration):
         If it is called meanwhile a second time, the session will be killed
         immediately.
 
-        NOTE
+        Note
         ----
         It seems that there is no chance to interrupt a shell-process
         started by fabric if no pty is in use.
