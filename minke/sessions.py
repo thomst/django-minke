@@ -183,19 +183,31 @@ class Session(metaclass=SessionRegistration):
 
     All session-classes must inherit from Session. By defining a subclass of
     Session the subclass will be implicitly registered as session-class and also
-    will a run-permission be created for it. To prevent this behavior use an
-    abstract session. Abstract session-classes can be registered manually by
-    using the register-classmethod::
+    a run-permission will be created for it. To prevent this behavior use an
+    abstract session by setting :attr:`.abstract` to True.
 
-        MySession.register()
+    Each session will be instantiated with a
+    `connection-object <http://docs.fabfile.org/en/2.3/api/connection.html>`_
+    and an object of :class:`~.models.MinkeSession`. The connection-object
+    provides the remote-access, while the minkesession is the database-
+    representation of a specific session running for a specific
+    :class:`minkemodel-object <.models.MinkeModel>`.
 
-    This way the session will be registered, but no run-permission will be
-    created for it.
+    For a session-class to be useful at least the :meth:`.process`-method has
+    to be defined.
     """
 
     abstract = True
-    """An abstract session-class won't be registered by itself.
-    Use abstract session-classes as base-classes for other sessions."""
+    """An abstract session-class won't be registered itself. Nor will a
+    run-permission be created for it. This is useful if your session-class
+    should be a base-class for other sessions.
+
+    Abstract session-classes can be registered manually by calling its
+    classmethod :meth:`~.SessionRegistration.register`::
+
+        MySession.register()
+
+    This will register the session but won't create any run-permissions."""
 
     verbose_name = None
     """Display-name for sessions."""
@@ -212,7 +224,10 @@ class Session(metaclass=SessionRegistration):
     """An optional form that will be rendered before the session will be
     processed. The form-data will be accessible within the session as the
     data-property. Use it if the session's processing depends on additional
-    user-input-data."""
+    user-input-data.
+
+    Instead of setting the form-attribute you can also directly overwrite
+    :meth:`.get_form`."""
 
     confirm = False
     """If confirm is true, the admin-site asks for a user-confirmation before
@@ -220,9 +235,16 @@ class Session(metaclass=SessionRegistration):
     was revoked with."""
 
     invoke_config = dict()
-    """Additional fabric- and invoke-configuration-parameters. The keys must be
-    formatted in a way that is accepted by the load_snakeconfig-method of the
-    FabricConfig."""
+    """Session-specific fabric- and invoke-configuration-parameters which will
+    be used to initialize fabric's
+    `Connection-class <http://docs.fabfile.org/en/2.3/api/connection.html>`_.
+    The keys must be formatted in a way that is accepted by
+    :meth:`~.helpers.FabricConfig.load_snakeconfig`.
+
+    See also the documentation for the configuration of
+    `fabric <http://docs.fabfile.org/en/2.3/concepts/configuration.html>`_
+    and `invoke <http://docs.pyinvoke.org/en/latest/concepts/configuration.html>`_.
+    """
 
     parrallel_per_host = False
     """Allow parrallel processing of multiple celery-tasks on a single host.
@@ -237,14 +259,25 @@ class Session(metaclass=SessionRegistration):
     To perform parrallel task-execution on a single host we make use of celery's
     chords-primitive, which needs a functioning result-backend to be configured.
     Please see the `celery-documentation <https://docs.celeryproject.org/en/latest/userguide/canvas.html#chord-important-notes>`_
-    for more details.
-    """
+    for more details."""
 
     @classmethod
     def get_form(cls):
+        """Return :attr:`.form`."""
         return cls.form
 
     def __init__(self, con, db):
+        """Session's init-method.
+
+        Parameters
+        ----------
+        con : `connection-object <http://docs.fabfile.org/en/2.3/api/connection.html>`_
+            a connection-object initialized with the host associated with the
+            :class:`~.models.MinkeModel`-object.
+        db : :class:`~.models.MinkeSession`-object
+            Holds all informations about the execution of a session. It is also
+            linked to the :class:`~.models.MinkeModel`-object.
+        """
         self._con = con
         self._db = db
         self._interrupt = None
@@ -253,7 +286,8 @@ class Session(metaclass=SessionRegistration):
         self.end = db.end
 
     def cancel(self):
-        """
+        """Interrupt the session's processing.
+
         This method could be called twice. The first time it will initiate a
         soft interruption which means a current remote-process won't be
         interrupted. The session will be stopped subsequently.
@@ -281,14 +315,24 @@ class Session(metaclass=SessionRegistration):
 
     @property
     def status(self):
+        """
+        Refers to :attr:`.models.MinkeSession.session_status`.
+        """
         return self._db.session_status
 
     @property
     def minkeobj(self):
+        """
+        Refers to :attr:`.models.MinkeSession.minkeobj`.
+        """
         return self._db.minkeobj
 
     @property
     def data(self):
+        """
+        Refers to :attr:`.models.MinkeSession.session_data`.
+        This model-field holds all the data that comes from :attr:`.form`.
+        """
         return self._db.session_data
 
     def process(self):
@@ -300,6 +344,7 @@ class Session(metaclass=SessionRegistration):
     def add_msg(self, msg, level=None):
         """
         Add a message to the session.
+
         You could either pass an instance of a message-class, or any type the
         message-classes are initiated with (string, tuple or result-object).
         """
