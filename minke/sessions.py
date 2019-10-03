@@ -166,12 +166,14 @@ def protect(method):
     """
     def wrapper(obj, *args, **kwargs):
         # are we already protected?
-        if obj._busy: return method(obj, *arg, **kwargs)
+        if obj._busy:
+            return method(obj, *arg, **kwargs)
         # otherwise protect the method-call by setting the busy-flag
         obj._busy = True
         result = method(obj, *args, **kwargs)
         # if interruption was deferred now is the time to raise it
-        if obj._interrupt: raise obj._interrupt
+        if obj._interrupt:
+            raise obj._interrupt
         obj._busy = False
         return result
 
@@ -186,15 +188,16 @@ class Session(metaclass=SessionRegistration):
     a run-permission will be created for it. To prevent this behavior use an
     abstract session by setting :attr:`.abstract` to True.
 
-    Each session will be instantiated with a
-    `connection-object <http://docs.fabfile.org/en/2.3/api/connection.html>`_
+    Each session will be instantiated with a fabric-:doc:`fabric:api/connection`
     and an object of :class:`~.models.MinkeSession`. The connection-object
     provides the remote-access, while the minkesession is the database-
     representation of a specific session running for a specific
     :class:`minkemodel-object <.models.MinkeModel>`.
 
-    For a session-class to be useful at least the :meth:`.process`-method has
-    to be defined.
+    For a session-class to be useful you at least has to define the
+    :meth:`.process`-method and add one or more :class:`~.models.MinkeModel` to
+    :attr:`.work_on`-attribute.
+
     """
 
     abstract = True
@@ -218,7 +221,7 @@ class Session(metaclass=SessionRegistration):
     permissions = tuple()
     """Tuple of permission-strings. To be able to run a session a user must have
     all the permissions listed. The strings should have the following format:
-    "<app-label>.<permission's-codename>""""
+    "<app-label>.<permission's-codename>"""
 
     form = None
     """An optional form that will be rendered before the session will be
@@ -236,14 +239,13 @@ class Session(metaclass=SessionRegistration):
 
     invoke_config = dict()
     """Session-specific fabric- and invoke-configuration-parameters which will
-    be used to initialize fabric's
-    `Connection-class <http://docs.fabfile.org/en/2.3/api/connection.html>`_.
+    be used to initialize a :class:`fabric-connection <fabric.connection.Connection>`.
     The keys must be formatted in a way that is accepted by
     :meth:`~.helpers.FabricConfig.load_snakeconfig`.
 
     See also the documentation for the configuration of
-    `fabric <http://docs.fabfile.org/en/2.3/concepts/configuration.html>`_
-    and `invoke <http://docs.pyinvoke.org/en/latest/concepts/configuration.html>`_.
+    :doc:`fabric <fabric:concepts/configuration>` and
+    :doc:`invoke <invoke:concepts/configuration>`.
     """
 
     parrallel_per_host = False
@@ -258,25 +260,16 @@ class Session(metaclass=SessionRegistration):
     ----
     To perform parrallel task-execution on a single host we make use of celery's
     chords-primitive, which needs a functioning result-backend to be configured.
-    Please see the `celery-documentation <https://docs.celeryproject.org/en/latest/userguide/canvas.html#chord-important-notes>`_
+    Please see the :ref:`celery-documentation <chord-important-notes>`
     for more details."""
-
-    @classmethod
-    def get_form(cls):
-        """Return :attr:`.form`."""
-        return cls.form
 
     def __init__(self, con, db):
         """Session's init-method.
 
         Parameters
         ----------
-        con : `connection-object <http://docs.fabfile.org/en/2.3/api/connection.html>`_
-            a connection-object initialized with the host associated with the
-            :class:`~.models.MinkeModel`-object.
-        db : :class:`~.models.MinkeSession`-object
-            Holds all informations about the execution of a session. It is also
-            linked to the :class:`~.models.MinkeModel`-object.
+        con : obj of :class:`fabric.connection.Connection`
+        db : obj of :class:`~.models.MinkeSession`
         """
         self._con = con
         self._db = db
@@ -284,6 +277,37 @@ class Session(metaclass=SessionRegistration):
         self._busy = False
         self.start = db.start
         self.end = db.end
+
+    @classmethod
+    def get_form(cls):
+        """
+        Return :attr:`.form` by default.
+
+        Overwrite this method if you need to setup your form-class dynamically.
+        """
+        return cls.form
+
+    @property
+    def status(self):
+        """
+        Refers to :attr:`.models.MinkeSession.session_status`.
+        """
+        return self._db.session_status
+
+    @property
+    def minkeobj(self):
+        """
+        Refers to :attr:`.models.MinkeSession.minkeobj`.
+        """
+        return self._db.minkeobj
+
+    @property
+    def data(self):
+        """
+        Refers to :attr:`.models.MinkeSession.session_data`.
+        This model-field holds all the data that comes from :attr:`.form`.
+        """
+        return self._db.session_data
 
     def cancel(self):
         """Interrupt the session's processing.
@@ -313,40 +337,34 @@ class Session(metaclass=SessionRegistration):
         else:
             self._interrupt = KeyboardInterrupt
 
-    @property
-    def status(self):
-        """
-        Refers to :attr:`.models.MinkeSession.session_status`.
-        """
-        return self._db.session_status
-
-    @property
-    def minkeobj(self):
-        """
-        Refers to :attr:`.models.MinkeSession.minkeobj`.
-        """
-        return self._db.minkeobj
-
-    @property
-    def data(self):
-        """
-        Refers to :attr:`.models.MinkeSession.session_data`.
-        This model-field holds all the data that comes from :attr:`.form`.
-        """
-        return self._db.session_data
-
     def process(self):
         """
         Real work is done here...
+
+        This is the place for your own session-code.
         """
         raise NotImplementedError('Your session must define a process-method!')
 
     def add_msg(self, msg, level=None):
         """
-        Add a message to the session.
+        Add a message.
 
-        You could either pass an instance of a message-class, or any type the
-        message-classes are initiated with (string, tuple or result-object).
+        Parameters
+        ----------
+        msg
+            You could either pass an instance of any :mod:`message-class<.messages>`,
+            or any type the different message-classes are initiated with:
+
+            * a string for a :class:`~messages.PreMessage`
+
+            * a tuple for a :class:`~messages.TableMessage`
+
+            * an object of :class:`~fabric.runners.Result` for a
+              :class:`~messages.ExecutionMessage`
+
+        level : string or bool (optional)
+            This could be one of 'info', 'warning' or 'error'. If you pass a
+            bool True will be 'info' and False will be 'error'.
         """
         if isinstance(msg, str): msg = PreMessage(msg, level)
         elif isinstance(msg, tuple): msg = TableMessage(msg, level)
@@ -354,9 +372,18 @@ class Session(metaclass=SessionRegistration):
         elif isinstance(msg, BaseMessage): pass
         self._db.messages.add(msg, bulk=False)
 
-    def set_status(self, status, alert=True):
+    def set_status(self, status, update=True):
         """
-        Set session-status. Pass a valid session-status or a boolean.
+        Set session-status. Pass a valid session-status or a bool.
+
+        Parameters
+        ----------
+        status : string or bool
+            Valid :attr:`status <models.MinkeSession.SESSION_STATES>` as string
+            or True for 'success' and False for 'error'.
+        update : bool (optional)
+            If True the session-status could only be raised. Lower values as
+            current will be ignored.
         """
         states = dict(self._db.SESSION_STATES)
         if type(status) == bool:
@@ -367,13 +394,24 @@ class Session(metaclass=SessionRegistration):
             msg = 'session-status must be one of {}'.format(states.keys())
             raise InvalidMinkeSetup(msg)
 
-        if not self.status or not alert or states[self.status] < states[status]:
+        if not self.status or not update or states[self.status] < states[status]:
             self._db.session_status = status
 
+    # TODO: rename to fcmd.
     def format_cmd(self, cmd):
         """
-        Will format a given command-string using the minkeobj's attributes
-        and the session_data while the session_data has precedence.
+        Use the :attr:`.data` and the fields of the :attr:`.minkeobj` as
+        parameters for :func:`format` to prepare the given command.
+
+        Parameters
+        ----------
+        cmd : string
+            a format-string
+
+        Returns
+        -------
+        string
+            The formatted command.
         """
         params = vars(self.minkeobj)
         params.update(self.data)
@@ -381,16 +419,26 @@ class Session(metaclass=SessionRegistration):
 
     def valid(self, result, regex=None):
         """
-        Validate result.
+        Validate a :class:`~fabric.runners.Result`-object.
 
-        Return True if rtn-code is 0.
-        If regex is given it must also match stdout.
+        Parameters
+        ----------
+        result : obj of :class:`~fabric.runners.Result`
+        regex : string (optional)
+            if given result.stdout must match regex to considered as valid.
+
+        Returns
+        -------
+        bool
+            Return True if rtn-code is 0.
+            If regex is given it must also match stdout.
         """
         if regex and result.ok:
             return bool(re.match(regex, result.stdout))
         else:
             return result.ok
 
+    # TODO: This one is obsolete. Put everything in the run-method.
     def _run(self, cmd, **kwargs):
         """
         Run a command and save the result.

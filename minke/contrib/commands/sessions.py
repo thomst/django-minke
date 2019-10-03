@@ -53,6 +53,7 @@ class BaseCommandChoiceSession(CommandFormSession):
         cmd_obj = self.model.commands.get(pk=self.data['cmd'])
         return super().format_cmd(cmd_obj.cmd)
 
+
 @receiver(REGISTRY.reload_sessions)
 def session_factory(sender, **kwargs):
 
