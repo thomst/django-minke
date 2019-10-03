@@ -316,17 +316,48 @@ class CommandResult(Result, models.Model):
         verbose_name = _('Command-Result')
         verbose_name_plural = _('Command-Results')
 
-    def __init__(self, *args, **kwargs):
+    def __init__(self, result, regex=None):
         """
-        This model could also be initiated as fabric's result-class.
         """
-        try:
-            # First we try to initiate the model.
-            models.Model.__init__(self, *args, **kwargs)
-        except TypeError:
-            # If this fails, its a result-class-initiation.
-            models.Model.__init__(self)
-            Result.__init__(self, *args, **kwargs)
+        models.Model.__init__(self)
+        self.command = result.command
+        self.exited = result.exited
+        self.stdout = result.stdout
+        self.stderr = result.stderr
+        self.shell = result.shell
+        self.encoding = result.encoding
+        self.pty = result.pty
+        self.regex = regex
+        self._match = None
+
+    @property
+    def valid(self):
+        """
+        """
+        valid = self.ok
+        if self.regex:
+            valid &= bool(re.match(self.regex, self.stdout))
+        return valid
+
+    @property
+    def status(self):
+        """
+        """
+        if self.failed:
+            return MinkeSession.SESSION_STATES[2][0]
+        elif self.stderr:
+            return MinkeSession.SESSION_STATES[1][0]
+        else:
+            return MinkeSession.SESSION_STATES[0][0]
+
+    @property
+    def match(self):
+        """
+        """
+        if self.regex and not self._match:
+            self._match = re.match(self.regex, self.stdout)
+
+        return self._match
 
     def as_message(self):
         """

@@ -1,5 +1,6 @@
 # -*- coding: utf-8 -*-
 
+from invoke.runners import Result
 from django.test import SimpleTestCase
 
 from minke import sessions
@@ -23,11 +24,11 @@ class MessageTest(SimpleTestCase):
         self.assertEqual(message.text, 'foobär')
         self.assertRegex(message.html, 'foobär')
 
-        result = CommandResult(
+        result = CommandResult(Result(
             exited=1,
             command='foobär',
             stdout='foobär-out',
-            stderr=str())
+            stderr=str()))
 
         message = ExecutionMessage(result)
         self.assertRegex(message.text, 'foobär')

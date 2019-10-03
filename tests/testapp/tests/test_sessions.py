@@ -9,7 +9,6 @@ from django.contrib.auth.models import User
 from minke import sessions
 from minke.sessions import Session
 from minke.sessions import SessionRegistration
-from minke.sessions import UpdateEntriesSession
 from minke.exceptions import InvalidMinkeSetup
 from minke.models import Host
 from minke.models import MinkeSession
@@ -89,15 +88,15 @@ class SessionTest(TestCase):
     def test_03_set_status(self):
 
         session = create_session(MethodTestSession, self.server, dict(), None)
-        session.set_status('error', alert=False)
+        session.set_status('error', update=False)
         self.assertTrue(session.status == 'error')
-        session.set_status('WARNING', alert=False)
+        session.set_status('WARNING', update=False)
         self.assertTrue(session.status == 'warning')
-        session.set_status(True, alert=False)
+        session.set_status(True, update=False)
         self.assertTrue(session.status == 'success')
-        session.set_status(False, alert=False)
+        session.set_status(False, update=False)
         self.assertTrue(session.status == 'error')
-        session.set_status('success', alert=True)
+        session.set_status('success', update=True)
         self.assertTrue(session.status == 'error')
         self.assertRaises(InvalidMinkeSetup, session.set_status, 'foobar')
 

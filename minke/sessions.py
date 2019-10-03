@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 
-import re, logging
+import re, logging, functools
 from collections import OrderedDict
 from fabric2.runners import Result
 
@@ -22,6 +22,7 @@ from .messages import PreMessage
 from .messages import TableMessage
 from .messages import ExecutionMessage
 from .exceptions import InvalidMinkeSetup
+from .utils import FormatDict
 
 
 logger = logging.getLogger(__name__)
@@ -161,13 +162,13 @@ class SessionRegistration(type):
 
 def protect(method):
     """
-    Decorator for session-methods to protect them from being interrupted by a
-    soft-interruption.
+    Decorator for session-methods to defer their interrupt.
     """
+    @functools.wraps(method)
     def wrapper(obj, *args, **kwargs):
         # are we already protected?
         if obj._busy:
-            return method(obj, *arg, **kwargs)
+            return method(obj, *args, **kwargs)
         # otherwise protect the method-call by setting the busy-flag
         obj._busy = True
         result = method(obj, *args, **kwargs)
@@ -397,7 +398,6 @@ class Session(metaclass=SessionRegistration):
         if not self.status or not update or states[self.status] < states[status]:
             self._db.session_status = status
 
-    # TODO: rename to fcmd.
     def format_cmd(self, cmd):
         """
         Use the :attr:`.data` and the fields of the :attr:`.minkeobj` as
@@ -413,97 +413,109 @@ class Session(metaclass=SessionRegistration):
         string
             The formatted command.
         """
-        params = vars(self.minkeobj)
-        params.update(self.data)
-        return cmd.format(**params)
+        cmd = cmd.format_map(FormatDict(self.data))
+        cmd = cmd.format_map(FormatDict(vars(self.minkeobj)))
+        return cmd
 
-    def valid(self, result, regex=None):
+    @protect
+    def run(self, cmd, regex=None, **invoke_params):
         """
-        Validate a :class:`~fabric.runners.Result`-object.
+        Run a command.
+
+        Basically call :meth:`~fabric.connection.Connection.run` on the
+        :class:`~fabric.connection.Connection`-object with the given command
+        and invoke-parameters.
+
+        Additionally save the :class:`~invoke.runners.Result`-object as an
+        :class:`.models.CommandResult`-object.
 
         Parameters
         ----------
-        result : obj of :class:`~fabric.runners.Result`
-        regex : string (optional)
-            if given result.stdout must match regex to considered as valid.
+        cmd : string
+            The shell-command to be run.
+        regex: string (optional)
+            A regex-pattern the :class:`.CommandResult` will be initialized with.
+        **invoke_params (optional)
+            Parameters that will be passed to
+            :meth:`~fabric.connection.Connection.run`
 
         Returns
         -------
-        bool
-            Return True if rtn-code is 0.
-            If regex is given it must also match stdout.
+        object of :class:`.models.CommandResult`
         """
-        if regex and result.ok:
-            return bool(re.match(regex, result.stdout))
-        else:
-            return result.ok
-
-    # TODO: This one is obsolete. Put everything in the run-method.
-    def _run(self, cmd, **kwargs):
-        """
-        Run a command and save the result.
-        """
-        result = self._con.run(cmd, **kwargs)
+        result = self._con.run(cmd, **invoke_params)
+        result = CommandResult(result, regex)
         self._db.commands.add(result, bulk=False)
         return result
 
     @protect
-    def run(self, cmd, **kwargs):
+    def frun(self, cmd, regex=None, **invoke_params):
         """
-        Run a command and return its response.
+        Same as :meth:`.run`, but use :meth:`~.format_cmd` to prepare the
+        command-string.
         """
-        return self._run(cmd, **kwargs)
+        return self.run(self.format_cmd(cmd), regex, **invoke_params)
 
     @protect
-    def execute(self, cmd, add_msg=True, set_status=True, **kwargs):
+    def xrun(self, cmd, regex=None, **invoke_params):
         """
-        Run a command, leave a ExecutionMessage and set the session-status.
+        Same as :meth:`.frun`, but also add a
+        :class:`~.messages.ExecutionMessage` and update the session-status.
         """
-        result = self._run(cmd, **kwargs)
+        result = self.frun(cmd, regex, **invoke_params)
+        self.add_msg(result)
+        self.set_status(result.status, update=True)
+        return result
 
-        # choose session-status depending on result-characteristics
-        if result.failed: status = 'error'
-        elif result.stderr: status = 'warning'
-        else: status = 'success'
-
-        if add_msg: self.add_msg(result)
-        if set_status: self.set_status(status)
-
-        return result.ok
-
-
-class UpdateEntriesSession(Session):
-    abstract = True
-
-    def update_field(self, field, cmd, regex=None):
+    @protect
+    def update_field(self, field, cmd, regex=None, **invoke_params):
         """
-        Update a field using either the stdout or the first matching-group
-        from regex.
+        Running a command and update a field of :attr:`~.minkeobj`.
+
+        If the result is :attr:`~.models.CommandResult.valid` either the whole
+        :attr:`~.models.CommandResult.stdout` is used or, if a regex is given
+        and there is are matching regex-groups, the first group is used.
+        If stdout is empty or if the result is not valid the field will be
+        updated with None. In both cases a message will added.
+
+        Parameters
+        ----------
+        field : string
+            Name of the field that should be updated.
+        cmd : string
+            The shell-command to be run.
+        regex: string (optional)
+            A regex-pattern the :class:`.CommandResult` will be initialized with.
+        **invoke_params (optional)
+            Parameters that will be passed to
+            :meth:`~fabric.connection.Connection.run`
+
+        Returns
+        -------
+        bool
+            False if the field was updated with None. True otherwise.
+
+        Raises
+        ------
+        AttributeError
+            If the given field does not exists on :attr:`.minkeobj`.
         """
         # is field a minkeobj-attribute?
-        try: getattr(self.minkeobj, field)
-        except AttributeError as e: raise e
+        try:
+            getattr(self.minkeobj, field)
+        except AttributeError as e:
+            raise e
 
-        # run cmd
-        result = self.run(cmd)
-        valid = self.valid(result, regex)
+        result = self.frun(cmd, regex, **invoke_params)
 
-        # do we have a regex? Then use the first captured group if there is one,
-        # stdout otherwise...
-        if valid and regex and result.stdout:
-            groups = re.match(regex, result.stdout).groups()
-            value = groups[0] if groups else result.stdout
-
-        # no regex? just take stdout as it is...
-        elif valid and result.stdout:
-            value = result.stdout
-
-        # valid but no stdout? Leave a warning...
-        elif valid and not result.stdout:
+        if result.valid and result.stdout:
+            if result.match and result.match.groups():
+                value = result.match.group(1)
+            else:
+                value = result.stdout
+        elif result.valid and not result.stdout:
             self.add_msg(result, 'warning')
             value = None
-
-        # not valid - error-message...
         else:
             self.add_msg(result, 'error')
             value = None
@@ -513,11 +525,25 @@ class UpdateEntriesSession(Session):
 
 
 class SingleCommandSession(Session):
+    """
+    An abstract :class:`~.Session`-class for the execution of a single command.
+
+    If you want your session to execute one single command and leave its output
+    as message you simply can use SingleCommandSession as follows::
+
+        class MySession(SingleCommandSession):
+            work_on = (MyModel,)
+            command = 'echo foobar'
+
+    The command will be executed using :meth:`~.Session.xrun`.
+    """
     abstract = True
+
+    """Command that should be executed."""
     command = None
 
     def process(self):
-        self.execute(self.format_cmd(self.command))
+        self.xrun(self.command)
 
 
 class CommandFormSession(SingleCommandSession):
@@ -533,7 +559,7 @@ class CommandChainSession(Session):
 
     def process(self):
         for cmd in self.commands:
-            self.execute(self.format_cmd(cmd))
+            self.xrun(cmd)
             if self.status in self.break_states:
                 break
 

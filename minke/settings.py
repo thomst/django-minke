@@ -1,8 +1,7 @@
 # -*- coding: utf-8 -*-
 
 from django.conf import settings
-from .helpers import FabricConfig
-from .helpers import FabricRemote
+from .utils import FabricConfig
 
 
 MINKE_DEBUG = getattr(settings, 'MINKE_DEBUG', False)
@@ -13,7 +12,6 @@ MINKE_HOST_CONFIG = getattr(settings, 'MINKE_HOST_CONFIG', dict())
 MINKE_MESSAGE_WRAP = getattr(settings, 'MINKE_MESSAGE_WRAP', 120)
 
 # set defaults for fabric-/invoke-config
-MINKE_FABRIC_CONFIG.runners.remote = FabricRemote
 MINKE_FABRIC_CONFIG.run.hide = True
 MINKE_FABRIC_CONFIG.run.warn = True
 

@@ -2,7 +2,6 @@
 
 from minke.models import Host
 from minke.sessions import Session
-from minke.sessions import UpdateEntriesSession
 from minke.sessions import SingleCommandSession
 from minke.sessions import CommandChainSession
 from minke.sessions import SessionChain
@@ -57,7 +56,7 @@ class EchoUnicodeSession(Session):
         self.add_msg(ExecutionMessage(result))
 
 
-class TestUpdateEntriesSession(UpdateEntriesSession):
+class TestUpdateFieldSession(Session):
     verbose_name = 'Update hostname.'
     work_on = (Server,)
 
@@ -86,7 +85,7 @@ class LeaveAMessageSession(Session):
         self.add_msg(Message(self.MSG, 'info'))
 
 
-class MethodTestSession(UpdateEntriesSession):
+class MethodTestSession(Session):
     verbose_name = 'Test session-methods'
     work_on = (Host, Server, AnySystem)
 
@@ -95,9 +94,9 @@ class MethodTestSession(UpdateEntriesSession):
 
     def test_execute(self):
         # execute-calls: valid, valid + stderr, invalid
-        self.execute('echo "hello wörld"')
-        self.execute('echo "hello wörld" 1>&2')
-        self.execute('[ 1 == 2 ]')
+        self.xrun('echo "hello wörld"')
+        self.xrun('echo "hello wörld" 1>&2')
+        self.xrun('[ 1 == 2 ]')
         return self
 
     def test_unicode_result(self):

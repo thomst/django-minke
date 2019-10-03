@@ -141,7 +141,7 @@ class MinkeManagerTest(TestCase):
             call_command('minkerun', '--list-sessions')
         self.assertIn('DummySession', out)
         self.assertIn('TestFormSession', out)
-        self.assertIn('TestUpdateEntriesSession', out)
+        self.assertIn('TestUpdateFieldSession', out)
 
         # list players
         with InOut() as out:
