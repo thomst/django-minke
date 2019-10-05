@@ -465,7 +465,7 @@ class Session(metaclass=SessionRegistration):
         """
         result = self.frun(cmd, **invoke_params)
         self.add_msg(result)
-        self.set_status(result.status, update=True)
+        self.set_status(result.status)
         return result
 
     @protect
@@ -508,13 +508,13 @@ class Session(metaclass=SessionRegistration):
             raise e
 
         result = self.frun(cmd, **invoke_params)
-        result.validate(regex)
+        valid = result.validate(regex)
 
-        if result.ok and result.match and result.match.groups():
+        if valid and result.match and result.match.groups():
             value = result.match.group(1)
-        elif result.ok and result.stdout:
+        elif valid and result.stdout:
             value = result.stdout
-        elif result.ok and not result.stdout:
+        elif valid and not result.stdout:
             self.add_msg(result, 'warning')
             self.set_status('warning')
             value = None

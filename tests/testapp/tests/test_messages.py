@@ -24,11 +24,11 @@ class MessageTest(SimpleTestCase):
         self.assertEqual(message.text, 'foobär')
         self.assertRegex(message.html, 'foobär')
 
-        result = CommandResult(Result(
+        result = CommandResult(
             exited=1,
             command='foobär',
             stdout='foobär-out',
-            stderr=str()))
+            stderr=str())
 
         message = ExecutionMessage(result)
         self.assertRegex(message.text, 'foobär')
