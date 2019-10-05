@@ -10,3 +10,4 @@ my.cnf
 /MANIFEST.in
 /build/
 /dist/
+/docs/build/
