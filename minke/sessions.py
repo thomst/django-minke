@@ -358,7 +358,7 @@ class Session(metaclass=SessionRegistration):
 
             * a string for a :class:`~messages.PreMessage`
 
-            * a tuple for a :class:`~messages.TableMessage`
+            * a tuple or list for a :class:`~messages.TableMessage`
 
             * an object of :class:`~fabric.runners.Result` for a
               :class:`~messages.ExecutionMessage`
@@ -367,10 +367,14 @@ class Session(metaclass=SessionRegistration):
             This could be one of 'info', 'warning' or 'error'. If you pass a
             bool True will be 'info' and False will be 'error'.
         """
-        if isinstance(msg, str): msg = PreMessage(msg, level)
-        elif isinstance(msg, tuple): msg = TableMessage(msg, level)
-        elif isinstance(msg, Result): msg = ExecutionMessage(msg, level)
-        elif isinstance(msg, BaseMessage): pass
+        if isinstance(msg, str):
+            msg = PreMessage(msg, level)
+        elif isinstance(msg, tuple) or isinstance(msg, list):
+            msg = TableMessage(msg, level)
+        elif isinstance(msg, Result):
+            msg = ExecutionMessage(msg, level)
+        elif isinstance(msg, BaseMessage):
+            pass
         self._db.messages.add(msg, bulk=False)
 
     def set_status(self, status, update=True):
@@ -418,7 +422,7 @@ class Session(metaclass=SessionRegistration):
         return cmd
 
     @protect
-    def run(self, cmd, regex=None, **invoke_params):
+    def run(self, cmd, **invoke_params):
         """
         Run a command.
 
@@ -433,8 +437,6 @@ class Session(metaclass=SessionRegistration):
         ----------
         cmd : string
             The shell-command to be run.
-        regex: string (optional)
-            A regex-pattern the :class:`.CommandResult` will be initialized with.
         **invoke_params (optional)
             Parameters that will be passed to
             :meth:`~fabric.connection.Connection.run`
@@ -444,25 +446,24 @@ class Session(metaclass=SessionRegistration):
         object of :class:`.models.CommandResult`
         """
         result = self._con.run(cmd, **invoke_params)
-        result = CommandResult(result, regex)
         self._db.commands.add(result, bulk=False)
         return result
 
     @protect
-    def frun(self, cmd, regex=None, **invoke_params):
+    def frun(self, cmd, **invoke_params):
         """
         Same as :meth:`.run`, but use :meth:`~.format_cmd` to prepare the
         command-string.
         """
-        return self.run(self.format_cmd(cmd), regex, **invoke_params)
+        return self.run(self.format_cmd(cmd), **invoke_params)
 
     @protect
-    def xrun(self, cmd, regex=None, **invoke_params):
+    def xrun(self, cmd, **invoke_params):
         """
         Same as :meth:`.frun`, but also add a
         :class:`~.messages.ExecutionMessage` and update the session-status.
         """
-        result = self.frun(cmd, regex, **invoke_params)
+        result = self.frun(cmd, **invoke_params)
         self.add_msg(result)
         self.set_status(result.status, update=True)
         return result
@@ -506,18 +507,20 @@ class Session(metaclass=SessionRegistration):
         except AttributeError as e:
             raise e
 
-        result = self.frun(cmd, regex, **invoke_params)
+        result = self.frun(cmd, **invoke_params)
+        result.validate(regex)
 
-        if result.valid and result.stdout:
-            if result.match and result.match.groups():
-                value = result.match.group(1)
-            else:
-                value = result.stdout
-        elif result.valid and not result.stdout:
+        if result.ok and result.match and result.match.groups():
+            value = result.match.group(1)
+        elif result.ok and result.stdout:
+            value = result.stdout
+        elif result.ok and not result.stdout:
             self.add_msg(result, 'warning')
+            self.set_status('warning')
             value = None
         else:
             self.add_msg(result, 'error')
+            self.set_status('warning')
             value = None
 
         setattr(self.minkeobj, field, value)

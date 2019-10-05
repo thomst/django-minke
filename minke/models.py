@@ -316,28 +316,18 @@ class CommandResult(Result, models.Model):
         verbose_name = _('Command-Result')
         verbose_name_plural = _('Command-Results')
 
-    def __init__(self, result, regex=None):
+    def __init__(self, *args, **kwargs):
         """
+        This model could also be initiated as fabric's result-class.
         """
-        models.Model.__init__(self)
-        self.command = result.command
-        self.exited = result.exited
-        self.stdout = result.stdout
-        self.stderr = result.stderr
-        self.shell = result.shell
-        self.encoding = result.encoding
-        self.pty = result.pty
-        self.regex = regex
+        try:
+            # First we try to initiate the model.
+            models.Model.__init__(self, *args, **kwargs)
+        except TypeError:
+            # If this fails, its a result-class-initiation.
+            models.Model.__init__(self)
+            Result.__init__(self, *args, **kwargs)
         self._match = None
-
-    @property
-    def valid(self):
-        """
-        """
-        valid = self.ok
-        if self.regex:
-            valid &= bool(re.match(self.regex, self.stdout))
-        return valid
 
     @property
     def status(self):
@@ -354,10 +344,14 @@ class CommandResult(Result, models.Model):
     def match(self):
         """
         """
-        if self.regex and not self._match:
-            self._match = re.match(self.regex, self.stdout)
-
         return self._match
+
+    def validate(self, regex=None):
+        """
+        """
+        if regex and not self._match:
+            self._match = re.match(regex, self.stdout)
+        return self.ok and (not regex or self._match)
 
     def as_message(self):
         """
