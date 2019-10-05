@@ -78,11 +78,15 @@ class TableMessage(PreMessage):
 class ExecutionMessage(PreMessage):
     def get_level(self, data, level):
         # if a level-argument was passed just use it
-        if not level is None: return super().get_level(data, level)
+        if not level is None:
+            return super().get_level(data, level)
         # otherwise derive the level from result-characteristics
-        elif data.failed: return 'error'
-        elif data.stderr: return 'warning'
-        else: return 'info'
+        elif data.failed:
+            return 'error'
+        elif data.stderr:
+            return 'warning'
+        else:
+            return 'info'
 
     def _get_chunk(self, prefix, lines):
         wrapped = list()
