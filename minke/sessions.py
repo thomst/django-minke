@@ -473,11 +473,10 @@ class Session(metaclass=SessionRegistration):
         """
         Running a command and update a field of :attr:`~.minkeobj`.
 
-        If the result is :attr:`~.models.CommandResult.valid` either the whole
-        :attr:`~.models.CommandResult.stdout` is used or, if a regex is given
-        and there is are matching regex-groups, the first group is used.
-        If stdout is empty or if the result is not valid the field will be
-        updated with None. In both cases a message will added.
+        Assign either result.stdout or if available the first matched
+        regex-group. If result.failed is True or result.stdout is empty
+        or the given regex does not match, the field is updated with None.
+        In this case an error-message will be added.
 
         Parameters
         ----------
@@ -508,16 +507,14 @@ class Session(metaclass=SessionRegistration):
             raise e
 
         result = self.frun(cmd, **invoke_params)
-        valid = result.validate(regex)
 
-        if valid and result.match and result.match.groups():
-            value = result.match.group(1)
-        elif valid and result.stdout:
+        if regex and result.validate(regex):
+            try:
+                value = result.match.group(1)
+            except IndexError:
+                value = result.stdout
+        elif not regex and result.ok and result.stdout:
             value = result.stdout
-        elif valid and not result.stdout:
-            self.add_msg(result, 'warning')
-            self.set_status('warning')
-            value = None
         else:
             self.add_msg(result, 'error')
             self.set_status('warning')

@@ -346,12 +346,11 @@ class CommandResult(Result, models.Model):
         """
         return self._match
 
-    def validate(self, regex=None):
+    def validate(self, regex):
         """
         """
-        if regex and not self._match:
-            self._match = re.match(regex, self.stdout)
-        return self.ok and (not regex or self._match)
+        self._match = re.match(regex, self.stdout)
+        return self.ok and self._match
 
     def as_message(self):
         """
