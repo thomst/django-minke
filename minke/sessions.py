@@ -526,20 +526,25 @@ class Session(metaclass=SessionRegistration):
 
 class SingleCommandSession(Session):
     """
-    An abstract :class:`~.Session`-class for the execution of a single command.
+    An abstract :class:`.Session`-class to execute a single command.
 
-    If you want your session to execute one single command and leave its output
-    as message you simply can use SingleCommandSession as follows::
+    If you want your session to execute a single command simply create a
+    subclass of SingleCommandSession and overwrite the
+    :attr:`.command`-attribute. The command will be executed with
+    :meth:`~.Session.xrun`.
+
+    Example
+    -------
+        class MyDrupalModel(models.Model):
+            root = models.CharField(max_length=255)
 
         class MySession(SingleCommandSession):
-            work_on = (MyModel,)
-            command = 'echo foobar'
-
-    The command will be executed using :meth:`~.Session.xrun`.
+            work_on = (MyDrupalModel,)
+            command = 'drush --root={root} cache-clear all'
     """
     abstract = True
 
-    """Command that should be executed."""
+    """Shell-command to be executed."""
     command = None
 
     def process(self):
@@ -547,26 +552,85 @@ class SingleCommandSession(Session):
 
 
 class CommandFormSession(SingleCommandSession):
+    """
+    Same as class:`.SingleCommandSession` but rendering a TextField to enter
+    the command.
+
+    Example
+    -------
+        class MySession(CommandFormSession):
+            work_on = (MyModel,)
+    """
     abstract = True
     form = CommandForm
     command = '{cmd}'
 
 
 class CommandChainSession(Session):
+    """
+    An abstract :class:`.Session`-class to execute a sequence of commands.
+
+    The commands will be invoked one after another. If one of the commands
+    return with a state defined in :attr:`.break_states` no further commands
+    will be executed.
+
+    Example
+    -------
+        class MySession(CommandChainSession):
+            work_on = (MyServer,)
+            commands = (
+                'a2ensite mysite'
+                'apachectl configtest',
+                'service apache2 reload')
+    """
     abstract = True
+
+    """tuple of shell-commands"""
     commands = tuple()
+
+    """
+    tuple of :attr:`.models.CommandResult.status` on which the session will
+    be interrupted
+    """
     break_states = ('error',)
 
     def process(self):
         for cmd in self.commands:
-            self.xrun(cmd)
-            if self.status in self.break_states:
+            result = self.xrun(cmd)
+            if result.status in self.break_states:
                 break
 
 
 class SessionChain(Session):
+    """
+    An abstract :class:`.Session`-class to execute a sequence of sessions.
+
+    If you have some sessions you want to be able to process separately or as
+    a sequence you could make use of a :class:`.SessionChain`.
+
+    All sessions have to work with the same :attr:`~.Session.minkeobj`. If one
+    of the sessions ends up with a status defined in :attr:`.break_states` no
+    further sessions will be executed.
+
+    Example
+    -------
+        class MySession(SessionChain):
+            work_on = (MyServer,)
+            sessions = (
+                UpdateSQLServer,
+                RestartSQLServer,
+                UpdateApache,
+                RestartApache)
+    """
     abstract = True
+
+    """tuple of :class:`.Session`s"""
     sessions = tuple()
+
+    """
+    tuple of :attr:`.Session.status` on which further processing will be
+    skipped.
+    """
     break_states = ('error',)
 
     def process(self):
