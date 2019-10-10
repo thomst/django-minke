@@ -650,4 +650,9 @@ class SessionChain(Session):
             session = cls(self._con, self._db, self.minkeobj)
             session.process()
             if session.status in self.break_states:
+                msg = '{} finished with status {}'.format(session.verbose_name, session.status)
+                self.add_msg(msg, 'error')
                 break
+            else:
+                msg = '{} finished'.format(session.verbose_name)
+                self.add_msg(msg)
