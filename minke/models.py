@@ -272,7 +272,12 @@ class MinkeSession(models.Model):
 
 class CommandResult(Result, models.Model):
     """
-    Add a db-layer to fabric's Result-class.
+    Add a db-layer to invoke's :class:`~invoke.runners.Result`-class.
+
+    The CommandResult is a place-in for :class:`~invoke.runners.Result` which
+    reimplements the attributes as model-fields and adds a ForeignKey to
+    :class:`.MinkeSession`. It also implements some helper-methods and
+    properties as :meth:`.validate`, :attr:`.status` and :attr:`.match`.
     """
     command = models.TextField(
         verbose_name=_('Command'),
@@ -318,7 +323,7 @@ class CommandResult(Result, models.Model):
 
     def __init__(self, *args, **kwargs):
         """
-        This model could also be initiated as fabric's result-class.
+        This model could also be initialized as fabric's result-class.
         """
         try:
             # First we try to initiate the model.
@@ -332,6 +337,11 @@ class CommandResult(Result, models.Model):
     @property
     def status(self):
         """
+        One of ``MinkeSession.SESSION_STATES``.
+
+        * 'success' if ``result.ok`` is True and ``result.stderr`` is empty
+        * 'warning' if ``result.ok`` is True but ``result.stderr`` is not empty
+        * 'error' if ``result.failed`` is True
         """
         if self.failed:
             return MinkeSession.SESSION_STATES[2][0]
@@ -343,18 +353,33 @@ class CommandResult(Result, models.Model):
     @property
     def match(self):
         """
+        Holds the match-object returned by :label:`re.match` within
+        ``result.validate``.
         """
         return self._match
 
     def validate(self, regex):
         """
+        Validate a result-object.
+
+        A result is considered valid if ``result.ok`` is True and the
+        regex-pattern matches ``result.stdout``.
+
+        Parameter
+        ---------
+        regex (string):
+            Regex-Pattern to match ``result.stdout``.
+
+        Returns
+        -------
+        True for valid, False for invalid.
         """
         self._match = re.match(regex, self.stdout)
         return self.ok and self._match
 
     def as_message(self):
         """
-        Return this instance as an ExecutionMessage.
+        Return this instance as an ``messages.ExecutionMessage``.
         """
         # FIXME: messages imports from models and vice versa.
         # We should find another solution here. Maybe define message-proxies
@@ -365,8 +390,10 @@ class CommandResult(Result, models.Model):
 
 class BaseMessage(models.Model):
     """
-    This is the database-layer for all messages. Proxies of this model are defined
-    within the messages-module.
+    Base-model for all :doc:`message-classes <.messages>`.
+
+    All :doc:`message-classes <.messages>` are implemented as
+    proxy-model-classes of BaseMessage.
     """
     LEVELS = (
         ('info', 'info'),
@@ -577,8 +604,6 @@ class MinkeQuerySet(models.QuerySet):
             raise InvalidMinkeSetup(msg)
 
 
-# TODO: implement a post-delete-signal-handler to cleanup sessions on deleting
-# a minkeobject.
 class MinkeModel(models.Model):
     """
     An abstract baseclass for all models on which sessions should be run.

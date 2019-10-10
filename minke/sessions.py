@@ -535,6 +535,8 @@ class SingleCommandSession(Session):
 
     Example
     -------
+    ::
+
         class MyDrupalModel(models.Model):
             root = models.CharField(max_length=255)
 
@@ -544,8 +546,8 @@ class SingleCommandSession(Session):
     """
     abstract = True
 
-    """Shell-command to be executed."""
     command = None
+    """Shell-command to be executed."""
 
     def process(self):
         self.xrun(self.command)
@@ -558,6 +560,8 @@ class CommandFormSession(SingleCommandSession):
 
     Example
     -------
+    ::
+
         class MySession(CommandFormSession):
             work_on = (MyModel,)
     """
@@ -576,6 +580,8 @@ class CommandChainSession(Session):
 
     Example
     -------
+    ::
+
         class MySession(CommandChainSession):
             work_on = (MyServer,)
             commands = (
@@ -585,14 +591,14 @@ class CommandChainSession(Session):
     """
     abstract = True
 
-    """tuple of shell-commands"""
     commands = tuple()
+    """tuple of shell-commands"""
 
+    break_states = ('error',)
     """
     tuple of :attr:`.models.CommandResult.status` on which the session will
     be interrupted
     """
-    break_states = ('error',)
 
     def process(self):
         for cmd in self.commands:
@@ -614,6 +620,8 @@ class SessionChain(Session):
 
     Example
     -------
+    ::
+
         class MySession(SessionChain):
             work_on = (MyServer,)
             sessions = (
@@ -624,14 +632,14 @@ class SessionChain(Session):
     """
     abstract = True
 
-    """tuple of :class:`.Session`s"""
     sessions = tuple()
+    """tuple of :class:`.Session`"""
 
+    break_states = ('error',)
     """
     tuple of :attr:`.Session.status` on which further processing will be
     skipped.
     """
-    break_states = ('error',)
 
     def process(self):
         for cls in self.sessions:
