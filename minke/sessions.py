@@ -264,16 +264,20 @@ class Session(metaclass=SessionRegistration):
     Please see the :ref:`celery-documentation <chord-important-notes>`
     for more details."""
 
-    def __init__(self, con, db):
+    def __init__(self, con, db, minkeobj=None):
         """Session's init-method.
 
         Parameters
         ----------
         con : obj of :class:`fabric.connection.Connection`
         db : obj of :class:`~.models.MinkeSession`
+        minkeobj : obj of :class:`~.models.Minkeobj` (optional)
+            Only required if you want to initialize a session out of another
+            session and let it work on a different minkeobj.
         """
         self._con = con
         self._db = db
+        self._minkeobj = minkeobj
         self._interrupt = None
         self._busy = False
         self.start = db.start
@@ -300,7 +304,7 @@ class Session(metaclass=SessionRegistration):
         """
         Refers to :attr:`.models.MinkeSession.minkeobj`.
         """
-        return self._db.minkeobj
+        return self._minkeobj or self._db.minkeobj
 
     @property
     def data(self):
@@ -643,7 +647,7 @@ class SessionChain(Session):
 
     def process(self):
         for cls in self.sessions:
-            session = cls(self._con, self._db)
+            session = cls(self._con, self._db, self.minkeobj)
             session.process()
             if session.status in self.break_states:
                 break
