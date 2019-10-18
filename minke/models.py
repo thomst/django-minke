@@ -50,18 +50,30 @@ class MinkeSession(models.Model):
     """
     objects = MinkeSessionQuerySet.as_manager()
 
+    SUCCESS = 'success'
+    WARNING = 'warning'
+    ERROR = 'error'
+    INITIALIZED = 'initialized'
+    RUNNING = 'running'
+    COMPLETED = 'completed'
+    STOPPING = 'stopping'
+    STOPPED = 'stopped'
+    CANCELED = 'canceled'
+    FAILED = 'failed'
+
     SESSION_STATES = (
-        ('success', 0),
-        ('warning', 1),
-        ('error', 2))
+        (SUCCESS, 0),
+        (WARNING, 1),
+        (ERROR, 2))
     PROC_STATES = (
-        ('initialized', 'waiting...'),
-        ('running', 'running...'),
-        ('completed', 'completed in {0:.1f} seconds'),
-        ('stopping', 'stopping...'),
-        ('stopped', 'stopped after {0:.1f} seconds'),
-        ('canceled', 'canceled!'),
-        ('failed', 'failed!'))
+        (INITIALIZED, 'waiting...'),
+        (RUNNING, 'running...'),
+        (COMPLETED, 'completed in {0:.1f} seconds'),
+        (STOPPING, 'stopping...'),
+        (STOPPED, 'stopped after {0:.1f} seconds'),
+        (CANCELED, 'canceled!'),
+        (FAILED, 'failed!'))
+
     SESSION_CHOICES = ((s[0], _(s[0])) for s in SESSION_STATES)
     PROC_CHOICES = ((s[0], _(s[0])) for s in PROC_STATES)
 
@@ -395,10 +407,13 @@ class BaseMessage(models.Model):
     All :doc:`message-classes <.messages>` are implemented as
     proxy-model-classes of BaseMessage.
     """
+    INFO = 'info'
+    WARNING = 'warning'
+    ERROR = 'error'
     LEVELS = (
-        ('info', 'info'),
-        ('warning', 'warning'),
-        ('error', 'error'))
+        (INFO, 'info'),
+        (WARNING, 'warning'),
+        (ERROR, 'error'))
 
     session = models.ForeignKey(MinkeSession,
         on_delete=models.CASCADE,
