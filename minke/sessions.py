@@ -173,8 +173,8 @@ def protect(method):
         obj._busy = True
         result = method(obj, *args, **kwargs)
         # if interruption was deferred now is the time to raise it
-        if obj._interrupt:
-            raise obj._interrupt
+        if obj._stopped:
+            raise KeyboardInterrupt
         obj._busy = False
         return result
 
@@ -278,7 +278,7 @@ class Session(metaclass=SessionRegistration):
         self._con = con
         self._db = db
         self._minkeobj = minkeobj
-        self._interrupt = None
+        self._stopped = False
         self._busy = False
         self.start = db.start
         self.end = db.end
@@ -314,7 +314,7 @@ class Session(metaclass=SessionRegistration):
         """
         return self._db.session_data
 
-    def cancel(self):
+    def stop(self, *arg, **kwargs):
         """Interrupt the session's processing.
 
         This method could be called twice. The first time it will initiate a
@@ -337,10 +337,10 @@ class Session(metaclass=SessionRegistration):
         Thus killing a session makes most sense if it has the run.pty-config
         in use. Otherwise you just will be disconnected from the remote-process.
         """
-        if not self._busy or self._interrupt:
-            raise self._interrupt
+        if not self._busy or self._stopped:
+            raise KeyboardInterrupt
         else:
-            self._interrupt = KeyboardInterrupt
+            self._stopped = True
 
     def process(self):
         """

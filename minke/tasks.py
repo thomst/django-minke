@@ -58,11 +58,6 @@ class SessionProcessor:
         session_cls = REGISTRY[self.minke_session.session_name]
         self.session = session_cls(self.con, self.minke_session)
 
-    def interrupt(self, signum, frame):
-        # only stop a running session.
-        if self.minke_session.is_running:
-            self.session.cancel()
-
     def run(self):
         try:
             started = self.session.start()
@@ -113,7 +108,7 @@ def process_session(task, host_id, session_id, config):
     Task for session-processing.
     """
     processor = SessionProcessor(host_id, session_id, config)
-    signal.signal(signal.SIGUSR1, processor.interrupt)
+    signal.signal(signal.SIGUSR1, processor.session.stop)
     processor.run()
 
 @shared_task

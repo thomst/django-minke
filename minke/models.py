@@ -189,14 +189,11 @@ class MinkeSession(models.Model):
             self.session_status = 'error'
             self.proc_status = 'canceled'
             self.save(update_fields=['proc_status', 'session_status'])
-        elif session.proc_status == 'running':
+        elif session.is_running:
             self.proc_status = 'stopping'
             self.save(update_fields=['proc_status'])
             os.kill(session.pid, signal.SIGUSR1)
-        elif session.proc_status == 'stopping':
-            # TODO: use a proc-status 'killed'
-            # self.proc_status = 'killed'
-            # self.save(update_fields=['proc_status'])
+        elif session.is_stopping:
             os.kill(session.pid, signal.SIGUSR1)
 
     @transaction.atomic
@@ -211,10 +208,10 @@ class MinkeSession(models.Model):
         if failure:
             self.session_status = 'error'
             self.proc_status = 'failed'
-        elif session.proc_status == 'running':
+        elif session.is_running:
             self.session_status = self.session_status or 'success'
             self.proc_status = 'completed'
-        elif session.proc_status == 'stopping':
+        elif session.is_stopping:
             self.session_status = 'error'
             self.proc_status = 'stopped'
         self.end_time = datetime.datetime.now()
@@ -228,7 +225,11 @@ class MinkeSession(models.Model):
 
     @property
     def is_running(self):
-        return self.proc_status in ['running', 'stopping']
+        return self.proc_status == 'running'
+
+    @property
+    def is_stopping(self):
+        return self.proc_status == 'stopping'
 
     @property
     def is_done(self):
