@@ -50,11 +50,6 @@ Minke-models now are all those models that you want to run remote-sessions with.
 This could be the data-representation of a server, but also of web-applications
 running on this server, and even something like installed extensions, patches,
 backups and everything else you want to track and manage in your minke-app.
-To make up a minke-model it takes three things:
-
-* It is a subclass of MinkeModel.
-* It has a connection to a host.
-* Its model-admin-class is a subclass of MinkeAdmin.
 
 Sessions
 ........
