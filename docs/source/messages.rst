@@ -1,5 +1,4 @@
 Messages
 ========
 
-.. automod:: minke.messages
-    :members:
+TODO
