@@ -32,7 +32,7 @@ For more informations about how to setup a django-project with celery please
 see the celery-documentation:
 
 * `Getting started with celery <https://docs.celeryproject.org/en/latest/getting-started/index.html>`_
-* `Using celery with django <https://docs.celeryproject.org/en/latest/django/index.html>`_
+* `First steps with django <https://docs.celeryproject.org/en/latest/django/first-steps-with-django.html>`_
 
 .. note::
     Minke depends on a celery-setup with a working result-backend. We recommend
