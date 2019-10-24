@@ -1,7 +1,9 @@
+* MINKE_CLI_USER as environment-variable and cli-parameter
 * upload-helper-method for sessions
 * more tests
 * documentation
 * commentings
 * cleanup template and css:
   make a clearer distinction between the changelists of minkeobjects and sessions.
-* refactor session-registry's reloading
+* Session-proc-info: display runtime for failed sessions
+* contrib-command-session to save and select cmd-sessions
