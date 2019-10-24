@@ -5,6 +5,7 @@
 .tox/
 .vscode/
 my.cnf
+deploy.sh
 /minke.egg-info
 /django_minke.egg-info
 /MANIFEST.in
