@@ -34,7 +34,7 @@ To make up a minke-model it takes three things:
 Sessions
 ........
 A session-class defines the code to be executed for minke-models. Sessions are
-similar fabric-tasks. Within a session you have access to a connection-object
+similar to fabric-tasks. Within a session you have access to a connection-object
 (as implemented by fabric) as well as to the minke-model-object you are working
 with. So a session could be as simple as running a single shell-command on the
 remote-machine, up to complex management-routines including manipulating the
