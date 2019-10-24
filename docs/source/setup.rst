@@ -35,7 +35,6 @@ see the celery-documentation:
 * `Using celery with django <https://docs.celeryproject.org/en/latest/django/index.html>`_
 
 .. note::
-
     Minke depends on a celery-setup with a working result-backend. We recommend
     to use the django-celery-result-extension:
 
