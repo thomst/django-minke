@@ -36,7 +36,6 @@ setup(
         "fabric2>=2.4.0",
         "celery>=4.2.2",
         "djangorestframework>=3.9.2",
-        "mysqlclient>=1.4.2",
     ],
     classifiers=[
         dev_status,
