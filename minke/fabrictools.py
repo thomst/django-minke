@@ -13,6 +13,27 @@ class FabricConfig(Config):
     Add a load_snakeconfig-method, that takes a plain dict and parses its
     snake-case-keys to fit into the nested default-config-structure.
     """
+    def __init__(self, *args, **kwargs):
+        # NOTE:
+        # fabric has a rather dodgy way to check for optional config-files:
+        #
+        # > # Typically means 'no such file', so just note & skip past.
+        # > except IOError as e:
+        # >     # TODO: is there a better / x-platform way to detect this?
+        # >     if "No such file" in e.strerror:
+        # >         err = "Didn't see any {}, skipping."
+        # >         debug(err.format(filepath))
+        # >     else:
+        # >         raise
+        #
+        # To prevent an accidentally raise IOError we catch it and retry to
+        # initialize Config with lazy=True (don't look for config-files at all).
+        try:
+            super().__init__(*args, **kwargs)
+        except IOError:
+            kwargs['lazy'] = True
+            super().__init__(*args, **kwargs)
+
     def load_snakeconfig(self, configdict):
         for param, value in configdict.items():
             # We support two level of recursive config-keys. That means

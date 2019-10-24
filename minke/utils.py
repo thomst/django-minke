@@ -1,7 +1,6 @@
 # -*- coding: utf-8 -*-
 
 import json
-from fabric2.config import Config
 from django.db import models
 from django.core.serializers.json import DjangoJSONEncoder
 

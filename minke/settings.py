@@ -1,7 +1,8 @@
 # -*- coding: utf-8 -*-
 
 from django.conf import settings
-from .utils import FabricConfig
+from .fabrictools import FabricConfig
+from .fabrictools import FabricRemote
 
 
 MINKE_DEBUG = getattr(settings, 'MINKE_DEBUG', False)
@@ -14,6 +15,7 @@ MINKE_MESSAGE_WRAP = getattr(settings, 'MINKE_MESSAGE_WRAP', 120)
 # set defaults for fabric-/invoke-config
 MINKE_FABRIC_CONFIG.run.hide = True
 MINKE_FABRIC_CONFIG.run.warn = True
+MINKE_FABRIC_CONFIG.runners.remote = FabricRemote
 
 # All config-vars starting with FABRIC_ will be loaded into our fabric-config...
 fabric_data = dict([(k[7:].lower(), getattr(settings, k)) for k in dir(settings) if k.startswith('FABRIC')])

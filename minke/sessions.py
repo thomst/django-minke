@@ -242,7 +242,7 @@ class Session(metaclass=SessionRegistration):
     """Session-specific fabric- and invoke-configuration-parameters which will
     be used to initialize a :class:`fabric-connection <fabric.connection.Connection>`.
     The keys must be formatted in a way that is accepted by
-    :meth:`~.helpers.FabricConfig.load_snakeconfig`.
+    :meth:`~.fabrictools.FabricConfig.load_snakeconfig`.
 
     See also the documentation for the configuration of
     :doc:`fabric <fabric:concepts/configuration>` and
