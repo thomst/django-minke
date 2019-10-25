@@ -36,7 +36,6 @@ extensions = [
     'sphinx.ext.autosummary',
     'sphinx.ext.intersphinx',
     'sphinxcontrib.napoleon',
-    # 'numpydoc',
 ]
 
 # Add any paths that contain templates here, relative to this directory.
@@ -66,9 +65,10 @@ autodoc_member_order = 'bysource'
 
 # intersphinx-config
 intersphinx_mapping = {
-    'fabric': ('https://docs.fabfile.org/en/latest/', None),
-    'invoke': ('http://docs.pyinvoke.org/en/latest/', None),
-    'celery': ('https://docs.celeryproject.org/en/latest/', None),
+    'django': ('https://docs.djangoproject.com/en/dev/', 'http://docs.djangoproject.com/en/dev/_objects/'),
+    'fabric': ('https://docs.fabfile.org/en/latest/', 'https://docs.fabfile.org/en/latest/objects.inv'),
+    'invoke': ('http://docs.pyinvoke.org/en/latest/', 'http://docs.pyinvoke.org/en/latest/objects.inv'),
+    'celery': ('https://docs.celeryproject.org/en/latest/', 'https://docs.celeryproject.org/en/latest/objects.inv'),
     }
 
 # numpydoc-configuration (not needed)

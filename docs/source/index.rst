@@ -34,17 +34,25 @@ Features
    :maxdepth: 1
    :caption: Contents:
 
-   setup
-   gettingstarted
-   concept
-   hosts
-   minkemodels
-   sessions
-   messages
-   fabricintegration
-   adminsite
-   contribcommands
-   apicommands
+   docs/setup
+   docs/gettingstarted
+   docs/concept
+   docs/hosts
+   docs/minkemodels
+   docs/sessions
+   docs/messages
+   docs/fabricintegration
+   docs/adminsite
+   docs/contribcommands
+   docs/apicommands
+
+.. toctree::
+   :maxdepth: 1
+   :caption: Api:
+
+   api/sessions
+   api/messages
+
 
 
 Indices and tables

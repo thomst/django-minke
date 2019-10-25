@@ -45,5 +45,5 @@ Fabric
 ......
 Minke uses fabric to realize remote-execution. Fabric itself is build on invoke
 (command-execution) and paramiko (ssh-connections). Fabric and invoke
-are highly configurable. Please see :doc:`../fabricintegration` for more
+are highly configurable. Please see :doc:`fabricintegration` for more
 informations about how to configure fabric within a minke-project.
