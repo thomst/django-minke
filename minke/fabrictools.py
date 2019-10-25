@@ -26,8 +26,9 @@ class FabricConfig(Config):
         # >     else:
         # >         raise
         #
-        # To prevent an accidentally raise IOError we catch it and retry to
-        # initialize Config with lazy=True (don't look for config-files at all).
+        # To prevent an accidentally raised IOError we catch it and re-try to
+        # initialize Config with `lazy=True` (which means `Config` won't look for
+        # config-files at all).
         try:
             super().__init__(*args, **kwargs)
         except IOError:
@@ -35,11 +36,20 @@ class FabricConfig(Config):
             super().__init__(*args, **kwargs)
 
     def load_snakeconfig(self, configdict):
+        """
+        Load a plane configdict as nested config - using the key's
+        snake-structure as representation of the nest-logic.
+
+        Two level of recursion are supported. That means something like
+        'connect_kwargs_my_special_key' will be applied as
+        'config.connect_kwargs.my_special_key'. To obviate ambiguity the key on
+        the first level must already exist. Otherwise we raise InvalidMinkeSetup.
+
+        Parameter
+        ---------
+        configdict : dict
+        """
         for param, value in configdict.items():
-            # We support two level of recursive config-keys. That means
-            # something like 'connect_kwargs_my_special_key' will be applied as
-            # 'config.connect_kwargs.my_special_key'. The key on the first level
-            # must already exist. Otherwise we raise InvalidMinkeSetup.
             snippets = param.split('_')
             key1 = key2 = None
 
