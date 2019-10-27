@@ -61,8 +61,6 @@ class REGISTRY(OrderedDict):
         try:
             self.reload_sessions.send(sender=self.__class__, session_name=session_name)
         except Exception as exc:
-            # TODO: Workout print-version of SessionReloadError that will be
-            # logged.
             exception = SessionReloadError(exc, session_name)
             logger.error(exception)
             raise exception
@@ -243,21 +241,26 @@ class Session(metaclass=SessionRegistration):
     """
 
     form = None
-    """An optional form that will be rendered before the session will be
+    """
+    An optional form that will be rendered before the session will be
     processed. The form-data will be accessible within the session as the
     data-property. Use it if the session's processing depends on additional
     user-input-data.
 
     Instead of setting the form-attribute you can also directly overwrite
-    :meth:`.get_form`."""
+    :meth:`.get_form`.
+    """
 
     confirm = False
-    """If confirm is true, the admin-site asks for a user-confirmation before
+    """
+    If confirm is true, the admin-site asks for a user-confirmation before
     processing a session, which also allows to review the objects the session
-    was revoked with."""
+    was revoked with.
+    """
 
     invoke_config = dict()
-    """Session-specific fabric- and invoke-configuration-parameters which will
+    """
+    Session-specific fabric- and invoke-configuration-parameters which will
     be used to initialize a :class:`fabric-connection <fabric.connection.Connection>`.
     The keys must be formatted in a way that is accepted by
     :meth:`~.fabrictools.FabricConfig.load_snakeconfig`.
@@ -268,7 +271,8 @@ class Session(metaclass=SessionRegistration):
     """
 
     parrallel_per_host = False
-    """Allow parrallel processing of multiple celery-tasks on a single host.
+    """
+    Allow parrallel processing of multiple celery-tasks on a single host.
     If multiple minke-objects are associated with the same host all tasks
     running on them would be processed in a serial manner by default. This is
     to protect the ressources of the host-system. If you want to allow parrallel
@@ -280,7 +284,8 @@ class Session(metaclass=SessionRegistration):
     To perform parrallel task-execution on a single host we make use of celery's
     chords-primitive, which needs a functioning result-backend to be configured.
     Please see the :ref:`celery-documentation <chord-important-notes>`
-    for more details."""
+    for more details.
+    """
 
     def __init__(self, con, db, minkeobj=None):
         """Session's init-method.
