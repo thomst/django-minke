@@ -2,16 +2,12 @@
 
 import json
 import re
-from unittest import skipIf
 
 from django.contrib.auth.models import User
 from django.contrib.contenttypes.models import ContentType
-from django.test import TransactionTestCase
 from django.test import TestCase
-from django.test import Client
 from django.urls import reverse
 
-from minke import sessions
 from minke import settings
 from minke.models import MinkeSession
 from minke.messages import PreMessage
@@ -28,6 +24,8 @@ class ViewsTest(TestCase):
     @classmethod
     def setUpTestData(cls):
         create_test_data()
+        DummySession.create_permission()
+        LeaveAMessageSession.create_permission()
 
     def setUp(self):
         self.admin = User.objects.get(username='admin')
@@ -64,7 +62,6 @@ class ViewsTest(TestCase):
         else:
             self.client.logout()
 
-    @skipIf(settings.settings.DATABASES['default']['ENGINE'] == 'django.db.backends.sqlite3', 'create permissions fails with sqlite3')
     def test_02_permissions(self):
         url = reverse('admin:minke_host_changelist')
         post_data = dict()
@@ -72,25 +69,28 @@ class ViewsTest(TestCase):
         post_data['run_sessions'] = True
         post_data['_selected_action'] = self.player_ids[Host][0]
 
-        # work with unprivileged user
+        # unprivileged user
         self.client.force_login(self.anyuser)
+
+        # DummySession should not be offered as session-option.
         resp = self.client.get(url)
         self.assertEqual(resp.status_code, 200)
         self.assertNotIn(DummySession.__name__, resp.content.decode('utf-8'))
-        # TODO: Find a way to check 403-response when calling SessionView
-        # If user lacks permissions to run a session, the session won't be
-        # listed as action-option. The response is a changelist with a
-        # 'No action selected'-message instead of a 403.
-        # resp = self.client.post(url, post_data, follow=True)
-        # self.assertEqual(resp.status_code, 200)
-        # self.assertIn('No action selected', resp.content.decode('utf-8'))
-        # self.client.logout()
+
+        # Running LeaveAMessageSession should be forbidden (403)
+        resp = self.client.post(url, post_data, follow=True)
+        self.assertEqual(resp.status_code, 403)
+        self.client.logout()
 
         # work with privileged user
         self.client.force_login(self.admin)
+
+        # DummySession should be offerd as session-option.
         resp = self.client.get(url)
         self.assertEqual(resp.status_code, 200)
         self.assertIn(DummySession.__name__, resp.content.decode('utf-8'))
+
+        # Running LeaveAMessageSession should be possible.
         resp = self.client.post(url, post_data, follow=True)
         self.assertEqual(resp.status_code, 200)
         self.assertIn(LeaveAMessageSession.MSG, resp.content.decode('utf-8'))

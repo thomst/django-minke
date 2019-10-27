@@ -24,7 +24,7 @@ def create_users():
     anyuser = User(username='anyuser', is_staff=True)
     anyuser.set_password('anyuserpassword')
     anyuser.save()
-    change_perm = Permission.objects.get(name='Can change host')
+    change_perm = Permission.objects.get(codename='change_host')
     anyuser.user_permissions.add(change_perm)
 
 def create_hosts():
