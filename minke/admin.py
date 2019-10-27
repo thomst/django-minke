@@ -331,17 +331,16 @@ class MinkeAdmin(admin.ModelAdmin):
         # run sessions
         elif 'run_sessions' in request.POST:
 
-            # get session_cls.
-            # NOTE: Get the session from the session-form means that the
-            # permisssion-check for the session is already done. We are save.
-            session_form = self.get_session_select_form(request, request.POST)
-            if session_form.is_valid():
-                session_name = session_form.cleaned_data['session']
-                session_cls = REGISTRY[session_name]
-            else:
+            # check session_cls.
+            session_name = request.POST.get('session', None)
+            session_cls = REGISTRY.get(session_name, None)
+            if not session_cls:
                 msg = _("No session selected.")
                 self.message_user(request, msg, messages.WARNING)
                 return HttpResponseRedirect(redirect_url)
+            elif not self.permit_session(request, session_cls):
+                msg = 'You are not allowed to run this session: {}'
+                raise PermissionDenied(msg.format(session_name))
 
             # If this is a select-across-request, we force confirmation
             # and redirect to a show-all-changelist.
