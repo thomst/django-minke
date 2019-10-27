@@ -6,6 +6,7 @@ from django.core.management.base import CommandError
 
 from ...models import Host
 from ...models import MinkeSession
+from ...sessions import REGISTRY
 
 
 class Command(BaseCommand):
@@ -21,14 +22,50 @@ class Command(BaseCommand):
             action='store_true',
             help='Set current to False for all sessions.')
         parser.add_argument(
-            '-S', '--clear-sessions',
+            '-S', '--clear-all-sessions',
             action='store_true',
             help='Delete all sessions.')
+        parser.add_argument(
+            '-s', '--list-sessions',
+            action='store_true',
+            help='List available sessions.')
+        parser.add_argument(
+            '-p', '--create-run-permission',
+            help='Create permission for a session.')
+        parser.add_argument(
+            '-P', '--create-run-permissions',
+            action='store_true',
+            help='Create permissions for all sessions.')
 
     def handle(self, *args, **options):
         if options['release_locks']:
             print(Host.objects.update(lock=None))
+
         if options['clear_current_sessions']:
             print(MinkeSession.objects.update(current=False))
-        if options['clear_sessions']:
+
+        if options['clear_all_sessions']:
             print(MinkeSession.objects.all().delete())
+
+        if options['list_sessions']:
+            REGISTRY.reload()
+            for session_cls in REGISTRY.values():
+                print(session_cls.__name__)
+
+        if options['create_run_permission']:
+            REGISTRY.reload()
+            try:
+                session_cls = REGISTRY[options['create_permission']]
+            except KeyError:
+                msg = 'Unknown session: {}'.format(session)
+                raise CommandError(msg)
+            permission, created = session_cls.create_permission()
+            if created:
+                print('Created permission: {}'.format(permission))
+
+        if options['create_run_permissions']:
+            REGISTRY.reload()
+            for session_cls in REGISTRY.values():
+                permission, created = session_cls.create_permission()
+                if created:
+                    print('Created permission: {}'.format(permission))
