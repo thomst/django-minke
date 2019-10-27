@@ -22,17 +22,12 @@ from .messages import PreMessage
 from .messages import TableMessage
 from .messages import ExecutionMessage
 from .exceptions import InvalidMinkeSetup
+from .exceptions import SessionRegistrationError
+from .exceptions import SessionReloadError
 from .utils import FormatDict
 
 
 logger = logging.getLogger(__name__)
-
-
-class SessionReloadError(Exception):
-    # TODO: Work out the error-message - containing the original_exception.
-    def __init__(self, original_exception, session=None):
-        self.original_exception = original_exception
-        self.session = session
 
 
 class REGISTRY(OrderedDict):
@@ -87,37 +82,42 @@ class SessionRegistration(type):
 
     def __init__(cls, classname, bases, attrs):
         super().__init__(classname, bases, attrs)
-        if not cls.abstract and not cls.__name__ in REGISTRY:
+        if not cls.abstract:
             cls.register()
-            cls.create_permission()
+            if cls.auto_permission:
+                cls.add_permission()
 
     def register(cls):
         """
         Register the session-class.
         """
         # some sanity-checks
+        if cls.__name__ in REGISTRY:
+            msg = 'A session with that name was already registered.'
+            raise SessionRegistrationError(cls, msg)
+
         if not cls.work_on:
-            msg = 'At least one minke-model must be specified for a session.'
-            raise InvalidMinkeSetup(msg)
+            msg = 'At least one minke-model must be specified.'
+            raise SessionRegistrationError(cls, msg)
 
         for model in cls.work_on:
             try:
                 assert(model == Host or issubclass(model, MinkeModel))
             except (TypeError, AssertionError):
                 msg = '{} is no minke-model.'.format(model)
-                raise InvalidMinkeSetup(msg)
+                raise SessionRegistrationError(cls, msg)
 
         if issubclass(cls, SingleCommandSession) and not cls.command:
             msg = 'SingleCommandSession needs to specify an command.'
-            raise InvalidMinkeSetup(msg)
+            raise SessionRegistrationError(cls, msg)
 
         if issubclass(cls, CommandChainSession) and not cls.commands:
             msg = 'CommandChainSession needs to specify commands.'
-            raise InvalidMinkeSetup(msg)
+            raise SessionRegistrationError(cls, msg)
 
         if issubclass(cls, SessionChain) and not cls.sessions:
             msg = 'SessionChain needs to specify sessions.'
-            raise InvalidMinkeSetup(msg)
+            raise SessionRegistrationError(cls, msg)
 
         # set verbose-name if missing
         if not cls.verbose_name:
@@ -128,7 +128,7 @@ class SessionRegistration(type):
 
     def _get_permission(cls):
         codename = 'run_{}'.format(cls.__name__.lower())
-        name = 'Can run {}'.format(camel_case_to_spaces(cls.__name__))
+        name = 'Can run {}'.format(cls.__name__)
         lookup = 'minke.{}'.format(codename)
         return codename, name, lookup
 
@@ -136,18 +136,13 @@ class SessionRegistration(type):
         """
         Create a run-permission for this session-class.
         """
-        # create session-permission...
-        # In some contexts get_for_model fails because content_types aren't
-        # setup. This happens when applying migrations but also when testing
-        # with sqlite3.
-        try: content_type = ContentType.objects.get_for_model(MinkeSession)
-        except (OperationalError, ProgrammingError): return
+        content_type = ContentType.objects.get_for_model(MinkeSession)
         codename, name, lookup = cls._get_permission()
-        permission = Permission.objects.get_or_create(
+        permission, created = Permission.objects.update_or_create(
             codename=codename,
             content_type=content_type,
             defaults=dict(name=name))
-        cls.permissions += (lookup,)
+        return permission, created
 
     def delete_permission(cls):
         codename, name, lookup = cls._get_permission()
@@ -158,6 +153,9 @@ class SessionRegistration(type):
         else:
             cls.permissions = tuple(set(cls.permissions) - set((lookup,)))
 
+    def add_permission(cls):
+        codename, name, lookup = cls._get_permission()
+        cls.permissions += (lookup,)
 
 
 def protect(method):
@@ -202,16 +200,20 @@ class Session(metaclass=SessionRegistration):
     """
 
     abstract = True
-    """An abstract session-class won't be registered itself. Nor will a
-    run-permission be created for it. This is useful if your session-class
-    should be a base-class for other sessions.
+    """
+    An abstract session-class won't be registered itself. This is useful if your
+    session-class should be a base-class for other sessions.
 
     Abstract session-classes can be registered manually by calling its
     classmethod :meth:`~.SessionRegistration.register`::
 
         MySession.register()
 
-    This will register the session but won't create any run-permissions."""
+    This won't add a run-permission-lookup-string to :attr:`.permissions`. To do so
+    use the classmethod :meth:`.SessionRegistration.add_permission`::
+
+        MySession.add_permission()
+    """
 
     verbose_name = None
     """Display-name for sessions."""
@@ -220,9 +222,25 @@ class Session(metaclass=SessionRegistration):
     """Tuple of minke-models. Models the session can be used with."""
 
     permissions = tuple()
-    """Tuple of permission-strings. To be able to run a session a user must have
+    """
+    Tuple of permission-strings. To be able to run a session a user must have
     all the permissions listed. The strings should have the following format:
-    "<app-label>.<permission's-codename>"""
+    "<app-label>.<permission's-codename>.
+    """
+
+    auto_permission = True
+    """
+    If True a lookup-string for a session-specific run-permission will be
+    automatically added to :attr:`.permissions`.
+
+    Note
+    ----
+    To avoid database-access on module-level we won't create the permission itself.
+    Once you setup your sessions you could create run-permissions for all sessions
+    using the api-command::
+
+        $ ./manage.py minkeadm --create-permissions
+    """
 
     form = None
     """An optional form that will be rendered before the session will be
