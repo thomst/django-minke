@@ -28,7 +28,7 @@ values within your backend - you can do that with minke.
 
 Features
 --------
-* full django-admin-site-integration
+* full integration with django's admin-site
 * parrallel session-execution  celery
 * realtime monitoring of executed remote-sessions
 * command-line-api using django's management-commands

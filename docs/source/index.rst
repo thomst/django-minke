@@ -23,11 +23,11 @@ values within your backend - you can do that with minke.
 
 Features
 --------
-* full django-admin-site-integration
-* parrallel session-execution
+* full integration with django's admin-site
+* parrallel session-execution through celery
 * realtime monitoring of executed remote-sessions
-* command-line-api using djangos management-commands
-* session-history
+* command-line-api using django's management-commands
+* session- and command-history
 
 
 .. toctree::
