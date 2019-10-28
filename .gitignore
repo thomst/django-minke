@@ -2,6 +2,7 @@
 *~
 *.backup
 .coverage
+.pylintrc
 .tox/
 .vscode/
 my.cnf
