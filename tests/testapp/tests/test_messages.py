@@ -1,9 +1,7 @@
 # -*- coding: utf-8 -*-
 
-from invoke.runners import Result
 from django.test import SimpleTestCase
 
-from minke import sessions
 from minke.messages import Message
 from minke.messages import PreMessage
 from minke.messages import TableMessage

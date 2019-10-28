@@ -14,8 +14,6 @@ from django.contrib.contenttypes.fields import GenericForeignKey
 from django.contrib.contenttypes.fields import GenericRelation
 from django.contrib.contenttypes.models import ContentType
 from django.core.exceptions import FieldError
-from django.utils.safestring import mark_safe
-from django.template.loader import render_to_string
 from django.utils.translation import gettext
 from django.utils.translation import gettext_lazy as _
 

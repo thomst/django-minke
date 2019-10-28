@@ -1,6 +1,5 @@
 # -*- coding: utf-8 -*-
 
-import os
 import logging
 import signal
 
@@ -12,13 +11,11 @@ from invoke.exceptions import Failure
 from invoke.exceptions import ThreadException
 from invoke.exceptions import UnexpectedExit
 from celery import shared_task
-from django.contrib.contenttypes.models import ContentType
 
 from . import settings
 from .models import Host
 from .models import MinkeSession
 from .sessions import REGISTRY
-from .messages import Message
 from .messages import ExceptionMessage
 from .settings import MINKE_HOST_CONFIG
 from .settings import MINKE_FABRIC_CONFIG

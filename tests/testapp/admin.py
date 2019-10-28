@@ -3,8 +3,8 @@
 from django.contrib import admin
 
 from minke.admin import MinkeAdmin
-from minke.filters import StatusFilter
-from .models import Server, AnySystem
+from .models import Server
+from .models import AnySystem
 
 
 @admin.register(Server)

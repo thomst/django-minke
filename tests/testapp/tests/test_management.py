@@ -1,14 +1,11 @@
 # -*- coding: utf-8 -*-
 
 import io
-import subprocess
 import sys
 
 from django.test import TestCase
 from django.core.management import call_command
-from django import forms
 
-from minke.sessions import Session
 from minke.models import Host
 from minke.management.commands import minkerun
 from minke.management.commands.minkerun import Command
@@ -16,8 +13,6 @@ from minke.management.commands.minkerun import CommandError
 
 from .utils import create_test_data
 from ..sessions import TestFormSession
-from ..models import Server
-from ..models import AnySystem
 
 
 class InOut(list):

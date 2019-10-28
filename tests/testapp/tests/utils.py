@@ -4,12 +4,10 @@ import getpass
 import datetime
 
 from django.contrib.auth.models import User
-from django.contrib.contenttypes.models import ContentType
 from django.contrib.auth.models import Permission
 
 from minke.models import Host
 from minke.models import MinkeSession
-from minke.models import BaseMessage
 from ..models import Server
 from ..models import AnySystem
 from ..sessions import DummySession

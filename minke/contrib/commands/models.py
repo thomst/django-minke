@@ -3,13 +3,11 @@
 from django.db import models
 from django.db.models import Prefetch
 from django.contrib.contenttypes.models import ContentType
-from django.contrib.auth.models import Permission
 from django.db.models.signals import pre_delete
 from django.db.models.signals import post_save
 from django.dispatch import receiver
 
 from minke.models import MinkeModel
-from minke.models import MinkeSession
 from minke.models import Host
 from minke.utils import prepare_shell_command
 

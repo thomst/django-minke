@@ -1,8 +1,6 @@
 # -*- coding: utf-8 -*-
 
 from django.contrib import admin
-from django.forms.widgets import Select
-from minke.sessions import REGISTRY
 from .models import Command
 from .models import CommandGroup
 from .models import CommandOrder

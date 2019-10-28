@@ -1,10 +1,7 @@
 # -*- coding: utf-8 -*-
 from django.template import Library
 from django.contrib.admin.templatetags.admin_list import result_list
-from django.contrib.admin.templatetags.admin_list import admin_actions
 
-from ..models import MinkeSession
-from ..utils import item_by_attr
 
 register = Library()
 

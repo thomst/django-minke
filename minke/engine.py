@@ -3,7 +3,6 @@
 from celery import chain
 from celery import group
 
-import minke.sessions
 from .messages import Message
 from .messages import ExceptionMessage
 from .models import MinkeSession
@@ -16,7 +15,6 @@ def process(session_cls, queryset, session_data, user,
     """
     Initiate and run celery-tasks.
     """
-
     MinkeSession.objects.clear_currents(user, queryset)
     hosts = queryset.get_hosts()
     lock = hosts.filter(disabled=False).get_lock()

@@ -4,7 +4,7 @@ from django.test import TestCase
 
 from minke.models import Host, MinkeModel
 from minke.exceptions import InvalidMinkeSetup
-from ..models import Server, AnySystem
+from ..models import AnySystem
 from .utils import create_hosts
 from .utils import create_players
 

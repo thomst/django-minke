@@ -1,12 +1,10 @@
 # -*- coding: utf-8 -*-
 
-import re, logging, functools
+import logging
+import functools
 from collections import OrderedDict
 from fabric2.runners import Result
 
-from django.db.utils import OperationalError
-from django.db.utils import ProgrammingError
-from django.core.exceptions import FieldDoesNotExist
 from django.contrib.auth.models import Permission
 from django.contrib.contenttypes.models import ContentType
 from django.utils.text import camel_case_to_spaces
@@ -16,14 +14,12 @@ from .models import Host
 from .models import MinkeModel
 from .models import MinkeSession
 from .models import BaseMessage
-from .models import CommandResult
 from .forms import CommandForm
 from .messages import PreMessage
 from .messages import TableMessage
 from .messages import ExecutionMessage
 from .exceptions import InvalidMinkeSetup
 from .exceptions import SessionRegistrationError
-from .exceptions import SessionReloadError
 from .utils import FormatDict
 
 

@@ -1,16 +1,12 @@
 # -*- coding: utf-8 -*-
 
 import re
-
-from django.contrib.contenttypes.models import ContentType
 from django.dispatch import receiver
 
 from minke.sessions import CommandFormSession
 from minke.sessions import SingleCommandSession
 from minke.sessions import CommandChainSession
-from minke.sessions import SessionRegistration
 from minke.sessions import REGISTRY
-from minke.models import Host
 from .forms import CommandForm
 
 

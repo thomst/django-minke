@@ -8,19 +8,14 @@ from django.contrib.auth.models import User
 
 from minke import sessions
 from minke.sessions import Session
-from minke.sessions import SessionRegistration
 from minke.exceptions import InvalidMinkeSetup
 from minke.exceptions import SessionRegistrationError
 from minke.models import Host
-from minke.models import MinkeSession
-from minke.engine import process
 from minke.settings import MINKE_FABRIC_CONFIG
 from ..models import Server
 from ..sessions import MethodTestSession
-from ..sessions import SingleActionDummySession
 from ..sessions import RunCommands
 from ..sessions import RunSessions
-from ..sessions import DummySession
 from .utils import create_test_data
 from .utils import create_session
 
