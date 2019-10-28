@@ -1,8 +1,18 @@
 ================
 Welcome to Minke
 ================
+
+.. image:: https://travis-ci.org/feincms/feincms.svg?branch=master
+   :target: https://travis-ci.org/feincms/feincms
+
+Links
+=====
+* Minke on github: https://github.com/django-minke/minke
+* Minke on Read the Docs: https://django-minke.readthedocs.io
+* Getting started: https://django-minke.readthedocs.io/en/latest/docs/gettingstarted.html
+
 A framework for remote-control- and configuration-management-systems
-####################################################################
+====================================================================
 Minke is a framework that combines the full power of djangos admin-interface
 with the reliability and configurability of fabric2. A pure open-source- and
 pure python-solution to realize the most different szenarios concerning remote-
@@ -19,10 +29,10 @@ values within your backend - you can do that with minke.
 Features
 --------
 * full django-admin-site-integration
-* parrallel session-execution
+* parrallel session-execution  celery
 * realtime monitoring of executed remote-sessions
-* command-line-api using djangos management-commands
-* session-history
+* command-line-api using django's management-commands
+* session- and command-history
 
 Concept
 -------
