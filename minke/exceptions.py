@@ -4,17 +4,15 @@ from rest_framework.exceptions import APIException
 
 
 class InvalidMinkeSetup(Exception):
-    pass
-
-
-class SessionReloadError(InvalidMinkeSetup):
-    # TODO: Work out the error-message - containing the original_exception.
-    def __init__(self, original_exception, session=None):
-        self.original_exception = original_exception
-        self.session = session
+    """
+    Baseclass for all exceptions concerning the minke-setup
+    """
 
 
 class SessionRegistrationError(InvalidMinkeSetup):
+    """
+    Exception for failing session-registration.
+    """
     MSG = '`{}` couldn\'t be registerd: '
 
     def __init__(self, session, msg):

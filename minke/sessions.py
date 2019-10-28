@@ -58,12 +58,7 @@ class REGISTRY(OrderedDict):
             return
 
         # trigger the reload signal
-        try:
-            self.reload_sessions.send(sender=self.__class__, session_name=session_name)
-        except Exception as exc:
-            exception = SessionReloadError(exc, session_name)
-            logger.error(exception)
-            raise exception
+        self.reload_sessions.send(sender=self.__class__, session_name=session_name)
 
 
 REGISTRY = REGISTRY()
