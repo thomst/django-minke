@@ -2,10 +2,12 @@ Concept
 =======
 
 The main idea of minke is to define an arbitrary data-structure that represents
-your server- and subsystem-landscape as django-models. And then be able to
-run specific remote-tasks for those models right out of their changelist-sites.
-Now those tasks could be anything about remote-control and system-managment, but
-also fetching relevant data to update your django-data-structure itself.
+your server- and subsystem-landscape as django-models. And then be able to run
+specific remote-tasks for those models right out of their changelist-sites. This
+works pretty much as django's :doc:`admin-actions<ref/contrib/admin/actions>`:
+Simply choose the items and start a session on them. Now those sessions could be
+anything about remote-control and system-managment, but also fetching relevant
+data to update your selected items itself.
 
 To make this possible there are three main elements:
 
@@ -16,8 +18,8 @@ To make this possible there are three main elements:
 Hosts
 .....
 A Host is a django-model that is basically the database-representation of a
-specific ssh-config. It holds every information needed by fabric to connect
-to the remote-system.
+specific ssh-config. It holds every information needed by fabric to connect to
+the remote-system.
 
 :doc:`Read more about hosts.<hosts>`
 
