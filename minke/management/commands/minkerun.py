@@ -139,38 +139,13 @@ class Command(BaseCommand):
         request = request_factory.get(url)
         request.user = self.get_user(options)
 
-        # get a changelist-class
+        # get a changelist and return its queryset
         modeladmin = admin.site._registry[model_cls]
-
-        # get the changelist-instance the django-2-way
         try:
-            try:
-                changelist = modeladmin.get_changelist_instance(request)
-            except (IncorrectLookupParameters, FieldError):
-                msg = 'Invalid url-query: {}'.format(url_query)
-                raise CommandError(msg)
-
-        # fallback for django-1.11
-        except AttributeError:
-            changelist_cls = modeladmin.get_changelist(request)
-
-            # get a changelist-instance
-            list_display = modeladmin.get_list_display(request)
-            list_display_links = modeladmin.get_list_display_links(request, list_display)
-            list_filter = modeladmin.get_list_filter(request)
-            search_fields = modeladmin.get_search_fields(request)
-            list_select_related = modeladmin.get_list_select_related(request)
-            try:
-                changelist = changelist_cls(
-                    request, modeladmin.model, list_display,
-                    list_display_links, list_filter, modeladmin.date_hierarchy,
-                    search_fields, list_select_related, modeladmin.list_per_page,
-                    modeladmin.list_max_show_all, modeladmin.list_editable, modeladmin)
-            except (IncorrectLookupParameters, FieldError):
-                msg = 'Invalid url-query: {}'.format(url_query)
-                raise CommandError(msg)
-
-        # prepared to get the queryset
+            changelist = modeladmin.get_changelist_instance(request)
+        except (IncorrectLookupParameters, FieldError):
+            msg = 'Invalid url-query: {}'.format(url_query)
+            raise CommandError(msg)
         return changelist.get_queryset(request)
 
     def get_form_data(self, session_cls, options):
