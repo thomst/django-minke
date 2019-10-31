@@ -138,9 +138,9 @@ class MinkeManagerTest(TestCase):
         self.assertIn('TestFormSession', out)
         self.assertIn('TestUpdateFieldSession', out)
 
-        # list players
+        # list items
         with InOut() as out:
-            call_command('minkerun', 'DummySession', 'Server', '--list-players')
+            call_command('minkerun', 'DummySession', 'Server', '--list-items')
         self.assertIn('host_0_label000', out)
         self.assertIn('host_1_label111', out)
         self.assertIn('host_2_label222', out)
@@ -148,17 +148,17 @@ class MinkeManagerTest(TestCase):
         # slicing the queryset with offset and limit
         with InOut() as out_0_10:
             call_command('minkerun', 'SingleModelDummySession',
-                         '--offset=0', '--limit=10', '--list-players')
+                         '--offset=0', '--limit=10', '--list-items')
         self.assertEqual(len(out_0_10), 10)
 
         with InOut() as out_10_20:
             call_command('minkerun', 'SingleModelDummySession',
-                         '--offset=10', '--limit=10', '--list-players')
+                         '--offset=10', '--limit=10', '--list-items')
         self.assertEqual(len(out_10_20), 10)
 
         with InOut() as out_0_20:
             call_command('minkerun', 'SingleModelDummySession',
-                         '--offset=0', '--limit=20', '--list-players')
+                         '--offset=0', '--limit=20', '--list-items')
         self.assertEqual(len(out_0_20), 20)
         self.assertListEqual(sorted(out_0_10 + out_10_20), sorted(out_0_20))
 
@@ -168,7 +168,7 @@ class MinkeManagerTest(TestCase):
         self.assertRegex(out[2], 'This field is required')
         self.assertRegex(out[3], 'Enter a whole number')
 
-        # valid call with url-query that really process some players
+        # valid call with url-query that really process some items
         with InOut() as out:
             call_command('minkerun', 'DummySession', 'Server', '--url-query=q=222')
         self.assertRegex(out[0], 'host_[0-9]{1,2}_label222')

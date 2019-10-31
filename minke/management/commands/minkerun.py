@@ -46,10 +46,10 @@ class Command(BaseCommand):
             action='store_true',
             help='List sessions. But do nothing.')
         parser.add_argument(
-            '-p',
-            '--list-players',
+            '-i',
+            '--list-items',
             action='store_true',
-            help='List players. But do nothing.')
+            help='List all items to run a session with. But do nothing.')
 
     def print_usage_and_quit(self, error=None):
         if error:
@@ -244,7 +244,7 @@ class Command(BaseCommand):
         except CommandError as err:
             self.print_usage_and_quit(err)
 
-        if options['list_players']:
+        if options['list_items']:
             for obj in queryset: print(obj)
         else:
             process(session_cls, queryset, form_data, user, console=True)
