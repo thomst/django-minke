@@ -52,7 +52,7 @@ class MinkeManagerTest(TestCase):
             limit=None)
         self.options = self._options
 
-    def reset_options(self):
+    def tearDown(self):
         self.options = self._options
 
     def test_01_get_queryset(self):
@@ -72,8 +72,6 @@ class MinkeManagerTest(TestCase):
         for host in qs:
             self.assertRegex(host.name, '1')
             self.assertEqual(host.username, 'userlabel222')
-
-        self.reset_options()
 
     def test_02_get_form_data(self):
         # fails because of missing data
@@ -109,7 +107,6 @@ class MinkeManagerTest(TestCase):
         self.assertEqual(cleaned_data['one'], 123)
         self.assertEqual(cleaned_data['two'], 234)
 
-        self.reset_options()
     def test_get_user(self):
         user = self.manager.get_user(self.options)
         self.assertEqual(settings.MINKE_CLI_USER, user.username)
