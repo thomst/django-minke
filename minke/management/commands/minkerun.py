@@ -6,7 +6,6 @@ from django.core.management.base import CommandError
 from django.contrib.admin.options import IncorrectLookupParameters
 from django.core.exceptions import FieldError
 from django.contrib.auth.models import User
-from django.contrib.auth import authenticate
 
 from minke import settings
 from ...engine import process

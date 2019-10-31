@@ -1,5 +1,4 @@
 # -*- coding: utf-8 -*-
-import sys
 
 from django.contrib.auth.models import Permission
 from django.core.management.base import BaseCommand
