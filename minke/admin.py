@@ -20,6 +20,7 @@ from django.http import HttpResponseRedirect
 
 from . import settings
 from . import engine
+from .exceptions import InvalidMinkeSetup
 from .sessions import REGISTRY
 from .models import MinkeSession
 from .models import Host
