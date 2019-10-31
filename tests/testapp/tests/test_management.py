@@ -2,10 +2,12 @@
 
 import io
 import sys
+import os
 
 from django.test import TestCase
 from django.core.management import call_command
 
+from minke import settings
 from minke.models import Host
 from minke.management.commands import minkerun
 from minke.management.commands.minkerun import Command
@@ -46,6 +48,7 @@ class MinkeManagerTest(TestCase):
             form_data=None,
             url_query=None,
             offset=None,
+            user=None,
             limit=None)
         self.options = self._options
 
@@ -107,6 +110,25 @@ class MinkeManagerTest(TestCase):
         self.assertEqual(cleaned_data['two'], 234)
 
         self.reset_options()
+    def test_get_user(self):
+        user = self.manager.get_user(self.options)
+        self.assertEqual(settings.MINKE_CLI_USER, user.username)
+
+        os.environ['MINKE_CLI_USER'] = 'anyuser'
+        user = self.manager.get_user(self.options)
+        self.assertEqual('anyuser', user.username)
+
+        self.options['user'] = 'anyuser'
+        user = self.manager.get_user(self.options)
+        self.assertEqual('anyuser', user.username)
+
+        self.options['user'] = 'foobar'
+        self.assertRaisesRegex(
+            CommandError,
+            'User does not exist',
+            self.manager.get_user,
+            self.options)
+
 
     def test_03_invalid_calls(self):
 

@@ -1,4 +1,5 @@
 # -*- coding: utf-8 -*-
+import os
 import sys
 
 from django.core.management.base import BaseCommand
@@ -7,11 +8,10 @@ from django.contrib.admin.options import IncorrectLookupParameters
 from django.core.exceptions import FieldError
 from django.contrib.auth.models import User
 
-from minke import settings
+from ... import settings
 from ...engine import process
 from ...sessions import REGISTRY
 from ...utils import item_by_attr
-from ...exceptions import InvalidMinkeSetup
 
 
 class Command(BaseCommand):
@@ -28,7 +28,7 @@ class Command(BaseCommand):
             help='Model to work with. (Only neccessary if a session '
                  'could be used on multiple models)')
         parser.add_argument(
-            '-u', '--url-query',
+            '-q', '--url-query',
             help='Filter objects by url-query.')
         parser.add_argument(
             '-f', '--form-data',
@@ -41,6 +41,9 @@ class Command(BaseCommand):
             '-l', '--limit',
             type=int,
             help='Limit')
+        parser.add_argument(
+            '-u', '--user',
+            help='User to work with.')
         parser.add_argument(
             '-s', '--list-sessions',
             action='store_true',
@@ -59,12 +62,13 @@ class Command(BaseCommand):
         sys.exit(1 if error else 0)
 
     def get_user(self, options):
-        user = settings.MINKE_CLI_USER
+        user = os.environ.get('MINKE_CLI_USER', settings.MINKE_CLI_USER)
+        user = options['user'] or user
         try:
             user = User.objects.get(username=user)
         except User.DoesNotExist:
-            msg = 'MINKE_CLI_USER does not exist: {}'.format(user)
-            raise InvalidMinkeSetup(msg)
+            msg = 'User does not exist: {}'.format(user)
+            raise CommandError(msg)
         return user
 
     def get_session_cls(self, options):
