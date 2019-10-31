@@ -1,6 +1,7 @@
 # -*- coding: utf-8 -*-
 import sys
 
+from django.contrib.auth.models import Permission
 from django.core.management.base import BaseCommand
 from django.core.management.base import CommandError
 
@@ -36,6 +37,10 @@ class Command(BaseCommand):
             '-P', '--create-run-permissions',
             action='store_true',
             help='Create permissions for all sessions.')
+        parser.add_argument(
+            '-D', '--delete-run-permissions',
+            action='store_true',
+            help='Delete all run-permissions.')
 
     def handle(self, *args, **options):
         if options['release_locks']:
@@ -69,3 +74,7 @@ class Command(BaseCommand):
                 permission, created = session_cls.create_permission()
                 if created:
                     print('Created permission: {}'.format(permission))
+
+        if options['delete_run_permissions']:
+            print(Permission.objects.filter(codename__startswith='run_').delete())
+
