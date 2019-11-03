@@ -6,6 +6,7 @@ import os
 
 from django.test import TestCase
 from django.core.management import call_command
+from django.contrib.auth.models import User
 
 from minke import settings
 from minke.models import Host
@@ -15,6 +16,7 @@ from minke.management.commands.minkerun import CommandError
 
 from .utils import create_test_data
 from ..sessions import TestFormSession
+from ..sessions import DummySession
 
 
 class InOut(list):
@@ -41,6 +43,8 @@ class MinkeManagerTest(TestCase):
 
     def setUp(self):
         self.manager = Command()
+        self.admin = User.objects.get(username='admin')
+        self.anyuser = User.objects.get(username='anyuser')
         self._options = dict(
             session=TestFormSession,
             model=Host,
@@ -57,18 +61,18 @@ class MinkeManagerTest(TestCase):
 
     def test_01_get_queryset(self):
         # simple queryset - just all elements
-        qs = self.manager.get_queryset(Host, self.options)
+        qs = self.manager.get_queryset(self.options, Host, self.admin)
         self.assertListEqual(list(Host.objects.all()), list(qs))
 
         # get a changelist-query
         self.options['url_query'] = 'q=label111'
-        qs = self.manager.get_queryset(Host, self.options)
+        qs = self.manager.get_queryset(self.options, Host, self.admin)
         for host in qs:
             self.assertRegex(host.name, 'label111')
 
         # get a more complex changelist-query
         self.options['url_query'] = 'q=1&username=userlabel222'
-        qs = self.manager.get_queryset(Host, self.options)
+        qs = self.manager.get_queryset(self.options, Host, self.admin)
         for host in qs:
             self.assertRegex(host.name, '1')
             self.assertEqual(host.username, 'userlabel222')
@@ -80,8 +84,8 @@ class MinkeManagerTest(TestCase):
             CommandError,
             'This field is required',
             self.manager.get_form_data,
-            TestFormSession,
-            self.options)
+            self.options,
+            TestFormSession)
 
         # fails because of wrong data-type
         self.options['form_data'] = 'one=123,two="abc"'
@@ -89,8 +93,8 @@ class MinkeManagerTest(TestCase):
             CommandError,
             'Enter a whole number',
             self.manager.get_form_data,
-            TestFormSession,
-            self.options)
+            self.options,
+            TestFormSession)
 
         # fails because of invalid dict-data
         self.options['form_data'] = 'one=123&two="abc"'
@@ -98,33 +102,44 @@ class MinkeManagerTest(TestCase):
             CommandError,
             'invalid syntax',
             self.manager.get_form_data,
-            TestFormSession,
-            self.options)
+            self.options,
+            TestFormSession)
 
         # this should pass
         self.options['form_data'] = 'one=123,two="234"'
-        cleaned_data = self.manager.get_form_data(TestFormSession, self.options)
+        cleaned_data = self.manager.get_form_data(self.options, TestFormSession)
         self.assertEqual(cleaned_data['one'], 123)
         self.assertEqual(cleaned_data['two'], 234)
 
     def test_get_user(self):
-        user = self.manager.get_user(self.options)
+        perm, created = DummySession.create_permission()
+        self.anyuser.user_permissions.add(perm)
+
+        user = self.manager.get_user(self.options, DummySession)
         self.assertEqual(settings.MINKE_CLI_USER, user.username)
 
         os.environ['MINKE_CLI_USER'] = 'anyuser'
-        user = self.manager.get_user(self.options)
+        user = self.manager.get_user(self.options, DummySession)
         self.assertEqual('anyuser', user.username)
 
         self.options['user'] = 'anyuser'
-        user = self.manager.get_user(self.options)
+        user = self.manager.get_user(self.options, DummySession)
         self.assertEqual('anyuser', user.username)
 
         self.options['user'] = 'foobar'
-        self.assertRaisesRegex(
+        self.assertRaises(
             CommandError,
-            'User does not exist',
             self.manager.get_user,
-            self.options)
+            self.options,
+            DummySession)
+
+        self.anyuser.user_permissions.remove(perm)
+        self.options['user'] = 'anyuser'
+        self.assertRaises(
+            CommandError,
+            self.manager.get_user,
+            self.options,
+            DummySession)
 
 
     def test_03_invalid_calls(self):

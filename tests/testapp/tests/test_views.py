@@ -24,8 +24,6 @@ class ViewsTest(TestCase):
     @classmethod
     def setUpTestData(cls):
         create_test_data()
-        DummySession.create_permission()
-        LeaveAMessageSession.create_permission()
 
     def setUp(self):
         self.admin = User.objects.get(username='admin')

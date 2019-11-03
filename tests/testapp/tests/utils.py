@@ -6,11 +6,14 @@ import datetime
 from django.contrib.auth.models import User
 from django.contrib.auth.models import Permission
 
+from minke.sessions import REGISTRY
 from minke.models import Host
 from minke.models import MinkeSession
+from minke.management.commands.minkeadm import Command
 from ..models import Server
 from ..models import AnySystem
 from ..sessions import DummySession
+from ..sessions import SingleModelDummySession
 
 
 def create_users():
@@ -24,6 +27,11 @@ def create_users():
     anyuser.save()
     change_perm = Permission.objects.get(codename='change_host')
     anyuser.user_permissions.add(change_perm)
+
+def create_permissions():
+    REGISTRY.reload()
+    for session_cls in REGISTRY.values():
+        permission, created = session_cls.create_permission()
 
 def create_hosts():
     # create a localhost with the current user
@@ -50,6 +58,7 @@ def create_players():
 
 def create_test_data():
     create_users()
+    create_permissions()
     create_hosts()
     create_players()
 
