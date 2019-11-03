@@ -2,8 +2,8 @@
 Welcome to Minke
 ================
 
-.. image:: https://travis-ci.org/feincms/feincms.svg?branch=master
-   :target: https://travis-ci.org/feincms/feincms
+.. image:: https://travis-ci.org/django-minke/minke.svg?branch=master
+   :target: https://travis-ci.org/django-minke/minke
 
 Links
 =====
