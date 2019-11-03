@@ -61,7 +61,7 @@ class Command(BaseCommand):
         self.print_help('manage.py', 'minkesessions')
         sys.exit(1 if error else 0)
 
-    def get_user(self, options):
+    def get_user(self, options, session_cls):
         user = os.environ.get('MINKE_CLI_USER', settings.MINKE_CLI_USER)
         user = options['user'] or user
         try:
@@ -69,6 +69,11 @@ class Command(BaseCommand):
         except User.DoesNotExist:
             msg = 'User does not exist: {}'.format(user)
             raise CommandError(msg)
+        
+        if not user.has_perms(session_cls.permissions):
+            msg = 'User is not allowed to run {}: {}'
+            raise CommandError(msg.format(session_cls.__name__, user))
+
         return user
 
     def get_session_cls(self, options):
@@ -199,12 +204,12 @@ class Command(BaseCommand):
             return
 
         try:
-            user = self.get_user(options)
+            session_cls = self.get_session_cls(options)
         except CommandError as err:
             self.print_usage_and_quit(err)
 
         try:
-            session_cls = self.get_session_cls(options)
+            user = self.get_user(options, session_cls)
         except CommandError as err:
             self.print_usage_and_quit(err)
 
