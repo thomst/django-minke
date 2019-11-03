@@ -90,7 +90,7 @@ class Command(BaseCommand):
 
         return session_cls
 
-    def get_model_cls(self, session_cls, options):
+    def get_model_cls(self, options, session_cls):
         model = options['model']
 
         if model:
@@ -107,9 +107,9 @@ class Command(BaseCommand):
 
         return model_cls
 
-    def get_queryset(self, model_cls, options):
+    def get_queryset(self, options, model_cls, user):
         if options['url_query']:
-            queryset = self.get_changelist_queryset(model_cls, options)
+            queryset = self.get_changelist_queryset(options, model_cls, user)
         else:
             queryset = model_cls.objects.all()
 
@@ -133,7 +133,7 @@ class Command(BaseCommand):
 
         return queryset
 
-    def get_changelist_queryset(self, model_cls, options):
+    def get_changelist_queryset(self, options, model_cls, user):
         from django.contrib import admin
         from django.test import RequestFactory
         from django.urls import reverse
@@ -146,7 +146,7 @@ class Command(BaseCommand):
         url = reverse(url_pattern) + '?' + url_query
         request_factory = RequestFactory()
         request = request_factory.get(url)
-        request.user = self.get_user(options)
+        request.user = user
 
         # get a changelist and return its queryset
         modeladmin = admin.site._registry[model_cls]
@@ -157,7 +157,7 @@ class Command(BaseCommand):
             raise CommandError(msg)
         return changelist.get_queryset(request)
 
-    def get_form_data(self, session_cls, options):
+    def get_form_data(self, options, session_cls):
         form_cls = session_cls.form
         if not session_cls.form: return dict()
 
@@ -214,17 +214,17 @@ class Command(BaseCommand):
             self.print_usage_and_quit(err)
 
         try:
-            model_cls = self.get_model_cls(session_cls, options)
+            model_cls = self.get_model_cls(options, session_cls)
         except CommandError as err:
             self.print_usage_and_quit(err)
 
         try:
-            queryset = self.get_queryset(model_cls, options)
+            queryset = self.get_queryset(options, model_cls, user)
         except CommandError as err:
             self.print_usage_and_quit(err)
 
         try:
-            form_data = self.get_form_data(session_cls, options)
+            form_data = self.get_form_data(options, session_cls)
         except CommandError as err:
             self.print_usage_and_quit(err)
 
