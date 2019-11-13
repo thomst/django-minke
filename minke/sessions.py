@@ -26,7 +26,7 @@ from .utils import FormatDict
 logger = logging.getLogger(__name__)
 
 
-class REGISTRY(OrderedDict):
+class RegistryDict(OrderedDict):
     """
     A reload-able session-registry.
     """
@@ -57,7 +57,7 @@ class REGISTRY(OrderedDict):
         self.reload_sessions.send(sender=self.__class__, session_name=session_name)
 
 
-REGISTRY = REGISTRY()
+REGISTRY = RegistryDict()
 
 
 class SessionRegistration(type):
