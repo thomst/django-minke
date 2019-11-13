@@ -84,8 +84,10 @@ class SessionProcessor:
                 self.session.end(failure=True)
                 exc_msg = ExceptionMessage(print_tb=True)
                 logger.error(exc_msg.text)
-                if settings.MINKE_DEBUG: self.session.add_msg(exc_msg)
-                else: self.session.add_msg('An error occurred.', 'error')
+                if settings.MINKE_DEBUG:
+                    self.session.add_msg(exc_msg)
+                else:
+                    self.session.add_msg('An error occurred.', 'error')
 
             else:
                 self.session.end()
