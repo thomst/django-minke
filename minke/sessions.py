@@ -289,7 +289,7 @@ class Session(metaclass=SessionRegistration):
             Only required if you want to initialize a session out of another
             session and let it work on a different minkeobj.
         """
-        self._con = con
+        self._c = con
         self._db = db
         self._minkeobj = minkeobj
         self._stopped = False
@@ -307,11 +307,12 @@ class Session(metaclass=SessionRegistration):
         return cls.form
 
     @property
-    def status(self):
+    def c(self):
         """
-        Refers to :attr:`.models.MinkeSession.session_status`.
+        Refers to the :class:`fabric.connection.Connection`-object the session
+        was initialized with.
         """
-        return self._db.session_status
+        return self._c
 
     @property
     def minkeobj(self):
@@ -319,6 +320,13 @@ class Session(metaclass=SessionRegistration):
         Refers to :attr:`.models.MinkeSession.minkeobj`.
         """
         return self._minkeobj or self._db.minkeobj
+
+    @property
+    def status(self):
+        """
+        Refers to :attr:`.models.MinkeSession.session_status`.
+        """
+        return self._db.session_status
 
     @property
     def data(self):
@@ -463,7 +471,7 @@ class Session(metaclass=SessionRegistration):
         -------
         object of :class:`.models.CommandResult`
         """
-        result = self._con.run(cmd, **invoke_params)
+        result = self.c.run(cmd, **invoke_params)
         self._db.commands.add(result, bulk=False)
         return result
 
@@ -661,7 +669,7 @@ class SessionChain(Session):
 
     def process(self):
         for cls in self.sessions:
-            session = cls(self._con, self._db, self.minkeobj)
+            session = cls(self.c, self._db, self.minkeobj)
             session.process()
             if session.status in self.break_states:
                 msg = '{} finished with status {}'.format(session.verbose_name, session.status)
