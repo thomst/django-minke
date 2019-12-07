@@ -60,6 +60,25 @@ class RegistryDict(OrderedDict):
 REGISTRY = RegistryDict()
 
 
+class SessionGroup:
+    """
+    A group of session - displayed as optgroups in the select-widget.
+    Create a group and use it as decorator for Sessions::
+
+        my_group = SessionGroup('My Group')
+
+        @my_group
+        class MySession(Session):
+            pass
+    """
+    def __init__(self, name=None):
+        self.name = name
+
+    def __call__(self, cls, name=None):
+        cls.group = name or self.name
+        return cls
+
+
 class SessionRegistration(type):
     """
     metaclass for Sessions that implements session-registration
@@ -206,6 +225,12 @@ class Session(metaclass=SessionRegistration):
 
     verbose_name = None
     """Display-name for sessions."""
+
+    group = None
+    """
+    Group-name used as optgroup-tag in the select-widget.
+    Best practice to group sessions is to use a :class:`.SessionGroup`.
+    """
 
     work_on = tuple()
     """Tuple of minke-models. Models the session can be used with."""

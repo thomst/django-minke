@@ -1,5 +1,6 @@
 # -*- coding: utf-8 -*-
 from pydoc import locate
+from collections import OrderedDict
 
 from django import forms
 from django.contrib.admin.options import IncorrectLookupParameters
@@ -205,13 +206,27 @@ class MinkeAdmin(admin.ModelAdmin):
         Get sessions  valid for the user and model of this request.
         Return a list of tuples like with session-name and -verbose-name.
         """
-        sessions = [(None, '---------')]
 
-        # filter sessions in respect to their permissions- and work_on-attrs
-        for session in REGISTRY.values():
-            if not self.permit_session(request, session): continue
-            sessions.append((session.__name__, session.verbose_name))
-        return sessions
+        # filter and group sessions
+        groups = OrderedDict()
+        for name, session in REGISTRY.items():
+            if not self.permit_session(request, session):
+                continue
+
+            if not session.group in groups:
+                groups[session.group] = list()
+
+            groups[session.group].append((name, session.verbose_name))
+
+        # build the choices-list
+        choices = [(None, '---------')]
+        for group, options in groups.items():
+            if group:
+                choices.append((group, options))
+            else:
+                choices += options
+
+        return choices
 
     def get_session_select_form(self, request, data=None):
         """
