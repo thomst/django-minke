@@ -50,7 +50,7 @@ class RegistryDict(OrderedDict):
             self._static_sessions = self.copy()
 
         # no reloading needed for static sessions
-        if session_name in self._static_sessions:
+        if session_name and session_name in self:
             return
 
         # trigger the reload signal
