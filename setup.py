@@ -32,7 +32,7 @@ setup(
     packages=find_packages(exclude=["tests"]),
     include_package_data=True,
     install_requires=[
-        "Django>=1.11",
+        "Django>=1.11,<3.0",
         "fabric2>=2.4.0",
         "celery>=4.2.2",
         "djangorestframework>=3.9.2",
