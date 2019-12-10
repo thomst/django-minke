@@ -3,6 +3,7 @@
 *.backup
 .coverage
 .pylintrc
+.python-version
 .tox/
 .vscode/
 my.cnf
