@@ -209,6 +209,7 @@ class MinkeAdmin(admin.ModelAdmin):
 
         # filter and group sessions
         groups = OrderedDict()
+        extra_attrs = dict()
         for name, session in REGISTRY.items():
             if not self.permit_session(request, session):
                 continue
@@ -217,6 +218,8 @@ class MinkeAdmin(admin.ModelAdmin):
                 groups[session.group] = list()
 
             groups[session.group].append((name, session.verbose_name))
+            if session.__doc__:
+                extra_attrs[session.verbose_name] = dict(title=session.__doc__)
 
         # build the choices-list
         choices = [(None, '---------')]
@@ -226,14 +229,16 @@ class MinkeAdmin(admin.ModelAdmin):
             else:
                 choices += options
 
-        return choices
+        return choices, extra_attrs
 
     def get_session_select_form(self, request, data=None):
         """
         Return SessionSelectForm-instance with apropriate session-choices.
         """
         form = self.session_select_form(data or dict())
-        form.fields['session'].choices = self.get_session_options(request)
+        choices, extra_attrs = self.get_session_options(request)
+        form.fields['session'].choices = choices
+        form.fields['session'].widget.extra_attrs = extra_attrs
         return form
 
     def run_sessions(self, request, session_cls, queryset, force_confirm=False):

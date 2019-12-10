@@ -1,6 +1,7 @@
 # -*- coding: utf-8 -*-
 
 from django import forms
+from django.forms.widgets import Select
 from django.utils.translation import gettext_lazy as _
 from .utils import prepare_shell_command
 
@@ -46,5 +47,19 @@ class CommandForm(forms.Form):
     )
 
 
+class ExtendedSelect(Select):
+    """
+    Select that allows to pass option-specific extra-attributes.
+    """
+    def __init__(self, attrs=None, extra_attrs=None, choices=()):
+        super().__init__(attrs, choices)
+        self.extra_attrs = extra_attrs or dict()
+
+    def create_option(self, *args, **kwargs):
+        option = super().create_option(*args, **kwargs)
+        option['attrs'].update(self.extra_attrs.get(option['label'], dict()))
+        return option
+
+
 class SessionSelectForm(forms.Form):
-    session = forms.ChoiceField(label=_('Session:'))
+    session = forms.ChoiceField(label=_('Session:'), widget=ExtendedSelect)
