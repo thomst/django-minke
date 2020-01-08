@@ -445,7 +445,7 @@ class HostGroup(models.Model):
     A Group of hosts. (Not sure if this is practical.)
     """
     name = models.CharField(
-        max_length=255, unique=True,
+        max_length=128, unique=True,
         verbose_name=_('Group-Name'),
         help_text=_('Unique group-name.'))
     comment = models.TextField(
