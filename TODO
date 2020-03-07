@@ -1,3 +1,6 @@
+* show-messages-toggle for session-changelist
+* invoke-task-args as minke-form-fields
+* reload changelist after processing all sessions
 * Host and HostGroup via ManyToMany with order
 * Host and HostGroup-config as yaml-data
 * load session-data into fabric-config
@@ -5,6 +8,8 @@
 * cleanup template and css:
   make a clearer distinction between the changelists of minkeobjects and sessions.
 * Session-proc-info: display runtime for failed sessions
+* uncouple the session-select-widget from the admin-action-form, so that sessions
+  can be executed even if now admin-action is available.
 * overwork contrib-command:
   - give current user run-permission for commands
   - add commands from select-form via popup
