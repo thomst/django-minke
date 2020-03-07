@@ -29,6 +29,9 @@ class FabricConfig(Config):
         # To prevent an accidentally raised IOError we catch it and re-try to
         # initialize Config with `lazy=True` (which means `Config` won't look for
         # config-files at all).
+        # FIXME: Initialization fails when building the docs cause sphinx seems
+        # to somehow localize the error-message. Find a way to not let sphinx do
+        # that, and remove the __init__-hacking.
         try:
             super().__init__(*args, **kwargs)
         except IOError:
@@ -67,7 +70,9 @@ class FabricConfig(Config):
             if not key2:
                 self[key1] = value
             else:
-                if not self[key1]: self[key1] = dict()
+                if not self[key1]:
+                    # FIXME: normal dict does not support the attr-api.
+                    self[key1] = dict()
                 self[key1][key2] = value
 
 
