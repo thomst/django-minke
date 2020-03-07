@@ -38,7 +38,9 @@ class RegistryDict(OrderedDict):
 
     def reload(self, session_name=None):
         """
-        Reload the registry by running the factories.
+        Load dynamical sessions into the registry.
+
+        Reset the registry to the static sessions. Then send a reload-signal.
         """
         # We backup the static-sessions and reset the registry before each
         # reload. This way the reload algorithms doesn't have to unregister
