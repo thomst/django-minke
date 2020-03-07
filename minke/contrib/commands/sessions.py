@@ -67,11 +67,13 @@ def session_factory(sender, **kwargs):
         for obj in Command.objects.filter(active=True):
             session = obj.as_session()
             session.register()
+            session.add_permission()
             session.create_permission()
 
         for obj in CommandGroup.objects.filter(active=True):
             session = obj.as_session()
             session.register()
+            session.add_permission()
             session.create_permission()
 
     # if we have a session-name that matches, register this session only
@@ -81,4 +83,5 @@ def session_factory(sender, **kwargs):
         cmd = cls.objects.get(pk=id)
         session = cmd.as_session()
         session.register()
+        session.add_permission()
         session.create_permission()
