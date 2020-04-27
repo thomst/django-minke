@@ -682,16 +682,26 @@ class SessionChain(Session):
                 RestartSQLServer,
                 UpdateApache,
                 RestartApache)
+
+    Warnings
+    --------
+    Only the :attr:`~.Session.invoke_config` of the main session will be applied.
+    The :attr:`~.Session.invoke_config` of the sessions in :attr:`.sessions`
+    will be ignored.
+
+    The same is true for :meth:`~.Session.get_form()`. Only the form returned
+    by the main session's :meth:`~.Session.get_form()` will be rendered.
     """
     abstract = True
 
     sessions = tuple()
-    """tuple of :class:`.Session`"""
+    """
+    tuple of :class:`.Session`
+    """
 
     break_states = ('error',)
     """
-    tuple of :attr:`.Session.status` on which further processing will be
-    skipped.
+    tuple of :attr:`.Session.status` on which further processing will be skipped.
     """
 
     def process(self):
