@@ -125,6 +125,8 @@ class SessionRegistration(type):
             msg = 'CommandChainSession needs to specify commands.'
             raise SessionRegistrationError(cls, msg)
 
+        # TODO: Check for recursion in SessionChains
+        # TODO: Check SessionChain's sessions
         if issubclass(cls, SessionChain) and not cls.sessions:
             msg = 'SessionChain needs to specify sessions.'
             raise SessionRegistrationError(cls, msg)
@@ -682,6 +684,10 @@ class SessionChain(Session):
                 RestartSQLServer,
                 UpdateApache,
                 RestartApache)
+
+    Note
+    ----
+    It is possible to add abstract sessions to :attr:`.sessions`.
 
     Warnings
     --------
