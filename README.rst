@@ -7,7 +7,7 @@ Welcome to Minke
 
 Links
 =====
-* Minke on github: https://github.com/django-minke/minke
+* Minke on github: https://github.com/thomst/django-minke
 * Minke on Read the Docs: https://django-minke.readthedocs.io
 * Getting started: https://django-minke.readthedocs.io/en/latest/docs/gettingstarted.html
 
