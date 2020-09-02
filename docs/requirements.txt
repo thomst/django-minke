@@ -1,3 +1,8 @@
 mysqlclient>=1.4.2
 Sphinx>=2.2.0
 sphinxcontrib-napoleon>=0.7
+Django>=1.11,<3.0
+fabric2>=2.4.0
+celery>=4.2.2
+djangorestframework>=3.9.2
+sphinx-rtd-theme>=0.4.3
