@@ -38,7 +38,11 @@ matrix:
     - python: "3.8"
       env: REQ="Django>=2.2,<3.0"
 install:
+  - pip install -U pip setuptools coveralls
   - pip install -U pip wheel setuptools
   - pip install $REQ
   - python setup.py install
-script: "cd tests && ./manage.py test --exclude-tag=ssh testapp"
+script: "coverage run --source minke/ tests/manage.py test --exclude-tag=ssh testapp"
+after_success:
+  - coverage report
+  - coveralls

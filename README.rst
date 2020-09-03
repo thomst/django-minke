@@ -5,6 +5,9 @@ Welcome to Minke
 .. image:: https://travis-ci.com/thomst/django-minke.svg?branch=master
    :target: https://travis-ci.com/thomst/django-minke
 
+.. image:: https://coveralls.io/repos/github/thomst/django-minke/badge.svg
+   :target: https://coveralls.io/github/thomst/django-minke
+
 .. image:: https://img.shields.io/badge/python-3.4%20%7C%203.5%20%7C%203.6%20%7C%203.7%20%7C%203.8-blue
    :target: https://img.shields.io/badge/python-3.4%20%7C%203.5%20%7C%203.6%20%7C%203.7%20%7C%203.8-blue
    :alt: python: 3.4, 3.5, 3.6, 3.7, 3.8
