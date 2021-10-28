@@ -167,7 +167,7 @@ class SessionRegistration(type):
 
     def add_permission(cls):
         codename, name, lookup = cls._get_permission()
-        cls.permissions += (lookup,)
+        cls.permissions = tuple(set(cls.permissions) | set((lookup,)))
 
 
 def protect(method):
