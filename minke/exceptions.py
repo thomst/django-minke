@@ -9,6 +9,16 @@ class InvalidMinkeSetup(Exception):
     """
 
 
+class SessionError(Exception):
+    """
+    Exception that could be raised within Session.process.
+
+    Raising this Exception is a convenient way for sessions to stop themselves.
+    In consequence the session status will be set to error and whatever was
+    passed as arguments will be printed as error message.
+    """
+
+
 class SessionRegistrationError(InvalidMinkeSetup):
     """
     Exception for failing session-registration.

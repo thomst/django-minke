@@ -15,6 +15,7 @@ from celery import shared_task
 from . import settings
 from .models import Host
 from .models import MinkeSession
+from .exceptions import SessionError
 from .sessions import REGISTRY
 from .messages import ExceptionMessage
 from .settings import MINKE_HOST_CONFIG
@@ -68,6 +69,15 @@ class SessionProcessor:
             # try-construct.
             except KeyboardInterrupt:
                 raise
+
+            # A SessionError might be raised by from the process method of a
+            # session itself. It is a convenient way to end a session with an
+            # error status.
+            except SessionError as exc:
+                self.session.set_status('error')
+                for msg in exc.args:
+                    self.session.add_msg(msg, 'error')
+                self.session.end()
 
             # paramiko- and socket-related exceptions (ssh-layer)
             except (SSHException, GaiError, SocketError):
