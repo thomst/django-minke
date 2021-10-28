@@ -540,7 +540,7 @@ class Session(metaclass=SessionRegistration):
         cmd : string
             The shell-command to be run.
         regex: string (optional)
-            A regex-pattern the :class:`.CommandResult` will be initialized with.
+            A regex-pattern the :class:`.CommandResult` will be validated with.
         **invoke_params (optional)
             Parameters that will be passed to
             :meth:`~fabric.connection.Connection.run`
