@@ -420,7 +420,8 @@ class BaseMessage(models.Model):
         verbose_name=_('Session'),
         help_text=_('Session the message belongs to.'))
     level = models.CharField(
-        max_length=128, choices=LEVELS,
+        max_length=128,
+        choices=LEVELS,
         verbose_name=_('Message-level'),
         help_text=_('Level with which the message were added.'))
     text = models.TextField(
