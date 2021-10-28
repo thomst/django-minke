@@ -71,6 +71,8 @@ class Command(BaseCommand):
         if options['create_run_permissions']:
             REGISTRY.reload()
             for session_cls in REGISTRY.values():
+                if not session_cls.auto_permission:
+                    continue
                 permission, created = session_cls.create_permission()
                 if created:
                     print('Created permission: {}'.format(permission))
