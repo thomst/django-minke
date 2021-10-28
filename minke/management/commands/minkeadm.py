@@ -58,7 +58,7 @@ class Command(BaseCommand):
 
         if options['create_run_permission']:
             REGISTRY.reload()
-            session = options['create_permission']
+            session = options['create_run_permission']
             try:
                 session_cls = REGISTRY[session]
             except KeyError:
