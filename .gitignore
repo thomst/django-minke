@@ -2,6 +2,7 @@
 *~
 *.backup
 .coverage
+.coveralls.yml
 .pylintrc
 .python-version
 .tox/
