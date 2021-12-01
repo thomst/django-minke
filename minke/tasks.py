@@ -97,6 +97,7 @@ class SessionProcessor:
                 if settings.MINKE_DEBUG:
                     self.session.add_msg(exc_msg)
                 else:
+                    # TODO: relegate to the log.
                     self.session.add_msg('An error occurred.', 'error')
 
             else:

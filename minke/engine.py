@@ -15,6 +15,7 @@ def process(session_cls, queryset, session_data, user,
     """
     Initiate and run celery-tasks.
     """
+    # TODO: Add a MinkeSession lock. To lock the host should be optional.
     MinkeSession.objects.clear_currents(user, queryset)
     hosts = queryset.get_hosts()
     lock = hosts.filter(disabled=False).get_lock()

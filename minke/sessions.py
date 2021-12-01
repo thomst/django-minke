@@ -260,6 +260,7 @@ class Session(metaclass=SessionRegistration):
         $ ./manage.py minkeadm --create-permissions
     """
 
+    # TODO: Make this a tuple or list of forms to render.
     form = None
     """
     An optional form that will be rendered before the session will be
@@ -278,6 +279,7 @@ class Session(metaclass=SessionRegistration):
     was revoked with.
     """
 
+    # TODO: This should be renamed to something like context.
     invoke_config = dict()
     """
     Session-specific fabric- and invoke-configuration-parameters which will
@@ -318,6 +320,8 @@ class Session(metaclass=SessionRegistration):
             Only required if you want to initialize a session out of another
             session and let it work on a different minkeobj.
         """
+        # TODO: Update the connection dict with the minkeobj.data.
+        # Maybe use a prefix on form fields for context data.
         self._c = con
         self._db = db
         self._minkeobj = minkeobj
@@ -472,6 +476,8 @@ class Session(metaclass=SessionRegistration):
         string
             The formatted command.
         """
+        # FIXME: Do we need this complexity here? Won't it be more clear to
+        # overwrite the process method of CommandFormSession?
         cmd = cmd.format_map(FormatDict(self.data))
         cmd = cmd.format_map(FormatDict(vars(self.minkeobj)))
         return cmd

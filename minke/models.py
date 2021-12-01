@@ -441,6 +441,7 @@ class BaseMessage(models.Model):
         verbose_name_plural = _('Messages')
 
 
+# FIXME: Make the config attribute a yaml data field.
 class HostGroup(models.Model):
     """
     A Group of hosts. (Not sure if this is practical.)
@@ -500,6 +501,7 @@ class HostQuerySet(models.QuerySet):
         return self
 
 
+# FIXME: Make the config attribute a yaml data field.
 class Host(models.Model):
     """
     This model is mainly a ssh-config.

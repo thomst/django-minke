@@ -137,6 +137,8 @@ $(document).ready(function () {
         $.ajaxSetup({headers: {'X-CSRFToken': $("[name=csrfmiddlewaretoken]").val()}});
 
         // prepare session-stopper...
+        // FIXME: do not block the select-all box. Just make sure items with
+        // running sessions won't be selected by it.
         var stop = $('<div></div>').addClass('session_stopper').click(stopSession);
         var stopall = $('<div></div>').addClass('session_stopper').click(stopAllSessions);
         $('td.action-checkbox').append(stop);
