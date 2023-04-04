@@ -33,12 +33,14 @@ def process(session_cls, queryset, session_data, user,
             msg = '{}: Host is disabled.'.format(minkeobj)
             session.messages.add(Message(msg, 'error'), bulk=False)
             session.cancel()
-            if console: session.prnt()
+            if console:
+                session.prnt()
         elif host.lock and host.lock != lock:
             msg = '{}: Host is locked.'.format(minkeobj)
             session.messages.add(Message(msg, 'error'), bulk=False)
             session.cancel()
-            if console: session.prnt()
+            if console:
+                session.prnt()
 
         # otherwise group sessions by hosts...
         else:
@@ -47,7 +49,8 @@ def process(session_cls, queryset, session_data, user,
             session_groups[host].append(session)
 
     # Stop here if no valid hosts are left...
-    if not session_groups: return
+    if not session_groups:
+        return
 
     # merge fabric-config and invoke-config
     config = session_cls.invoke_config.copy()
