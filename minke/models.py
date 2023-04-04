@@ -5,10 +5,7 @@ import os
 import signal
 import datetime
 from time import time
-from collections import OrderedDict
-
 from fabric2.runners import Result
-from celery.task.control import revoke
 
 from django.db import models
 from django.db import transaction
