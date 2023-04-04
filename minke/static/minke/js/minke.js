@@ -128,7 +128,9 @@ $(document).ready(function () {
     $('tr.session a.message-toggle').click(toggleMessageList);
 
     // initialize session-objects...
-    $('tr.session.initialized,tr.session.running,tr.session.stopping').each(function(i, e) {sessions[$(e).data('id')] = new Session(e)});
+    $('tr.session.initialized,tr.session.running,tr.session.stopping').each(
+        function(i, e) {sessions[$(e).data('id')] = new Session(e)}
+        );
 
     // do we work with sessions?
     if (!$.isEmptyObject(sessions)) {
