@@ -30,13 +30,13 @@ class SessionProcessor:
     Process sessions.
     """
     def __init__(self, host_id, session_id, session_config):
-        host = Host.objects.select_related('group').get(pk=host_id)
+        host = Host.objects.get(pk=host_id)
         hostname = host.hostname or host.name
         config = MINKE_FABRIC_CONFIG.clone()
         self.host = host
 
         # At first try to load the hostgroup- and host-config...
-        for obj in (host.group, host):
+        for obj in list(host.groups.all()) + [host]:
             if not obj or not obj.config: continue
             if obj.config in MINKE_HOST_CONFIG:
                 config.load_snakeconfig(MINKE_HOST_CONFIG[obj.config])

@@ -537,10 +537,13 @@ class Host(models.Model):
         blank=True, null=True,
         verbose_name=_('Comment'),
         help_text=_('Something about the host.'))
-    group = models.ForeignKey(HostGroup,
-        blank=True, null=True, on_delete=models.SET_NULL,
+    groups = models.ManyToManyField(
+        HostGroup,
+        blank=True,
+        related_name="hosts",
         verbose_name=_('Hostgroup'),
-        help_text=_('The group this host belongs to.'))
+        help_text=_('Hostgroups this host belongs to.')
+        )
     config = models.CharField(
         max_length=255, blank=True, null=True,
         verbose_name=_('Fabric-/Invoke-config'),
