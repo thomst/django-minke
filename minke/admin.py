@@ -310,13 +310,11 @@ class MinkeAdmin(admin.ModelAdmin):
         extra_context['display_messages'] = extra_context.get('display_messages', True)
         extra_context['display_commands'] = extra_context.get('display_commands', False)
 
-        # We perform one registry-reload per request. GET- and POST-request
-        # will need it alike.
+        # We perform one registry-reload per request. GET- and POST-request will need it alike.
         REGISTRY.reload()
 
         # Does this request has something to do with sessions at all?
-        if ('run_sessions' not in request.POST
-        and 'clear_sessions' not in request.POST):
+        if not 'run_sessions' in request.POST and not 'clear_sessions' in request.POST:
             return super().changelist_view(request, extra_context)
 
         # setup
