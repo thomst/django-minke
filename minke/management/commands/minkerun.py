@@ -158,8 +158,9 @@ class Command(BaseCommand):
         return changelist.get_queryset(request)
 
     def get_form_data(self, options, session_cls):
-        form_cls = session_cls.form
-        if not session_cls.form: return dict()
+        form_cls = session_cls.get_form()
+        if not form_cls:
+            return dict()
 
         # form-data passed via command-line?
         form_data = options['form_data']

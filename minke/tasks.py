@@ -59,7 +59,8 @@ class SessionProcessor:
     def run(self):
         try:
             started = self.session.start()
-            if not started: return
+            if not started:
+                return
 
             try:
                 self.session.process()
