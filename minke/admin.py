@@ -2,7 +2,6 @@
 from pydoc import locate
 from collections import OrderedDict
 
-from django import forms
 from django.contrib.admin.options import IncorrectLookupParameters
 from django.contrib.admin.views.main import ChangeList
 from django.contrib.admin.filters import RelatedOnlyFieldListFilter
@@ -94,7 +93,6 @@ class SessionAdmin(admin.ModelAdmin):
                 'session_verbose_name',
                 'session_status',
                 'session_description',
-                'session_data',
             ),
             'classes': ('extrapretty', 'wide')
         }),
@@ -243,11 +241,10 @@ class MinkeAdmin(admin.ModelAdmin):
 
     def run_sessions(self, request, session_cls, queryset, force_confirm=False):
         confirm = force_confirm or session_cls.confirm
-        fabric_config = None
-        session_data = dict()
         session_form_cls = session_cls.get_form()
         fabric_form_cls = None
         render_params = dict()
+        runtime_data = dict()
 
         # import fabric-form if needed...
         if settings.MINKE_FABRIC_FORM:
@@ -292,12 +289,13 @@ class MinkeAdmin(admin.ModelAdmin):
 
             else:
                 # collect form-data
-                if fabric_form_cls: fabric_config = fabric_form.cleaned_data
-                if session_form_cls: session_data = session_form.cleaned_data
+                if fabric_form_cls:
+                    runtime_data.update(fabric_form.cleaned_data)
+                if session_form_cls:
+                    runtime_data.update(session_form.cleaned_data)
 
         # lets rock...
-        engine.process(session_cls, queryset, session_data, request.user,
-                       fabric_config=fabric_config)
+        engine.process(session_cls, queryset, request.user, runtime_data)
 
     def changelist_view(self, request, extra_context=None):
         """
@@ -374,30 +372,9 @@ class MinkeAdmin(admin.ModelAdmin):
             return response or HttpResponseRedirect(redirect_url)
 
 
-def get_ssh_options():
-    choices = ((None, '---------'),)
-    choices += tuple(((k, k) for k in settings.MINKE_HOST_CONFIG.keys()))
-    return choices
-
-
-class HostAdminForm(forms.ModelForm):
-    class Meta:
-        model = Host
-        exclude = tuple()
-        widgets = dict(config=forms.Select(choices=get_ssh_options()))
-
-
-class HostGroupAdminForm(forms.ModelForm):
-    class Meta:
-        model = HostGroup
-        exclude = tuple()
-        widgets = dict(config=forms.Select(choices=get_ssh_options()))
-
-
 @admin.register(Host)
 class HostAdmin(MinkeAdmin):
     model = Host
-    form = HostAdminForm
     list_display = ('name', 'verbose_name', 'username', 'hostname', 'port', 'disabled')
     list_editable = ('disabled',)
     search_fields = ('name', 'hostname')
@@ -408,7 +385,6 @@ class HostAdmin(MinkeAdmin):
 @admin.register(HostGroup)
 class HostGroupAdmin(admin.ModelAdmin):
     model = HostGroup
-    form = HostGroupAdminForm
     list_display = ('name',)
     search_fields = ('name',)
     ordering = ('name',)

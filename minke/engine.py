@@ -10,8 +10,7 @@ from .tasks import process_session
 from .tasks import cleanup
 
 
-def process(session_cls, queryset, session_data, user,
-            fabric_config=None, wait=False, console=False):
+def process(session_cls, queryset, user, runtime_data=None, wait=False, console=False):
     """
     Initiate and run celery-tasks.
     """
@@ -26,7 +25,7 @@ def process(session_cls, queryset, session_data, user,
         host = minkeobj.get_host()
 
         session = MinkeSession()
-        session.init(user, minkeobj, session_cls, session_data)
+        session.init(user, minkeobj, session_cls)
 
         # Skip disabled or locked hosts...
         if host.disabled:
@@ -52,17 +51,13 @@ def process(session_cls, queryset, session_data, user,
     if not session_groups:
         return
 
-    # merge fabric-config and invoke-config
-    config = session_cls.invoke_config.copy()
-    config.update(fabric_config or dict())
-
 
     # run celery-tasks...
     results = list()
     for host, sessions in session_groups.items():
 
         # get process_session_signatures for all sessions
-        signatures = [process_session.si(host.id, s.id, config) for s in sessions]
+        signatures = [process_session.si(host.id, s.id, runtime_data) for s in sessions]
 
         # To support parrallel execution per host we wrap the signatures in a group.
         # NOTE: Since we append the cleanup-task the construct is essentially the

@@ -2,6 +2,7 @@
 
 import getpass
 import datetime
+from fabric2 import Connection
 
 from django.contrib.auth.models import User
 from django.contrib.auth.models import Permission
@@ -9,6 +10,7 @@ from django.contrib.auth.models import Permission
 from minke.sessions import REGISTRY
 from minke.models import Host
 from minke.models import MinkeSession
+from minke.fabrictools import FabricConfig
 from minke.management.commands.minkeadm import Command
 from ..models import Server
 from ..models import AnySystem
@@ -80,6 +82,10 @@ def create_minkesession(minkeobj, session_cls=DummySession, data=None,
     session.save()
     return session
 
-def create_session(session_cls, minkeobj, data=None, con=None):
-    minkesession = create_minkesession(minkeobj, session_cls, data=data or dict())
+def create_session(session_cls, minkeobj, data=None):
+    minkesession = create_minkesession(minkeobj, session_cls)
+    host = minkeobj.get_host()
+    hostname = host.hostname or host.name
+    config = FabricConfig(host, session_cls, data or dict())
+    con = Connection(hostname, host.username, host.port, config=config)
     return session_cls(con, minkesession)

@@ -232,4 +232,4 @@ class Command(BaseCommand):
         if options['list_items']:
             for obj in queryset: print(obj)
         else:
-            process(session_cls, queryset, form_data, user, console=True)
+            process(session_cls, queryset, user, form_data, console=True)

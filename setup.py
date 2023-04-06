@@ -36,6 +36,7 @@ setup(
         "fabric2>=2.4.0",
         "celery>=4.2.2,<5.0.0",
         "djangorestframework>=3.9.2",
+        "pyyaml",
     ],
     classifiers=[
         dev_status,

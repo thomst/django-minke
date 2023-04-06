@@ -367,7 +367,7 @@ class Session(metaclass=SessionRegistration):
         Refers to :attr:`.models.MinkeSession.session_data`.
         This model-field holds all the data that comes from :attr:`.form`.
         """
-        return self._db.session_data
+        return self._c.session_data
 
     def stop(self, *arg, **kwargs):
         """Interrupt the session's processing.

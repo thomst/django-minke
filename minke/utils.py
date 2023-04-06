@@ -1,8 +1,11 @@
 # -*- coding: utf-8 -*-
 
 import json
+import yaml
 from django.db import models
+from django.forms import ValidationError
 from django.core.serializers.json import DjangoJSONEncoder
+from django.utils.translation import gettext as _
 
 
 def item_by_attr(list, attr, value, default=None):
@@ -12,6 +15,24 @@ def item_by_attr(list, attr, value, default=None):
 def prepare_shell_command(cmd):
     # linux-shells need \n as newline
     return cmd.replace('\r\n', '\n').replace('\r', '\n')
+
+
+def valid_yaml_configuration(value):
+    """
+    This validator will be used for model- and form-fields dealing with a yaml
+    formatted fabric configuration. It accepts None, empty string or a string
+    that could be parsed as a yaml formatted associative array.
+    """
+    if value is None or value == '':
+        return
+
+    try:
+        data = yaml.load(value, yaml.Loader)
+        assert(isinstance(data, dict))
+    except yaml.YAMLError:
+        raise ValidationError(_("Configuration must be valid yaml data."))
+    except AssertionError:
+        raise ValidationError(_("Configuration data must be an associative array."))
 
 
 class JSONField(models.TextField):

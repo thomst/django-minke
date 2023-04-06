@@ -18,8 +18,7 @@ from .models import MinkeSession
 from .exceptions import SessionError
 from .sessions import REGISTRY
 from .messages import ExceptionMessage
-from .settings import MINKE_HOST_CONFIG
-from .settings import MINKE_FABRIC_CONFIG
+from .fabrictools import FabricConfig
 
 
 logger = logging.getLogger(__name__)
@@ -29,34 +28,20 @@ class SessionProcessor:
     """
     Process sessions.
     """
-    def __init__(self, host_id, session_id, session_config):
+    def __init__(self, host_id, session_id, runtime_data):
+        minke_session = MinkeSession.objects.get(pk=session_id)
+        REGISTRY.reload(minke_session.session_name)
+        session_cls = REGISTRY[minke_session.session_name]
         host = Host.objects.get(pk=host_id)
         hostname = host.hostname or host.name
-        config = MINKE_FABRIC_CONFIG.clone()
-        self.host = host
-
-        # At first try to load the hostgroup- and host-config...
-        for obj in list(host.groups.all()) + [host]:
-            if not obj or not obj.config: continue
-            if obj.config in MINKE_HOST_CONFIG:
-                config.load_snakeconfig(MINKE_HOST_CONFIG[obj.config])
-            else:
-                msg = 'Invalid MINKE_HOST_CONFIG for {}'.format(obj)
-                logger.warning(msg)
-
-        # At least load the session-config...
-        config.load_snakeconfig(session_config or dict())
-
-        # Initialize the connection...
+        config = FabricConfig(host, session_cls, runtime_data)
         self.con = Connection(hostname, host.username, host.port, config=config)
-
-        # Initialize the session...
-        self.minke_session = MinkeSession.objects.get(pk=session_id)
-        REGISTRY.reload(self.minke_session.session_name)
-        session_cls = REGISTRY[self.minke_session.session_name]
-        self.session = session_cls(self.con, self.minke_session)
+        self.session = session_cls(self.con, minke_session)
 
     def run(self):
+        """
+        Run the task.
+        """
         try:
             started = self.session.start()
             if not started:
@@ -109,11 +94,11 @@ class SessionProcessor:
 
 
 @shared_task(bind=True)
-def process_session(task, host_id, session_id, config):
+def process_session(task, host_id, session_id, runtime_data):
     """
     Task for session-processing.
     """
-    processor = SessionProcessor(host_id, session_id, config)
+    processor = SessionProcessor(host_id, session_id, runtime_data)
     signal.signal(signal.SIGUSR1, processor.session.stop)
     processor.run()
 

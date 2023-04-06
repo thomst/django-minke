@@ -11,7 +11,6 @@ from minke.sessions import Session
 from minke.exceptions import InvalidMinkeSetup
 from minke.exceptions import SessionRegistrationError
 from minke.models import Host
-from minke.settings import MINKE_FABRIC_CONFIG
 from ..models import Server
 from ..sessions import MethodTestSession
 from ..sessions import RunCommands
@@ -35,8 +34,6 @@ class SessionTest(TestCase):
         self.host = Host.objects.get(name='localhost')
         self.server = Server.objects.get(host=self.host)
         self.user = User.objects.get(username='admin')
-        config = MINKE_FABRIC_CONFIG.clone()
-        self.con = Connection(self.host.hostname, self.host.username, config=config)
         self._REGISTRY = sessions.REGISTRY.copy()
 
     def tearDown(self):
@@ -90,19 +87,19 @@ class SessionTest(TestCase):
         # get formatted command-string (using players-attributes and session-data)
         cmd_format = '{hostname} {foo}'
         session_data = dict(foo='foo')
-        session = create_session(MethodTestSession, self.server, session_data, None)
+        session = create_session(MethodTestSession, self.server, session_data)
         cmd = session.format_cmd(cmd_format)
         self.assertEqual(cmd, 'localhost foo')
 
         # session-data should be have precedence
         session_data = dict(hostname='foobär', foo='foo')
-        session = create_session(MethodTestSession, self.server, session_data, None)
+        session = create_session(MethodTestSession, self.server, session_data)
         cmd = session.format_cmd(cmd_format)
         self.assertEqual(cmd, 'foobär foo')
 
     def test_03_set_status(self):
 
-        session = create_session(MethodTestSession, self.server, dict(), None)
+        session = create_session(MethodTestSession, self.server, dict())
         session.set_status('error', update=False)
         self.assertTrue(session.status == 'error')
         session.set_status('WARNING', update=False)
@@ -120,7 +117,7 @@ class SessionTest(TestCase):
 
         # test message-calls
         data = dict(test='execute')
-        session = create_session(MethodTestSession, self.server, data, self.con)
+        session = create_session(MethodTestSession, self.server, data)
         session.process()
         self.assertEqual(session._db.messages.all()[0].level, 'info')
         self.assertEqual(session._db.messages.all()[1].level, 'warning')
@@ -131,64 +128,64 @@ class SessionTest(TestCase):
 
         # test update_field
         data = dict(test='update')
-        session = create_session(MethodTestSession, self.server, data, self.con)
+        session = create_session(MethodTestSession, self.server, data)
         session.process()
         self.assertEqual(session.minkeobj.hostname, 'foobär\n')
 
         # test update_field with regex
         data = dict(test='update_regex')
-        session = create_session(MethodTestSession, self.server, data, self.con)
+        session = create_session(MethodTestSession, self.server, data)
         session.process()
         self.assertEqual(session.minkeobj.hostname, 'foo')
 
         # test update_field with failing regex
         data = dict(test='update_regex_fails')
-        session = create_session(MethodTestSession, self.server, data, self.con)
+        session = create_session(MethodTestSession, self.server, data)
         session.process()
         self.assertEqual(session._db.messages.all()[0].level, 'error')
         self.assertRegex(session._db.messages.all()[0].text, 'code\[0\] +echo "foobär"\n')
 
         # test update_field-call with invalid field
         data = dict(test='update_invalid_field')
-        session = create_session(MethodTestSession, self.server, data, self.con)
+        session = create_session(MethodTestSession, self.server, data)
         self.assertRaises(AttributeError, session.update_field, 'nofield', 'echo')
 
     @tag('ssh')
     def test_05_unicdoe_result(self):
         # test with utf-8-encoding
         data = dict(test='unicode_result')
-        session = create_session(MethodTestSession, self.server, data, self.con)
+        session = create_session(MethodTestSession, self.server, data)
         result = session.process()
         self.assertEqual(result.stdout, 'hällo\n')
         self.assertEqual(result.stderr, 'wörld\n')
 
     @tag('ssh')
     def test_06_more_sessions(self):
-        session = create_session(RunCommands, self.server, con=self.con)
+        session = create_session(RunCommands, self.server)
         session.process()
         self.assertEqual(session.status, 'error')
         self.assertEqual(len(session._db.messages.all()), 3)
-        session = create_session(RunCommands, self.server, con=self.con)
+        session = create_session(RunCommands, self.server)
         session.break_states = ('warning',)
         session.process()
         self.assertEqual(session.status, 'warning')
         self.assertEqual(len(session._db.messages.all()), 2)
-        session = create_session(RunCommands, self.server, con=self.con)
+        session = create_session(RunCommands, self.server)
         session.break_states = ('success',)
         session.process()
         self.assertEqual(session.status, 'success')
         self.assertEqual(len(session._db.messages.all()), 1)
 
-        session = create_session(RunSessions, self.server, con=self.con)
+        session = create_session(RunSessions, self.server)
         session.process()
         self.assertEqual(session.status, 'error')
         self.assertEqual(len(session._db.messages.all()), 7)
-        session = create_session(RunSessions, self.server, con=self.con)
+        session = create_session(RunSessions, self.server)
         session.break_states = ('warning',)
         session.process()
         self.assertEqual(session.status, 'warning')
         self.assertEqual(len(session._db.messages.all()), 5)
-        session = create_session(RunSessions, self.server, con=self.con)
+        session = create_session(RunSessions, self.server)
         session.break_states = ('success',)
         session.process()
         self.assertEqual(session.status, 'success')

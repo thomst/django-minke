@@ -19,6 +19,7 @@ from django.utils.translation import gettext_lazy as _
 
 from .exceptions import InvalidMinkeSetup
 from .utils import JSONField
+from .utils import valid_yaml_configuration
 
 
 class MinkeSessionQuerySet(models.QuerySet):
@@ -97,10 +98,6 @@ class MinkeSession(models.Model):
         max_length=128, choices=SESSION_CHOICES,
         verbose_name=_("Session-status"),
         help_text=_('Mostly set by the session-code itself.'))
-    session_data = JSONField(
-        blank=True, null=True,
-        verbose_name=_("Session's extra-data"),
-        help_text=_('Data coming from a session-form.'))
 
     # the minkeobj to work on
     minkeobj_type = models.ForeignKey(ContentType, on_delete=models.CASCADE)
@@ -141,7 +138,7 @@ class MinkeSession(models.Model):
     def __str__(self):
         return f'{self.session_name} on {self.minkeobj}'
 
-    def init(self, user, minkeobj, session_cls, session_data):
+    def init(self, user, minkeobj, session_cls):
         """
         Initialize a session. Setup the session-attributes and save it.
         """
@@ -151,7 +148,6 @@ class MinkeSession(models.Model):
         self.session_name = session_cls.__name__
         self.session_verbose_name = session_cls.verbose_name
         self.session_description = session_cls.__doc__
-        self.session_data = session_data
         self.save()
 
     @transaction.atomic
@@ -441,7 +437,6 @@ class BaseMessage(models.Model):
         verbose_name_plural = _('Messages')
 
 
-# FIXME: Make the config attribute a yaml data field.
 class HostGroup(models.Model):
     """
     A Group of hosts. (Not sure if this is practical.)
@@ -454,10 +449,12 @@ class HostGroup(models.Model):
         blank=True, null=True,
         verbose_name=_('Comment'),
         help_text=_('Something about the group.'))
-    config = models.CharField(
-        max_length=255, blank=True, null=True,
-        verbose_name=_('Fabric-/Invoke-config'),
-        help_text=_('Use config as specified in MINKE_HOST_CONFIG.'))
+    config = models.TextField(
+        blank=True,
+        validators=[valid_yaml_configuration],
+        verbose_name=_('Fabric and invoke configuration'),
+        help_text=_('A yaml formatted fabric/invoke configuration.')
+        )
 
     class Meta:
         ordering = ['name']
@@ -466,6 +463,10 @@ class HostGroup(models.Model):
 
     def __str__(self):
         return self.name
+
+    def save(self, *args, **kwargs):
+        self.full_clean()
+        return super().save(*args, **kwargs)
 
 
 class HostQuerySet(models.QuerySet):
@@ -501,7 +502,6 @@ class HostQuerySet(models.QuerySet):
         return self
 
 
-# FIXME: Make the config attribute a yaml data field.
 class Host(models.Model):
     """
     This model is mainly a ssh-config.
@@ -544,10 +544,12 @@ class Host(models.Model):
         verbose_name=_('Hostgroup'),
         help_text=_('Hostgroups this host belongs to.')
         )
-    config = models.CharField(
-        max_length=255, blank=True, null=True,
-        verbose_name=_('Fabric-/Invoke-config'),
-        help_text=_('Use config as specified in MINKE_HOST_CONFIG.'))
+    config = models.TextField(
+        blank=True,
+        validators=[valid_yaml_configuration],
+        verbose_name=_('Fabric and invoke configuration'),
+        help_text=_('A yaml formatted fabric/invoke configuration.')
+        )
     disabled = models.BooleanField(
         default=False,
         verbose_name=_('Disabled'),
@@ -584,6 +586,10 @@ class Host(models.Model):
 
     def __str__(self):
         return self.name
+
+    def save(self, *args, **kwargs):
+        self.full_clean()
+        return super().save(*args, **kwargs)
 
 
 class MinkeQuerySet(models.QuerySet):
@@ -657,6 +663,7 @@ class MinkeModel(models.Model):
         """
         Return the related host-instance.
         """
+        # return self.__class__.objects.filter(pk__in=self.pk).get_hosts()[0]
         host = self
         for attr in self.HOST_LOOKUP.split('__'):
             host = getattr(host, attr, None)
