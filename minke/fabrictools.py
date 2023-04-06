@@ -21,10 +21,12 @@ class FabricConfig(Config):
     * Global configurations from django's settings file.
     * Configurations from :meth:`~.models.Hostgroup.config` of hostgroups
       associated with the session's host.
-    * Configurations from :meth:`~.models.Host.config` of host itself.
-    * Configurations from the session's :attr:`~.sessions.Session.invoke_config`.
+    * Configurations from :meth:`~.models.Host.config` of the host itself.
+    * Configurations from the session's
+      :attr:`~.sessions.Session.invoke_config`.
     * Configurations coming from forms like :attr:`~.settings.MINKE_FABRIC_FORM`
-      and :meth:`~.sessions.Session.get_form`.
+      and :meth:`~.sessions.Session.get_form` that were rendered for the
+      session.
     * Required defaults to make fabric work well in the deamonized context of
       minke.
     """
@@ -39,7 +41,19 @@ class FabricConfig(Config):
 
     def load_global_config(self):
         """
-        Load the global config from django's settings file.
+        Global configuration parameters could be defined within django's
+        settings file. Therefore the parameters must be prefixed with
+        ``FABRIC_``. To support nested configuration attributes we apply them 
+        using the :meth:`~._load_snake_case_config` method with the lower case
+        parameter names without the prefix.
+
+        A settings parameter like::
+
+            FABRIC_RUN_PTY = True
+
+        becomes::
+
+            config.run.pty = True
         """
         config = dict()
         for param in dir(settings):
@@ -51,8 +65,17 @@ class FabricConfig(Config):
 
     def load_hostgroup_config(self, host):
         """
-        Load config from hostgroups. Note that there is no defined order in
-        which group configs are applied.
+        Each :class:`~.models.HostGroup` can hold its own fabric configuration
+        within the :attr:`~.models.HostGroup.config` field. The configuration
+        must be a yaml formatted associative array.
+
+        The configuration of each hostgroup associated with the host to work on
+        will be applied.
+
+        .. note::
+
+            The order in which configurations from multiple hostgroups are
+            applied is not defined.
 
         :param :class:`~.models.Host` host: :class:`~.models.Host` object
         """ 
@@ -62,7 +85,11 @@ class FabricConfig(Config):
 
     def load_host_config(self, host):
         """
-        Load config from host.
+        Each :class:`~.models.Host` can hold its own fabric configuration within
+        the :attr:`~.models.Host.config` field. The configuration must be a yaml
+        formatted associative array.
+
+        The configuration of the host to work on will be applied.
 
         :param :class:`~.models.Host` host: :class:`~.models.Host` object
         """
@@ -107,15 +134,21 @@ class FabricConfig(Config):
 
     def _load_snake_case_config(self, config):
         """
-        Load a plane config as nested config - using the key's
-        snake-structure as representation of the nest-logic.
+        Load a plane config dictonary as a nested one using a simple convention:
+        The snake case structure of a key represents the nested logic of the
+        config object: A key like ``run_pty`` becomes ``config.run.pty``.
+        
+        Since some config attributes have underscores themselves we use a simple
+        rule to prevent ambiguities:
 
-        Two level of recursion are supported. That means something like
-        'connect_kwargs_my_special_key' will be applied as
-        'config.connect_kwargs.my_special_key'. To obviate ambiguity the key on
-        the first level must already exist. Otherwise we raise InvalidMinkeSetup.
+        The first part of the snake case key must already exists on the config
+        object. The remaining part of the snake case key will be used as a
+        second level key: Something like ``connect_kwargs_my_special_key`` will
+        become ``config.connect_kwargs.my_special_key`` on the config object.
 
-        :param dict config: plane configuration dict
+        :param dict config: a plane snake case key configuration
+        :raise InvalidMinkeSetup: If a key does not match an existing
+            configuration attribute.
         """
         nested_config = dict()
         for param, value in config.items():
