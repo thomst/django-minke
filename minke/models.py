@@ -139,7 +139,7 @@ class MinkeSession(models.Model):
     current = models.BooleanField(default=True)
 
     def __str__(self):
-        return '{} on {}'.format(self.session_name, self.minkeobj)
+        return f'{self.session_name} on {self.minkeobj}'
 
     def init(self, user, minkeobj, session_cls, session_data):
         """
