@@ -65,12 +65,6 @@ class SessionProcessor:
             try:
                 self.session.process()
 
-            # Since task-interruption could happen all along between
-            # session.start() and session.end() we handle it in the outer
-            # try-construct.
-            except KeyboardInterrupt:
-                raise
-
             # A SessionError might be raised by from the process method of a
             # session itself. It is a convenient way to end a session with an
             # error status.
@@ -104,7 +98,8 @@ class SessionProcessor:
             else:
                 self.session.end()
 
-        # task-interruption
+        # Since task-interruption could happen all along between session.start()
+        # and session.end() we handle it in the outer try-construct.
         except KeyboardInterrupt:
             self.session.end()
 
