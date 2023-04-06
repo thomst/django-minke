@@ -379,7 +379,7 @@ class HostAdmin(MinkeAdmin):
     list_editable = ('disabled',)
     search_fields = ('name', 'hostname')
     ordering = ('name',)
-    list_filter = (StatusFilter, 'disabled')
+    list_filter = (StatusFilter, 'disabled', 'groups')
 
 
 @admin.register(HostGroup)
