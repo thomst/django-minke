@@ -47,7 +47,7 @@ class FabricConfig(Config):
                 continue
             config[param[7:].lower()] = getattr(settings, param)
 
-        self._load_snakeconfig(config)
+        self._load_snake_case_config(config)
 
     def load_hostgroup_config(self, host):
         """
@@ -93,7 +93,7 @@ class FabricConfig(Config):
             else:
                 session_data[key] = value
                 
-        self._load_snakeconfig(config)
+        self._load_snake_case_config(config)
         self.update(dict(session_data=session_data))
 
     def set_required_defaults(self):
@@ -105,7 +105,7 @@ class FabricConfig(Config):
         self.run.warn = True
         self.runners.remote = FabricRemote
 
-    def _load_snakeconfig(self, config):
+    def _load_snake_case_config(self, config):
         """
         Load a plane config as nested config - using the key's
         snake-structure as representation of the nest-logic.
