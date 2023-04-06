@@ -6,16 +6,50 @@ from fabric2 import Connection
 
 from django.contrib.auth.models import User
 from django.contrib.auth.models import Permission
+from django.conf import settings
 
 from minke.sessions import REGISTRY
 from minke.models import Host
+from minke.models import HostGroup
 from minke.models import MinkeSession
 from minke.fabrictools import FabricConfig
-from minke.management.commands.minkeadm import Command
 from ..models import Server
 from ..models import AnySystem
 from ..sessions import DummySession
-from ..sessions import SingleModelDummySession
+
+
+class AlterSettings:
+    def __init__(self, **kwargs):
+        self.settings = kwargs
+        self.origin = dict()
+
+    def __enter__(self):
+        for param, value in self.settings.items():
+            if hasattr(settings, param):
+                self.origin[param] = getattr(settings, param)
+            setattr(settings, param, value)
+
+    def __exit__(self, type, value, traceback):
+        for param, value in self.settings.items():
+            delattr(settings, param)
+        for param, value in self.origin.items():
+            setattr(settings, param, value)
+
+
+class AlterObject:
+    def __init__(self, obj, **kwargs):
+        self.obj = obj
+        self.params = kwargs
+        self.origin = dict()
+
+    def __enter__(self):
+        for param, value in self.params.items():
+            self.origin[param] = getattr(self.obj, param)
+            setattr(self.obj, param, value)
+
+    def __exit__(self, type, value, traceback):
+        for param, value in self.origin.items():
+            setattr(self.obj, param, value)
 
 
 def create_users():
@@ -47,11 +81,23 @@ def create_hosts():
     # create some dummy-hosts as well
     for i in range(20):
         label = 'label' + str(i % 4) * 3
-        hostname = 'host_{}_{}'.format(str(i), label)
+        hostname = f'host_{i}_{label}'
         Host.objects.create(
             name=hostname,
             hostname=hostname,
             username='user' + label)
+
+def create_hostgroups():
+    for name in ['group-one', 'group-two']:
+        HostGroup.objects.create(name=name)
+
+    i = 0
+    for host in Host.objects.all():
+        i += 1
+        if i % 2:
+            host.groups.add(HostGroup.objects.get(name='group-one'))
+        if i % 3:
+            host.groups.add(HostGroup.objects.get(name='group-two'))
 
 def create_players():
     for host in Host.objects.all():
@@ -62,6 +108,7 @@ def create_test_data():
     create_users()
     create_permissions()
     create_hosts()
+    create_hostgroups()
     create_players()
 
 def create_minkesession(minkeobj, session_cls=DummySession, data=None,
