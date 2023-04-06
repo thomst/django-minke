@@ -112,9 +112,9 @@ class SessionAdmin(admin.ModelAdmin):
 
     def minkeobj_view(self, obj):
         opts = obj.minkeobj._meta
-        lookup = "admin:{}_{}_change".format(opts.app_label, opts.model_name)
+        lookup = f"admin:{opts.app_label}_{opts.model_name}_change"
         href = reverse(lookup, args=(obj.minkeobj.id,))
-        return mark_safe('<a href="{}">{}</a>'.format(href, obj.minkeobj))
+        return mark_safe(f'<a href="{href}">{obj.minkeobj}</a>')
     minkeobj_view.short_description = 'Minke-object'
     minkeobj_view.admin_order_field = 'minkeobj_id'
 
