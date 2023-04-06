@@ -19,12 +19,6 @@ from .utils import create_test_data
 from .utils import create_session
 
 
-def process_session(session, host):
-    con = Connection(user=host.username, host=host.hostname)
-    session.start(con)
-    return session.proxy.process()
-
-
 class SessionTest(TestCase):
     @classmethod
     def setUpTestData(cls):
