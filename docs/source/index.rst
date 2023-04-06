@@ -58,6 +58,7 @@ Minke features
 
    api/sessions
    api/messages
+   api/fabrictools
 
 
 
