@@ -35,6 +35,8 @@ class FabricConfigTestCase(TestCase):
         # Test with runtime-data.
         runtime_data = {'foo': 'bar', 'fabric_run_foo': 'bar'}
         config = FabricConfig(self.host, DummySession, runtime_data)
+        self.assertTrue(hasattr(config, 'special'))
+        self.assertTrue(config.special.fabric_config)
         self.assertTrue(hasattr(config, 'session_data'))
         self.assertTrue(hasattr(config.session_data, 'foo'))
         self.assertEqual(config.session_data.foo, 'bar')

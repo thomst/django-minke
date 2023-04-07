@@ -17,7 +17,10 @@ class FabricConfig(Config):
     :class:`~.Config`. This object holds all configuration parameters which are
     collected and applied from different places in a predefined order:
 
-    * Global configurations from django's settings file.
+    * Project configuration file placed within django's BASE_DIR. See fabric's
+      `documentation <https://docs.fabfile.org/en/stable/concepts/configuration.html>`_
+      about configuration files for more informations about filename conventions.
+    * Configurations from django's settings file.
     * Configurations from :meth:`~.models.Hostgroup.config` of hostgroups
       associated with the session's host.
     * Configurations from :meth:`~.models.Host.config` of the host itself.
@@ -30,7 +33,8 @@ class FabricConfig(Config):
       minke.
     """
     def __init__(self, host, session_cls, runtime_config):
-        super().__init__(lazy=True)
+        super().__init__(project_location=getattr(settings, 'BASE_DIR', None), lazy=True)
+        self.load_project()
         self.load_global_config()
         self.load_hostgroup_config(host)
         self.load_host_config(host)
