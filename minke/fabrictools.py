@@ -80,7 +80,7 @@ class FabricConfig(Config):
             The order in which configurations from multiple hostgroups are
             applied is not defined.
 
-        :param :class:`~.models.Host` host: :class:`~.models.Host` object
+        :param host host: host object
         """
         for group in host.groups.all():
             config = yaml.load(group.config, yaml.Loader)
@@ -94,7 +94,7 @@ class FabricConfig(Config):
 
         The configuration of the host to work on will be applied.
 
-        :param :class:`~.models.Host` host: :class:`~.models.Host` object
+        :param host host: host object
         """
         config = yaml.load(host.config, yaml.Loader)
         self.update(config or dict())
@@ -103,7 +103,8 @@ class FabricConfig(Config):
         """
         Load config from session class
 
-        :param :class:`~.session.Session` session_cls: :class:`~.session.Session`
+        :param session_cls: session class to work with
+        :type session_cls: :class:`~.session.Session`
         """
         self.update(session_cls.invoke_config or dict())
 
@@ -113,7 +114,7 @@ class FabricConfig(Config):
         'fabric_' are applied as configuration. The other fields are added in an
         extra section named 'session_data'.
 
-        :param dict runtime_config: the collected data from forms
+        :param dict runtime_config: collected data from forms
         """
         session_data = dict()
         config = dict()
