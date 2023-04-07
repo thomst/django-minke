@@ -21,8 +21,8 @@ Welcome to Minke
 Links
 =====
 * Minke on github: https://github.com/thomst/django-minke
-* Minke on Read the Docs: https://django-minke.readthedocs.io
-* Getting started: https://django-minke.readthedocs.io/en/latest/docs/gettingstarted.html
+* Minke documentation: https://thomst.github.io/django-minke/index.html
+* Getting started: https://thomst.github.io/django-minke/docs/gettingstarted.html
 
 A framework for remote-control- and configuration-management-systems
 ====================================================================
