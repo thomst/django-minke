@@ -1,4 +1,3 @@
-mysqlclient>=1.4.2
 Sphinx<5,>=3.5.4
 sphinx-book-theme
 Django>=1.11,<3.0
