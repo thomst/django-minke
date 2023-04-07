@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 
 import yaml
 from fabric2.config import Config
