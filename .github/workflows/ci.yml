@@ -15,6 +15,7 @@ jobs:
         include:
           - python-version: "3.7"
             django-version: Django==2.2
+            importlib-version: importlib-metadata==1.2.0
 
           - python-version: "3.8"
             django-version: Django==2.2
@@ -34,7 +35,7 @@ jobs:
     - name: Install Dependencies
       run: |
         python -m pip install --upgrade pip
-        pip install coverage wheel
+        pip install coverage wheel ${{ matrix.importlib-version }}
         pip install ${{ matrix.django-version }}
         pip install --editable ./
 
