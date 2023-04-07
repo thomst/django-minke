@@ -12,7 +12,7 @@ from .models import CommandResult
 class FabricConfig(Config):
     """
     A minke specific implementation of fabric's :class:`~fabric.config.Config`.
-    
+
     The :class:`~fabric.connection.Connection` which is used within a session to
     run commands on the remote host will be initialized with an object of
     :class:`~.Config`. This object holds all configuration parameters which are
@@ -43,7 +43,7 @@ class FabricConfig(Config):
         """
         Global configuration parameters could be defined within django's
         settings file. Therefore the parameters must be prefixed with
-        ``FABRIC_``. To support nested configuration attributes we apply them 
+        ``FABRIC_``. To support nested configuration attributes we apply them
         using the :meth:`~._load_snake_case_config` method with the lower case
         parameter names without the prefix.
 
@@ -78,7 +78,7 @@ class FabricConfig(Config):
             applied is not defined.
 
         :param :class:`~.models.Host` host: :class:`~.models.Host` object
-        """ 
+        """
         for group in host.groups.all():
             config = yaml.load(group.config, yaml.Loader)
             self.update(config or dict())
@@ -119,7 +119,7 @@ class FabricConfig(Config):
                 config[key[7:]] = value
             else:
                 session_data[key] = value
-                
+
         self._load_snake_case_config(config)
         self.update(dict(session_data=session_data))
 
@@ -137,7 +137,7 @@ class FabricConfig(Config):
         Load a plane config dictonary as a nested one using a simple convention:
         The snake case structure of a key represents the nested logic of the
         config object: A key like ``run_pty`` becomes ``config.run.pty``.
-        
+
         Since some config attributes have underscores themselves we use a simple
         rule to prevent ambiguities:
 
