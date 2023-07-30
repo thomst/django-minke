@@ -651,7 +651,7 @@ class MinkeModel(models.Model):
         Derive a reverse lookup-term from HOST_LOOKUP.
         """
         if cls.REVERSE_HOST_LOOKUP:
-            lookup = self.REVERSE_HOST_LOOKUP
+            lookup = cls.REVERSE_HOST_LOOKUP
         else:
             lookup_list = cls.HOST_LOOKUP.split('__')
             lookup_list.reverse()
