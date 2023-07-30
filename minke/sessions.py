@@ -76,9 +76,9 @@ class SessionGroup:
     def __init__(self, name=None):
         self.name = name
 
-    def __call__(self, cls, name=None):
-        cls.group = name or self.name
-        return cls
+    def __call__(self, session_cls):
+        session_cls.group = self
+        return session_cls
 
 
 class SessionRegistration(type):
