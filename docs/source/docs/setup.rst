@@ -9,7 +9,7 @@ To install django-minke and all its dependencies use pip::
 
 The dependencies are:
 
-* `Django <https://www.djangoproject.com>`_ (>=1.11)
+* `Django <https://www.djangoproject.com>`_ (==2.2)
 * `celery <http://www.celeryproject.org>`_ (>=4.2.2)
 * `fabric2 <https://www.fabfile.org>`_ (>=2.4.0)
 * `djangorestframework <https://www.django-rest-framework.org>`_ (>=3.9.2)
