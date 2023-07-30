@@ -663,12 +663,15 @@ class MinkeModel(models.Model):
         """
         Return the related host-instance.
         """
-        # return self.__class__.objects.filter(pk__in=self.pk).get_hosts()[0]
-        host = self
-        for attr in self.HOST_LOOKUP.split('__'):
-            host = getattr(host, attr, None)
-        if not isinstance(host, Host):
-            msg = "Invalid host-lookup: {}".format(self.HOST_LOOKUP)
+        reverse_lookup = self.get_reverse_host_lookup()
+        try:
+            return Host.objects.get(**{reverse_lookup + '__in': [self]})
+        except Host.DoesNotExist:
+            msg = f"No host found by reverse lookup parameter:{reverse_lookup}"
             raise InvalidMinkeSetup(msg)
-        else:
-            return host
+        except Host.MultipleObjectsReturned:
+            msg = f"Multiple hosts found by reverse lookup parameter: {reverse_lookup}"
+            raise InvalidMinkeSetup(msg)
+        except FieldError:
+            msg = f"Invalid reverse lookup: {reverse_lookup}"
+            raise InvalidMinkeSetup(msg)
