@@ -223,7 +223,7 @@ class MinkeAdmin(admin.ModelAdmin):
         choices = [(None, '---------')]
         for group, options in groups.items():
             if group:
-                choices.append((group, options))
+                choices.append((group.name, options))
             else:
                 choices += options
 
