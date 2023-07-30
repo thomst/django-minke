@@ -139,9 +139,9 @@ class SessionRegistration(type):
         REGISTRY[cls.__name__] = cls
 
     def _get_permission(cls):
-        codename = 'run_{}'.format(cls.__name__.lower())
-        name = 'Can run {}'.format(cls.__name__)
-        lookup = 'minke.{}'.format(codename)
+        codename = f'run_{cls.__name__.lower()}'
+        name = f'Can run {cls.__name__}'
+        lookup = f'minke.{codename}'
         return codename, name, lookup
 
     def create_permission(cls):
@@ -149,7 +149,7 @@ class SessionRegistration(type):
         Create a run-permission for this session-class.
         """
         content_type = ContentType.objects.get_for_model(MinkeSession)
-        codename, name, lookup = cls._get_permission()
+        codename, name, _ = cls._get_permission()
         permission, created = Permission.objects.update_or_create(
             codename=codename,
             content_type=content_type,
@@ -157,7 +157,7 @@ class SessionRegistration(type):
         return permission, created
 
     def delete_permission(cls):
-        codename, name, lookup = cls._get_permission()
+        codename, _, lookup = cls._get_permission()
         try:
             Permission.objects.get(codename=codename).delete()
         except Permission.DoesNotExist:
@@ -166,7 +166,7 @@ class SessionRegistration(type):
             cls.permissions = tuple(set(cls.permissions) - set((lookup,)))
 
     def add_permission(cls):
-        codename, name, lookup = cls._get_permission()
+        _, _, lookup = cls._get_permission()
         cls.permissions = tuple(set(cls.permissions) | set((lookup,)))
 
 
