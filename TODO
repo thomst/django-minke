@@ -1,9 +1,6 @@
 * show-messages-toggle for session-changelist
 * invoke-task-args as minke-form-fields
 * reload changelist after processing all sessions
-* Host and HostGroup via ManyToMany with order
-* Host and HostGroup-config as yaml-data
-* load session-data into fabric-config
 * upload-files and upload-session
 * cleanup template and css:
   make a clearer distinction between the changelists of minkeobjects and sessions.
