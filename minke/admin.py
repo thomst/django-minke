@@ -308,7 +308,8 @@ class MinkeAdmin(admin.ModelAdmin):
         extra_context['display_messages'] = extra_context.get('display_messages', True)
         extra_context['display_commands'] = extra_context.get('display_commands', False)
 
-        # We perform one registry-reload per request. GET- and POST-request will need it alike.
+        # We perform one registry-reload per request. GET- and POST-request will
+        # need it alike.
         REGISTRY.reload()
 
         # Does this request has something to do with sessions at all?
@@ -324,8 +325,8 @@ class MinkeAdmin(admin.ModelAdmin):
         try:
             cl = self.get_changelist_instance(request)
         except IncorrectLookupParameters:
-            # Since we are coming from a form-subimission our url-query
-            # should be valid. So this shouldn't happen at all.
+            # Since we are coming from a form-subimission our url-query should
+            # be valid. So this shouldn't happen at all.
             return HttpResponseRedirect(redirect_url)
 
         # Do we have any selected items? Else leave a message and redirect.
