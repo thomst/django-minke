@@ -166,6 +166,7 @@ class MinkeAdmin(admin.ModelAdmin):
         """
         return MinkeChangeList
 
+    # FIXME: This could go. No need to support django < 2.0.
     def get_changelist_instance(self, request):
         """
         Normalize the way to get a changelist-instance. Prior django-2.0 the
@@ -197,6 +198,8 @@ class MinkeAdmin(admin.ModelAdmin):
     def permit_session(self, request, session):
         permitted = request.user.has_perms(session.permissions)
         permitted &= self.model in session.work_on
+        # TODO: Also check group-permissions using an either session- or
+        # group-permission logic.
         return permitted
 
     def get_session_options(self, request):
@@ -301,6 +304,9 @@ class MinkeAdmin(admin.ModelAdmin):
         """
         Extend the modeladmin-changelist_view by session-processing.
         """
+        # TODO: Add session-select to context and use in within actions.html.
+        # TODO: Add session-info to context and use it within the item-message
+        # template.
         extra_context = extra_context or dict()
         extra_context['display_session_select'] = extra_context.get('display_session_select', True)
         extra_context['display_session_info'] = extra_context.get('display_session_info', True)

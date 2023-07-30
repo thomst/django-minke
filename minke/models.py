@@ -525,6 +525,7 @@ class Host(models.Model):
         verbose_name=_('HostName'),
         help_text=_('HostName could be either a ssh-config-lookup-pattern or a '
                     'real hostname to log into.'))
+    # FIXME: 'username' should be 'user' like in a ssh-config.
     username = models.CharField(
         max_length=255, blank=True, null=True,
         verbose_name=_('User'),

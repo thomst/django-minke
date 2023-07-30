@@ -6,6 +6,12 @@ from django.contrib.admin.templatetags.admin_list import result_list
 register = Library()
 
 
+# FIXME: Pass sessions (in same order as result_list) from the ModelAdmin as
+# context and zip results and sessions within the template using a zip
+# templatetag.
+# FIXME: It is also possible to overwrite existing tags by using the register
+# from the original tag library and reregister a specific tag.
+# We could do that for the admin_actions tag and inject the session-bar there.
 @register.inclusion_tag('minke/change_list_results.html', takes_context=True)
 def minke_result_list(context, cl):
     """
@@ -41,6 +47,7 @@ def minke_session_switch(context):
     return context
 
 
+# FIXME: No need for a tag. Simply use an include tag within the template.
 @register.inclusion_tag('minke/session.html', takes_context=True)
 def minke_session(context):
     """

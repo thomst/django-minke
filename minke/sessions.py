@@ -62,6 +62,8 @@ class RegistryDict(OrderedDict):
 REGISTRY = RegistryDict()
 
 
+# TODO: Implement auto-permission logic equivalent to the Session's
+# auto-permission implementation.
 class SessionGroup:
     """
     A group of session - displayed as optgroups in the select-widget.
@@ -81,6 +83,9 @@ class SessionGroup:
         return session_cls
 
 
+# TODO: Refactore auto_permission. Do not overwrite the Session.permissions. Add
+# a Session.get_permissions method instead that adds the auto-permission
+# dynamically. Then use a manage command to create all auto-perissions.
 class SessionRegistration(type):
     """
     metaclass for Sessions that implements session-registration
@@ -138,6 +143,7 @@ class SessionRegistration(type):
         # register session
         REGISTRY[cls.__name__] = cls
 
+    # FIXME: These a simple classmethods. Move them to Session.
     def _get_permission(cls):
         codename = f'run_{cls.__name__.lower()}'
         name = f'Can run {cls.__name__}'
