@@ -1,4 +1,6 @@
 # -*- coding: utf-8 -*-
+from datetime import datetime, timedelta
+from dateutil.relativedelta import relativedelta
 
 from django.contrib.auth.models import Permission
 from django.core.management.base import BaseCommand
@@ -26,6 +28,14 @@ class Command(BaseCommand):
             action='store_true',
             help='Delete all sessions.')
         parser.add_argument(
+            '-M', '--clear-sessions-older-than-x-months',
+            type=int,
+            help='Delete all sessions oder than x months.')
+        parser.add_argument(
+            '-Y', '--clear-sessions-older-than-x-years',
+            type=int,
+            help='Delete all sessions oder than x years.')
+        parser.add_argument(
             '-s', '--list-sessions',
             action='store_true',
             help='List available sessions.')
@@ -50,6 +60,14 @@ class Command(BaseCommand):
 
         if options['clear_all_sessions']:
             print(MinkeSession.objects.all().delete())
+
+        if options['clear_sessions_older_than_x_months']:
+            delta = relativedelta(months=options['clear_sessions_older_than_x_months'])
+            print(MinkeSession.objects.filter(created_time__lte=datetime.now() - delta).delete())
+
+        if options['clear_sessions_older_than_x_years']:
+            delta = relativedelta(years=options['clear_sessions_older_than_x_years'])
+            print(MinkeSession.objects.filter(created_time__lte=datetime.now() - delta).delete())
 
         if options['list_sessions']:
             REGISTRY.reload()
