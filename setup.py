@@ -34,7 +34,7 @@ setup(
     install_requires=[
         "Django>=1.11,<3.0",
         "fabric2>=2.4.0",
-        "celery>=4.2.2,<5.0.0",
+        "celery>=4.2.2,<=5.3.1",
         "djangorestframework>=3.9.2",
         "pyyaml",
     ],
